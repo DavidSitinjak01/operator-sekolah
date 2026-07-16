@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Siswa {
+  id            String   @id @default(cuid())
+  nis           String   @unique
+  nama          String
+  kelas         String
+  jenisKelamin  String
+  tempatLahir   String
+  tanggalLahir  String
+  alamat        String
+  namaOrtu      String
+  noTelpOrtu    String
+  status        String   @default("Aktif")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Guru {
+  id            String   @id @default(cuid())
+  nip           String   @unique
+  nama          String
+  jenisKelamin  String
+  mataPelajaran String
+  alamat        String
+  noTelp        String
+  status        String   @default("Aktif")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model MutasiMasuk {
+  id          String   @id @default(cuid())
+  nama        String
+  nis         String
+  asalSekolah String
+  kelas       String
+  tanggalMasuk String
+  alasan      String
+  noSurat     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MutasiKeluar {
+  id           String   @id @default(cuid())
+  nama         String
+  nis          String
+  tujuanSekolah String
+  kelas        String
+  tanggalKeluar String
+  alasan       String
+  noSurat      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
