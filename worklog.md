@@ -120,3 +120,26 @@ Stage Summary:
 - Import feature is live at Data Siswa and Data Guru pages
 - Users click "Import Excel" button → dialog opens → upload .xlsx/.xls/.csv file → data imports to selected Tahun Pelajaran & Semester
 - Column mapping is case-insensitive and flexible (handles various header formats)
+
+---
+Task ID: 6
+Agent: main
+Task: Import all data from Dapodik Excel files and update UI to match Excel column order
+
+Work Log:
+- Analyzed both Dapodik Excel files: siswa has 4 metadata rows + 2 header rows + 817 data rows with 66 columns; guru has 4 metadata rows + 1 header row + 42 data rows with 51 columns
+- Expanded Prisma schema: Siswa model from 18 fields to 65+ fields, Guru model from 18 fields to 45+ fields (all string type)
+- Ran `db:push` to migrate schema, `db:generate` to update Prisma Client
+- Wrote direct import script (`scripts/import-excel.cjs`) that parses Dapodik format using index-based column mapping
+- Imported 817 siswa (0 skipped) and 42 guru (0 skipped) for 2025/2026 Ganjil
+- Rewrote SiswaPage table: 39 data columns matching Excel order (No, Nama, NIPD, JK, NISN, Tempat Lahir, Tanggal Lahir, NIK, Agama, Alamat, RT, RW, Dusun, Kelurahan, Kecamatan, Kode Pos, Jenis Tinggal, Alat Transportasi, Telepon, HP, E-Mail, SKHUN, Penerima KPS, No. KPS, Nama Ayah, Ayah Tahun Lahir, Ayah Jenjang, Ayah Pekerjaan, Nama Ibu, Ibu Tahun Lahir, Ibu Jenjang, Ibu Pekerjaan, Nama Wali, Wali Tahun Lahir, Wali Jenjang, Wali Pekerjaan, Rombel, Kebutuhan Khusus, Sekolah Asal)
+- Rewrote GuruPage table: 35 data columns matching Excel order (No, Nama, NUPTK, JK, Tempat Lahir, Tanggal Lahir, NIP, Status Kepegawaian, Jenis PTK, Agama, Alamat, RT, RW, Nama Dusun, Desa/Kelurahan, Kecamatan, Kode Pos, Telepon, HP, Email, Tugas Tambahan, SK CPNS, Tanggal CPNS, SK Pengangkatan, TMT Pengangkatan, Lembaga Pengangkatan, Pangkat/Golongan, Sumber Gaji, Nama Ibu Kandung, Status Perkawinan, Nama Suami/Istri, NIP Suami/Istri, Pekerjaan Suami/Istri, Kewarganegaraan, NIK)
+- Updated import API endpoints to handle Dapodik format (auto-detects merged header rows, falls back to simple header format)
+- Fixed siswa GET API: page/limit were strings causing 500 error, added parseInt()
+- Verified via Agent Browser: Dashboard shows 817 siswa, SiswaPage shows "Menampilkan 1-10 dari 817 siswa", GuruPage shows "Menampilkan 1-10 dari 42 guru"
+
+Stage Summary:
+- All 817 siswa and 42 guru from Dapodik Excel files successfully imported
+- Table column order matches Excel exactly
+- Import API now supports Dapodik format (merged header rows) and simple format
+- All fields stored in database including parent data, KIP/KPS info, health data, etc.

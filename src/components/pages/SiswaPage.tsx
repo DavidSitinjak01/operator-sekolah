@@ -50,14 +50,62 @@ interface Siswa {
   nik: string;
   agama: string;
   alamat: string;
+  rt: string;
+  rw: string;
+  dusun: string;
+  kelurahan: string;
+  kecamatan: string;
+  kodePos: string;
+  jenisTinggal: string;
+  alatTransportasi: string;
+  telepon: string;
   hp: string;
   email: string;
+  skhun: string;
+  penerimaKPS: string;
+  noKPS: string;
+  namaAyah: string;
+  ayahTahunLahir: string;
+  ayahJenjangPendidikan: string;
+  ayahPekerjaan: string;
+  ayahPenghasilan: string;
+  ayahNik: string;
+  namaIbu: string;
+  ibuTahunLahir: string;
+  ibuJenjangPendidikan: string;
+  ibuPekerjaan: string;
+  ibuPenghasilan: string;
+  ibuNik: string;
+  namaWali: string;
+  waliTahunLahir: string;
+  waliJenjangPendidikan: string;
+  waliPekerjaan: string;
+  waliPenghasilan: string;
+  waliNik: string;
   rombel: string;
+  noPesertaUN: string;
+  noSeriIjazah: string;
+  penerimaKIP: string;
+  nomorKIP: string;
+  namaKIP: string;
+  nomorKKS: string;
+  noRegAktaLahir: string;
+  bank: string;
+  nomorRekeningBank: string;
+  rekeningAtasNama: string;
+  layakPIP: string;
+  alasanLayakPIP: string;
   kebutuhanKhusus: string;
   sekolahAsal: string;
-  namaAyah: string;
-  namaIbu: string;
-  namaWali: string;
+  anakKeBerapa: string;
+  lintang: string;
+  bujur: string;
+  noKK: string;
+  beratBadan: string;
+  tinggiBadan: string;
+  lingkarKepala: string;
+  jmlSaudaraKandung: string;
+  jarakRumahKeSekolah: string;
   status: string;
   tahunPelajaran: string;
   semester: string;
@@ -98,6 +146,9 @@ const ROMBEL_OPTIONS = [
 ];
 
 const LIMIT = 10;
+
+// Total visible columns: 39 data + 1 Aksi = 40
+const TOTAL_COLUMNS = 40;
 
 export default function SiswaPage() {
   const [search, setSearch] = useState('');
@@ -264,56 +315,178 @@ export default function SiswaPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="w-12 text-center">No</TableHead>
-                    <TableHead className="min-w-[180px]">Nama</TableHead>
-                    <TableHead className="hidden lg:table-cell min-w-[100px]">NIPD</TableHead>
-                    <TableHead className="w-14 text-center">JK</TableHead>
-                    <TableHead className="hidden sm:table-cell min-w-[130px]">NISN</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[120px]">Tempat Lahir</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[110px]">Tanggal Lahir</TableHead>
-                    <TableHead className="hidden lg:table-cell min-w-[140px]">NIK</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[100px]">Agama</TableHead>
-                    <TableHead className="hidden lg:table-cell min-w-[200px]">Alamat</TableHead>
-                    <TableHead className="hidden sm:table-cell min-w-[120px]">HP</TableHead>
-                    <TableHead className="hidden xl:table-cell min-w-[180px]">E-Mail</TableHead>
-                    <TableHead className="min-w-[120px]">Rombel</TableHead>
-                    <TableHead className="hidden xl:table-cell min-w-[140px]">Kebutuhan Khusus</TableHead>
-                    <TableHead className="hidden lg:table-cell min-w-[140px]">Sekolah Asal</TableHead>
-                    <TableHead className="hidden xl:table-cell min-w-[120px]">Nama Ayah</TableHead>
-                    <TableHead className="hidden xl:table-cell min-w-[120px]">Nama Ibu</TableHead>
-                    <TableHead className="hidden xl:table-cell min-w-[120px]">Nama Wali</TableHead>
-                    <TableHead className="w-20 text-center">Aksi</TableHead>
+                    {/* 1. No — Always visible */}
+                    <TableHead className="w-12 text-center whitespace-nowrap">No</TableHead>
+                    {/* 2. Nama — Always visible */}
+                    <TableHead className="min-w-[180px] whitespace-nowrap">Nama</TableHead>
+                    {/* 3. NIPD — sm+ */}
+                    <TableHead className="hidden sm:table-cell min-w-[100px] whitespace-nowrap">NIPD</TableHead>
+                    {/* 4. JK — Always visible */}
+                    <TableHead className="w-14 text-center whitespace-nowrap">JK</TableHead>
+                    {/* 5. NISN — sm+ */}
+                    <TableHead className="hidden sm:table-cell min-w-[130px] whitespace-nowrap">NISN</TableHead>
+                    {/* 6. Tempat Lahir — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[120px] whitespace-nowrap">Tempat Lahir</TableHead>
+                    {/* 7. Tanggal Lahir — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[110px] whitespace-nowrap">Tanggal Lahir</TableHead>
+                    {/* 8. NIK — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[140px] whitespace-nowrap">NIK</TableHead>
+                    {/* 9. Agama — sm+ */}
+                    <TableHead className="hidden sm:table-cell min-w-[100px] whitespace-nowrap">Agama</TableHead>
+                    {/* 10. Alamat — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[200px] whitespace-nowrap">Alamat</TableHead>
+                    {/* 11. RT — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[60px] whitespace-nowrap">RT</TableHead>
+                    {/* 12. RW — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[60px] whitespace-nowrap">RW</TableHead>
+                    {/* 13. Dusun — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Dusun</TableHead>
+                    {/* 14. Kelurahan — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Kelurahan</TableHead>
+                    {/* 15. Kecamatan — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Kecamatan</TableHead>
+                    {/* 16. Kode Pos — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[80px] whitespace-nowrap">Kode Pos</TableHead>
+                    {/* 17. Jenis Tinggal — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Jenis Tinggal</TableHead>
+                    {/* 18. Alat Transportasi — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Alat Transportasi</TableHead>
+                    {/* 19. Telepon — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Telepon</TableHead>
+                    {/* 20. HP — sm+ */}
+                    <TableHead className="hidden sm:table-cell min-w-[120px] whitespace-nowrap">HP</TableHead>
+                    {/* 21. E-Mail — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[180px] whitespace-nowrap">E-Mail</TableHead>
+                    {/* 22. SKHUN — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">SKHUN</TableHead>
+                    {/* 23. Penerima KPS — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Penerima KPS</TableHead>
+                    {/* 24. No. KPS — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">No. KPS</TableHead>
+                    {/* 25. Nama Ayah — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Ayah</TableHead>
+                    {/* 26. Ayah Tahun Lahir — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Ayah Tahun Lahir</TableHead>
+                    {/* 27. Ayah Jenjang Pendidikan — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Ayah Jenjang</TableHead>
+                    {/* 28. Ayah Pekerjaan — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Ayah Pekerjaan</TableHead>
+                    {/* 29. Nama Ibu — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Ibu</TableHead>
+                    {/* 30. Ibu Tahun Lahir — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Ibu Tahun Lahir</TableHead>
+                    {/* 31. Ibu Jenjang Pendidikan — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Ibu Jenjang</TableHead>
+                    {/* 32. Ibu Pekerjaan — lg+ */}
+                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Ibu Pekerjaan</TableHead>
+                    {/* 33. Nama Wali — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Wali</TableHead>
+                    {/* 34. Wali Tahun Lahir — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Wali Tahun Lahir</TableHead>
+                    {/* 35. Wali Jenjang Pendidikan — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Wali Jenjang</TableHead>
+                    {/* 36. Wali Pekerjaan — xl+ */}
+                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Wali Pekerjaan</TableHead>
+                    {/* 37. Rombel Saat Ini — Always visible */}
+                    <TableHead className="min-w-[120px] whitespace-nowrap">Rombel</TableHead>
+                    {/* 38. Kebutuhan Khusus — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Kebutuhan Khusus</TableHead>
+                    {/* 39. Sekolah Asal — md+ */}
+                    <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Sekolah Asal</TableHead>
+                    {/* 40. Aksi — Always visible */}
+                    <TableHead className="w-20 text-center whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {siswaList.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={19} className="h-32 text-center text-muted-foreground">
+                      <TableCell colSpan={TOTAL_COLUMNS} className="h-32 text-center text-muted-foreground">
                         Tidak ada data siswa ditemukan.
                       </TableCell>
                     </TableRow>
                   ) : (
                     siswaList.map((siswa) => (
                       <TableRow key={siswa.id}>
-                        <TableCell className="text-center font-medium">{siswa.no}</TableCell>
-                        <TableCell className="font-medium">{siswa.nama}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{siswa.nipd || '-'}</TableCell>
-                        <TableCell className="text-center">{siswa.jenisKelamin || '-'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{siswa.nisn || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{siswa.tempatLahir || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{siswa.tanggalLahir || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{siswa.nik || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{siswa.agama || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell max-w-[200px] truncate">{siswa.alamat || '-'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{siswa.hp || '-'}</TableCell>
-                        <TableCell className="hidden xl:table-cell">{siswa.email || '-'}</TableCell>
-                        <TableCell>{siswa.rombel || '-'}</TableCell>
-                        <TableCell className="hidden xl:table-cell">{siswa.kebutuhanKhusus || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{siswa.sekolahAsal || '-'}</TableCell>
-                        <TableCell className="hidden xl:table-cell">{siswa.namaAyah || '-'}</TableCell>
-                        <TableCell className="hidden xl:table-cell">{siswa.namaIbu || '-'}</TableCell>
-                        <TableCell className="hidden xl:table-cell">{siswa.namaWali || '-'}</TableCell>
-                        <TableCell className="text-center">
+                        {/* 1. No */}
+                        <TableCell className="text-center font-medium whitespace-nowrap">{siswa.no}</TableCell>
+                        {/* 2. Nama */}
+                        <TableCell className="font-medium whitespace-nowrap">{siswa.nama}</TableCell>
+                        {/* 3. NIPD — sm+ */}
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.nipd || '-'}</TableCell>
+                        {/* 4. JK */}
+                        <TableCell className="text-center whitespace-nowrap">{siswa.jenisKelamin || '-'}</TableCell>
+                        {/* 5. NISN — sm+ */}
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.nisn || '-'}</TableCell>
+                        {/* 6. Tempat Lahir — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.tempatLahir || '-'}</TableCell>
+                        {/* 7. Tanggal Lahir — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.tanggalLahir || '-'}</TableCell>
+                        {/* 8. NIK — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.nik || '-'}</TableCell>
+                        {/* 9. Agama — sm+ */}
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.agama || '-'}</TableCell>
+                        {/* 10. Alamat — lg+ */}
+                        <TableCell className="hidden lg:table-cell max-w-[200px] truncate whitespace-nowrap">{siswa.alamat || '-'}</TableCell>
+                        {/* 11. RT — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.rt || '-'}</TableCell>
+                        {/* 12. RW — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.rw || '-'}</TableCell>
+                        {/* 13. Dusun — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.dusun || '-'}</TableCell>
+                        {/* 14. Kelurahan — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.kelurahan || '-'}</TableCell>
+                        {/* 15. Kecamatan — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.kecamatan || '-'}</TableCell>
+                        {/* 16. Kode Pos — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.kodePos || '-'}</TableCell>
+                        {/* 17. Jenis Tinggal — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.jenisTinggal || '-'}</TableCell>
+                        {/* 18. Alat Transportasi — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.alatTransportasi || '-'}</TableCell>
+                        {/* 19. Telepon — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.telepon || '-'}</TableCell>
+                        {/* 20. HP — sm+ */}
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.hp || '-'}</TableCell>
+                        {/* 21. E-Mail — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.email || '-'}</TableCell>
+                        {/* 22. SKHUN — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.skhun || '-'}</TableCell>
+                        {/* 23. Penerima KPS — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.penerimaKPS || '-'}</TableCell>
+                        {/* 24. No. KPS — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.noKPS || '-'}</TableCell>
+                        {/* 25. Nama Ayah — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaAyah || '-'}</TableCell>
+                        {/* 26. Ayah Tahun Lahir — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ayahTahunLahir || '-'}</TableCell>
+                        {/* 27. Ayah Jenjang Pendidikan — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ayahJenjangPendidikan || '-'}</TableCell>
+                        {/* 28. Ayah Pekerjaan — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.ayahPekerjaan || '-'}</TableCell>
+                        {/* 29. Nama Ibu — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaIbu || '-'}</TableCell>
+                        {/* 30. Ibu Tahun Lahir — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ibuTahunLahir || '-'}</TableCell>
+                        {/* 31. Ibu Jenjang Pendidikan — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ibuJenjangPendidikan || '-'}</TableCell>
+                        {/* 32. Ibu Pekerjaan — lg+ */}
+                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.ibuPekerjaan || '-'}</TableCell>
+                        {/* 33. Nama Wali — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaWali || '-'}</TableCell>
+                        {/* 34. Wali Tahun Lahir — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliTahunLahir || '-'}</TableCell>
+                        {/* 35. Wali Jenjang Pendidikan — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliJenjangPendidikan || '-'}</TableCell>
+                        {/* 36. Wali Pekerjaan — xl+ */}
+                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliPekerjaan || '-'}</TableCell>
+                        {/* 37. Rombel */}
+                        <TableCell className="whitespace-nowrap">{siswa.rombel || '-'}</TableCell>
+                        {/* 38. Kebutuhan Khusus — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.kebutuhanKhusus || '-'}</TableCell>
+                        {/* 39. Sekolah Asal — md+ */}
+                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.sekolahAsal || '-'}</TableCell>
+                        {/* 40. Aksi */}
+                        <TableCell className="text-center whitespace-nowrap">
                           <AlertDialog
                             open={deleteId === siswa.id}
                             onOpenChange={(open) => {
@@ -397,9 +570,6 @@ export default function SiswaPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Delete Confirmation AlertDialog (controlled via deleteId state) */}
-      {/* Note: The AlertDialog is embedded per-row above for simplicity */}
     </div>
   );
 }

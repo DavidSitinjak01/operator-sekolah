@@ -254,11 +254,11 @@ export default function ImportExcelDialog({ type, onSuccess, children }: ImportE
               </p>
               {type === 'siswa' ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  No, Nama, NIPD, Jenis Kelamin, NISN, Tempat Lahir, Tanggal Lahir, NIK, Agama, Alamat, HP, Email, Rombel, Kebutuhan Khusus, Sekolah Asal, Nama Ayah, Nama Ibu, Nama Wali
+                  Mendukung format Dapodik: No, Nama, NIPD, JK, NISN, Tempat Lahir, Tanggal Lahir, NIK, Agama, Alamat, RT, RW, Dusun, Kelurahan, Kecamatan, Kode Pos, Jenis Tinggal, Alat Transportasi, Telepon, HP, E-Mail, SKHUN, Penerima KPS, No. KPS, Nama Ayah, ..., Nama Ibu, ..., Nama Wali, ..., Rombel, Kebutuhan Khusus, Sekolah Asal, dan lainnya.
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  No, Nama, NUPTK, Jenis Kelamin, Tempat Lahir, Tanggal Lahir, NIP, Status Kepegawaian, Jenis PTK, Agama, Alamat, HP, Email, Tugas Tambahan, Pangkat/Golongan, Sumber Gaji, Status Perkawinan, Kewarganegaraan
+                  Mendukung format Dapodik: No, Nama, NUPTK, JK, Tempat Lahir, Tanggal Lahir, NIP, Status Kepegawaian, Jenis PTK, Agama, Alamat Jalan, RT, RW, Nama Dusun, Desa/Kelurahan, Kecamatan, Kode Pos, Telepon, HP, Email, Tugas Tambahan, SK CPNS, Tanggal CPNS, SK Pengangkatan, TMT Pengangkatan, Lembaga Pengangkatan, Pangkat/Golongan, Sumber Gaji, dan lainnya.
                 </p>
               )}
             </div>

@@ -2,30 +2,8 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 
-// Column mapping from Excel header → DB field
-const GURU_FIELD_MAP: Record<string, string> = {
-  'no': 'no',
-  'nama': 'nama',
-  'nuptk': 'nuptk',
-  'jenis kelamin': 'jenisKelamin',
-  'tempat lahir': 'tempatLahir',
-  'tanggal lahir': 'tanggalLahir',
-  'nip': 'nip',
-  'status kepegawaian': 'statusKepegawaian',
-  'jenis ptk': 'jenisPTK',
-  'agama': 'agama',
-  'alamat': 'alamat',
-  'hp': 'hp',
-  'email': 'email',
-  'tugas tambahan': 'tugasTambahan',
-  'pangkat/golongan': 'pangkatGolongan',
-  'pangkat golongan': 'pangkatGolongan',
-  'sumber gaji': 'sumberGaji',
-  'status perkawinan': 'statusPerkawinan',
-  'kewarganegaraan': 'kewarganegaraan',
-};
-
-const REQUIRED_FIELDS = ['no', 'nama'];
+// Handle Dapodik-format Excel: rows 0-3 are metadata, row 4 is header, data starts row 5
+// Columns are index-based because of merged cells
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,59 +24,120 @@ export async function POST(request: NextRequest) {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
+    const rawData = XLSX.utils.sheet_to_json<(string | number | null)[]>(worksheet, { header: 1, defval: '' });
 
-    if (rows.length === 0) {
-      return NextResponse.json({ error: 'File Excel kosong' }, { status: 400 });
-    }
+    const isDapodik = rawData.length > 4 && typeof rawData[0][0] === 'string' &&
+      (rawData[0][0].includes('Daftar Guru') || rawData[0][0].includes('Daftar'));
 
-    // Get the actual headers from the first row
-    const headers = Object.keys(rows[0]);
+    const s = (v: unknown) => String(v ?? '').trim();
 
-    // Build reverse mapping
-    const headerToField: Record<string, string> = {};
-    for (const header of headers) {
-      const normalizedHeader = header.toString().toLowerCase().trim();
-      const mappedField = GURU_FIELD_MAP[normalizedHeader];
-      if (mappedField) {
-        headerToField[header] = mappedField;
+    const guruData: Record<string, string>[] = [];
+
+    if (isDapodik) {
+      // Dapodik format: data starts at row 5
+      for (let i = 5; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || !row[0] || !s(row[1])) continue;
+
+        guruData.push({
+          no: s(row[0]),
+          nama: s(row[1]),
+          nuptk: s(row[2]),
+          jenisKelamin: s(row[3]),
+          tempatLahir: s(row[4]),
+          tanggalLahir: s(row[5]),
+          nip: s(row[6]),
+          statusKepegawaian: s(row[7]),
+          jenisPTK: s(row[8]),
+          agama: s(row[9]),
+          alamat: s(row[10]),
+          rt: s(row[11]),
+          rw: s(row[12]),
+          namaDusun: s(row[13]),
+          desaKelurahan: s(row[14]),
+          kecamatan: s(row[15]),
+          kodePos: s(row[16]),
+          telepon: s(row[17]),
+          hp: s(row[18]),
+          email: s(row[19]),
+          tugasTambahan: s(row[20]),
+          skCPNS: s(row[21]),
+          tanggalCPNS: s(row[22]),
+          skPengangkatan: s(row[23]),
+          tmtPengangkatan: s(row[24]),
+          lembagaPengangkatan: s(row[25]),
+          pangkatGolongan: s(row[26]),
+          sumberGaji: s(row[27]),
+          namaIbuKandung: s(row[28]),
+          statusPerkawinan: s(row[29]),
+          namaSuamiIstri: s(row[30]),
+          nipSuamiIstri: s(row[31]),
+          pekerjaanSuamiIstri: s(row[32]),
+          tmtPNS: s(row[33]),
+          sudahLisensiKepsek: s(row[34]),
+          pernahDiklatKepengawasan: s(row[35]),
+          keahlianBraille: s(row[36]),
+          keahlianBahasaIsyarat: s(row[37]),
+          npwp: s(row[38]),
+          namaWajibPajak: s(row[39]),
+          kewarganegaraan: s(row[40]),
+          bank: s(row[41]),
+          nomorRekeningBank: s(row[42]),
+          rekeningAtasNama: s(row[43]),
+          nik: s(row[44]),
+          noKK: s(row[45]),
+          karpeg: s(row[46]),
+          karisKarsu: s(row[47]),
+          lintang: s(row[48]),
+          bujur: s(row[49]),
+          nuks: s(row[50]),
+          tahunPelajaran,
+          semester,
+          status: 'Aktif',
+        });
       }
-    }
-
-    // Check required fields
-    const mappedFields = Object.values(headerToField);
-    for (const req of REQUIRED_FIELDS) {
-      if (!mappedFields.includes(req)) {
-        return NextResponse.json({
-          error: `Kolom "${req}" tidak ditemukan di file Excel. Pastikan kolom header sesuai.`,
-        }, { status: 400 });
-      }
-    }
-
-    // Transform rows
-    const guruData = rows.map((row) => {
-      const record: Record<string, string> = {
-        tahunPelajaran,
-        semester,
-        status: 'Aktif',
+    } else {
+      // Simple format fallback
+      const fieldMap: Record<string, string> = {
+        'no': 'no', 'nama': 'nama', 'nuptk': 'nuptk', 'jenis kelamin': 'jenisKelamin',
+        'jk': 'jenisKelamin', 'tempat lahir': 'tempatLahir', 'tanggal lahir': 'tanggalLahir',
+        'nip': 'nip', 'status kepegawaian': 'statusKepegawaian', 'jenis ptk': 'jenisPTK',
+        'agama': 'agama', 'alamat': 'alamat', 'alamat jalan': 'alamat',
+        'hp': 'hp', 'email': 'email', 'tugas tambahan': 'tugasTambahan',
+        'pangkat/golongan': 'pangkatGolongan', 'pangkat golongan': 'pangkatGolongan',
+        'sumber gaji': 'sumberGaji', 'status perkawinan': 'statusPerkawinan',
+        'kewarganegaraan': 'kewarganegaraan', 'telepon': 'telepon',
+        'nama ibu kandung': 'namaIbuKandung', 'rt': 'rt', 'rw': 'rw',
+        'nama dusun': 'namaDusun', 'desa/kelurahan': 'desaKelurahan',
+        'kecamatan': 'kecamatan', 'kode pos': 'kodePos', 'nik': 'nik',
       };
 
-      for (const [excelHeader, dbField] of Object.entries(headerToField)) {
-        const value = row[excelHeader];
-        if (value !== undefined && value !== null) {
-          record[dbField] = String(value).trim();
-        } else {
-          record[dbField] = '';
-        }
+      const headers = Object.keys(rawData[0] as Record<string, unknown>);
+      const headerToField: Record<string, string> = {};
+      for (const h of headers) {
+        const mapped = fieldMap[h.toLowerCase().trim()];
+        if (mapped) headerToField[h] = mapped;
       }
 
-      if (!record.no && record.no !== '0') return null;
-      if (!record.nama) return null;
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i] as (string | number)[];
+        if (!row[0] || !s(row[1])) continue;
 
-      return record;
-    }).filter(Boolean) as Record<string, string>[];
+        const record: Record<string, string> = { tahunPelajaran, semester, status: 'Aktif' };
+        for (let j = 0; j < headers.length; j++) {
+          const field = headerToField[headers[j]];
+          if (field) record[field] = s(row[j]);
+        }
+        record.no = s(row[0]);
+        record.nama = s(row[1]);
+        guruData.push(record);
+      }
+    }
 
-    // Bulk insert
+    if (guruData.length === 0) {
+      return NextResponse.json({ error: 'Tidak ada data guru yang dapat dibaca dari file.' }, { status: 400 });
+    }
+
     let inserted = 0;
     let skipped = 0;
     const errors: string[] = [];
@@ -118,7 +157,7 @@ export async function POST(request: NextRequest) {
       message: `Import berhasil: ${inserted} data guru diimport${skipped > 0 ? `, ${skipped} gagal` : ''}.`,
       inserted,
       skipped,
-      total: rows.length,
+      total: guruData.length,
       errors,
     });
   } catch (error: unknown) {

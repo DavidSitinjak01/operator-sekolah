@@ -3,7 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { search, rombel, tahunPelajaran, semester, page, limit } = Object.fromEntries(request.nextUrl.searchParams);
+    const sp = Object.fromEntries(request.nextUrl.searchParams);
+    const search = sp.search || '';
+    const rombel = sp.rombel || '';
+    const tahunPelajaran = sp.tahunPelajaran || '';
+    const semester = sp.semester || '';
+    const page = parseInt(sp.page || '1');
+    const limit = parseInt(sp.limit || '10');
 
     const where: Record<string, unknown> = {};
     if (search) {
@@ -31,8 +37,10 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({ data, total, page, limit, totalPages: Math.ceil(total / limit) });
-  } catch (error) {
-    return NextResponse.json({ error: 'Gagal memuat data siswa' }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Gagal memuat data siswa';
+    console.error('GET /api/siswa error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
