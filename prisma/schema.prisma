@@ -167,23 +167,8 @@ model MutasiMasuk {
 
 model MutasiKeluar {
   id               String   @id @default(cuid())
-  siswaId          String?
-  nama             String
-  nipd             String   @default("")
-  nisn             String   @default("")
-  nik              String   @default("")
-  jenisKelamin     String   @default("")
-  tempatLahir      String   @default("")
-  tanggalLahir     String   @default("")
-  agama            String   @default("")
-  alamat           String   @default("")
-  hp               String   @default("")
-  namaAyah         String   @default("")
-  namaIbu          String   @default("")
-  rombel           String   @default("")
-  sekolahAsal      String   @default("")
+  siswaId          String
   tujuanSekolah    String
-  kelas            String
   tanggalKeluar    String
   alasan           String
   noSurat          String
@@ -192,8 +177,9 @@ model MutasiKeluar {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  siswa            Siswa?   @relation(fields: [siswaId], references: [id])
+  siswa            Siswa   @relation(fields: [siswaId], references: [id])
 
   @@index([tahunPelajaran, semester])
   @@index([siswaId])
+  @@unique([siswaId, tahunPelajaran, semester])
 }

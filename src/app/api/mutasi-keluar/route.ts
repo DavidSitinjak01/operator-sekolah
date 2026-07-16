@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
+// ── GET: List with joined siswa data ─────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,20 +12,34 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
 
     const where: Record<string, unknown> = {};
-    if (search) {
-      where.OR = [
-        { nama: { contains: search } },
-        { nipd: { contains: search } },
-        { nisn: { contains: search } },
-        { tujuanSekolah: { contains: search } },
-      ];
-    }
     if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
     if (semester) where.semester = semester;
 
-    const [data, total] = await Promise.all([
+    // Search across siswa fields via the relation
+    if (search) {
+      where.siswa = {
+        OR: [
+          { nama: { contains: search } },
+          { nipd: { contains: search } },
+          { nisn: { contains: search } },
+          { nik: { contains: search } },
+        ],
+      };
+    }
+
+    const [records, total] = await Promise.all([
       db.mutasiKeluar.findMany({
         where,
+        include: {
+          siswa: {
+            select: {
+              id: true, no: true, nama: true, nipd: true, nisn: true, nik: true,
+              jenisKelamin: true, tempatLahir: true, tanggalLahir: true,
+              agama: true, alamat: true, hp: true,
+              namaAyah: true, namaIbu: true, rombel: true, sekolahAsal: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -32,51 +47,69 @@ export async function GET(request: NextRequest) {
       db.mutasiKeluar.count({ where }),
     ]);
 
-    return NextResponse.json({ data, total, page, limit, totalPages: Math.ceil(total / limit) });
+    // Flatten: merge siswa data into each record
+    const data = records.map((r) => ({
+      id: r.id,
+      siswaId: r.siswaId,
+      tujuanSekolah: r.tujuanSekolah,
+      tanggalKeluar: r.tanggalKeluar,
+      alasan: r.alasan,
+      noSurat: r.noSurat,
+      tahunPelajaran: r.tahunPelajaran,
+      semester: r.semester,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      // Joined siswa fields
+      siswa: r.siswa,
+    }));
+
+    return NextResponse.json({
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal memuat data mutasi keluar' }, { status: 500 });
   }
 }
 
+// ── POST: Create ─────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { siswaId, ...rest } = body;
+    const { siswaId, tujuanSekolah, tanggalKeluar, alasan, noSurat, tahunPelajaran, semester } = body;
 
-    // If siswaId is provided, fetch siswa data and auto-fill
-    let dataToSave = { ...rest };
-    if (siswaId) {
-      const siswa = await db.siswa.findUnique({ where: { id: siswaId } });
-      if (siswa) {
-        dataToSave = {
-          ...dataToSave,
-          siswaId: siswa.id,
-          nama: siswa.nama,
-          nipd: siswa.nipd || '',
-          nisn: siswa.nisn || '',
-          nik: siswa.nik || '',
-          jenisKelamin: siswa.jenisKelamin || '',
-          tempatLahir: siswa.tempatLahir || '',
-          tanggalLahir: siswa.tanggalLahir || '',
-          agama: siswa.agama || '',
-          alamat: siswa.alamat || '',
-          hp: siswa.hp || '',
-          namaAyah: siswa.namaAyah || '',
-          namaIbu: siswa.namaIbu || '',
-          rombel: siswa.rombel || '',
-          sekolahAsal: siswa.sekolahAsal || '',
-          kelas: siswa.rombel || dataToSave.kelas || '',
-        };
-
-        // Update siswa status to Mutasi Keluar
-        await db.siswa.update({
-          where: { id: siswaId },
-          data: { status: 'Mutasi Keluar' },
-        });
-      }
+    if (!siswaId) {
+      return NextResponse.json({ error: 'Siswa wajib dipilih' }, { status: 400 });
     }
 
-    const mutasi = await db.mutasiKeluar.create({ data: dataToSave });
+    // Verify siswa exists
+    const siswa = await db.siswa.findUnique({ where: { id: siswaId } });
+    if (!siswa) {
+      return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 });
+    }
+
+    // Check for duplicate
+    const existing = await db.mutasiKeluar.findFirst({
+      where: { siswaId, tahunPelajaran: tahunPelajaran || '2025/2026', semester: semester || 'Ganjil' },
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'Siswa ini sudah tercatat mutasi keluar di tahun pelajaran dan semester ini' }, { status: 409 });
+    }
+
+    const mutasi = await db.mutasiKeluar.create({
+      data: { siswaId, tujuanSekolah, tanggalKeluar, alasan, noSurat, tahunPelajaran, semester },
+      include: { siswa: true },
+    });
+
+    // Update siswa status
+    await db.siswa.update({
+      where: { id: siswaId },
+      data: { status: 'Mutasi Keluar' },
+    });
+
     return NextResponse.json(mutasi, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Gagal menambah mutasi keluar';
@@ -84,40 +117,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ── PUT: Update ──────────────────────────────────────────────────────────────
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, siswaId, ...data } = body;
+    const { id, ...data } = body;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
-    // If siswaId is provided, fetch siswa data and auto-fill
-    let dataToSave = { ...data };
-    if (siswaId) {
-      const siswa = await db.siswa.findUnique({ where: { id: siswaId } });
-      if (siswa) {
-        dataToSave = {
-          ...dataToSave,
-          siswaId: siswa.id,
-          nama: siswa.nama,
-          nipd: siswa.nipd || '',
-          nisn: siswa.nisn || '',
-          nik: siswa.nik || '',
-          jenisKelamin: siswa.jenisKelamin || '',
-          tempatLahir: siswa.tempatLahir || '',
-          tanggalLahir: siswa.tanggalLahir || '',
-          agama: siswa.agama || '',
-          alamat: siswa.alamat || '',
-          hp: siswa.hp || '',
-          namaAyah: siswa.namaAyah || '',
-          namaIbu: siswa.namaIbu || '',
-          rombel: siswa.rombel || '',
-          sekolahAsal: siswa.sekolahAsal || '',
-          kelas: siswa.rombel || dataToSave.kelas || '',
-        };
-      }
-    }
-
-    const mutasi = await db.mutasiKeluar.update({ where: { id }, data: dataToSave });
+    const mutasi = await db.mutasiKeluar.update({
+      where: { id },
+      data,
+      include: { siswa: true },
+    });
     return NextResponse.json(mutasi);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Gagal mengupdate mutasi keluar';
@@ -125,25 +136,25 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// ── DELETE: Delete & restore siswa status ────────────────────────────────────
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
-    // Get the mutasi record to find siswaId
     const mutasi = await db.mutasiKeluar.findUnique({ where: { id } });
-
-    if (mutasi?.siswaId) {
-      // Restore siswa status back to Aktif
-      await db.siswa.update({
-        where: { id: mutasi.siswaId },
-        data: { status: 'Aktif' },
-      });
-    }
+    if (!mutasi) return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 });
 
     await db.mutasiKeluar.delete({ where: { id } });
-    return NextResponse.json({ message: 'Mutasi keluar berhasil dihapus' });
+
+    // Restore siswa status to Aktif
+    await db.siswa.update({
+      where: { id: mutasi.siswaId },
+      data: { status: 'Aktif' },
+    });
+
+    return NextResponse.json({ message: 'Mutasi keluar berhasil dihapus. Status siswa dikembalikan ke Aktif.' });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal menghapus mutasi keluar' }, { status: 400 });
   }

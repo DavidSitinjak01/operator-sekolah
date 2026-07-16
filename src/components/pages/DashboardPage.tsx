@@ -50,11 +50,9 @@ interface DashboardData {
   }[];
   recentMutasiKeluar: {
     id: string;
-    nama: string;
-    nipd: string;
-    nisn: string;
     tujuanSekolah: string;
     tanggalKeluar: string;
+    siswa: { nama: string; nipd: string; nisn: string; rombel: string } | null;
   }[];
 }
 
@@ -428,9 +426,9 @@ function RecentMutasiKeluarTable({
             {data.slice(0, 5).map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium whitespace-nowrap">
-                  {item.nama}
+                  {item.siswa?.nama || '-'}
                 </TableCell>
-                <TableCell>{item.nipd || item.nisn || '-'}</TableCell>
+                <TableCell>{item.siswa?.nipd || item.siswa?.nisn || '-'}</TableCell>
                 <TableCell className="max-w-[180px] truncate">
                   {item.tujuanSekolah}
                 </TableCell>

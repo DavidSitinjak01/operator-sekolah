@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   UserMinus,
@@ -15,10 +15,6 @@ import {
   Eye,
   ChevronDown,
   GraduationCap,
-  Phone,
-  MapPin,
-  Calendar,
-  User,
   FileText,
   CheckCircle2,
   XCircle,
@@ -84,6 +80,25 @@ import { useAppStore } from '@/store/app'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+interface SiswaData {
+  id: string
+  no: string
+  nama: string
+  nipd: string
+  nisn: string
+  nik: string
+  jenisKelamin: string
+  tempatLahir: string
+  tanggalLahir: string
+  agama: string
+  alamat: string
+  hp: string
+  namaAyah: string
+  namaIbu: string
+  rombel: string
+  sekolahAsal: string
+}
+
 interface SiswaOption {
   id: string
   no: string
@@ -103,58 +118,32 @@ interface SiswaOption {
   sekolahAsal: string
 }
 
-interface MutasiKeluar {
+interface MutasiKeluarRecord {
   id: string
-  siswaId: string | null
-  nama: string
-  nipd: string
-  nisn: string
-  nik: string
-  jenisKelamin: string
-  tempatLahir: string
-  tanggalLahir: string
-  agama: string
-  alamat: string
-  hp: string
-  namaAyah: string
-  namaIbu: string
-  rombel: string
-  sekolahAsal: string
+  siswaId: string
   tujuanSekolah: string
-  kelas: string
   tanggalKeluar: string
   alasan: string
   noSurat: string
   tahunPelajaran: string
   semester: string
+  createdAt: string
+  updatedAt: string
+  siswa: SiswaData | null
 }
 
 interface PaginatedResponse {
-  data: MutasiKeluar[]
+  data: MutasiKeluarRecord[]
   total: number
   page: number
   limit: number
   totalPages: number
 }
 
+// Form only stores mutasi-specific fields + siswaId
 interface FormData {
   siswaId: string
-  nama: string
-  nipd: string
-  nisn: string
-  nik: string
-  jenisKelamin: string
-  tempatLahir: string
-  tanggalLahir: string
-  agama: string
-  alamat: string
-  hp: string
-  namaAyah: string
-  namaIbu: string
-  rombel: string
-  sekolahAsal: string
   tujuanSekolah: string
-  kelas: string
   tanggalKeluar: string
   alasan: string
   noSurat: string
@@ -164,22 +153,7 @@ interface FormData {
 
 const INITIAL_FORM: FormData = {
   siswaId: '',
-  nama: '',
-  nipd: '',
-  nisn: '',
-  nik: '',
-  jenisKelamin: '',
-  tempatLahir: '',
-  tanggalLahir: '',
-  agama: '',
-  alamat: '',
-  hp: '',
-  namaAyah: '',
-  namaIbu: '',
-  rombel: '',
-  sekolahAsal: '',
   tujuanSekolah: '',
-  kelas: '',
   tanggalKeluar: '',
   alasan: '',
   noSurat: '',
@@ -211,11 +185,11 @@ export default function MutasiKeluarPage() {
 
   // Detail dialog state
   const [detailOpen, setDetailOpen] = useState(false)
-  const [detailItem, setDetailItem] = useState<MutasiKeluar | null>(null)
+  const [detailItem, setDetailItem] = useState<MutasiKeluarRecord | null>(null)
 
   // Delete dialog state
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deletingItem, setDeletingItem] = useState<MutasiKeluar | null>(null)
+  const [deletingItem, setDeletingItem] = useState<MutasiKeluarRecord | null>(null)
 
   // ── Debounced search ──────────────────────────────────────────────────────
   const handleSearchChange = useCallback((value: string) => {
@@ -227,15 +201,11 @@ export default function MutasiKeluarPage() {
     return () => clearTimeout(timeout)
   }, [])
 
-  // ── API: Fetch Siswa List ────────────────────────────────────────────────
+  // ── API: Fetch Siswa List (for combobox) ─────────────────────────────────
   const { data: siswaList = [], isLoading: siswaLoading } = useQuery<SiswaOption[]>({
     queryKey: ['siswa-list', siswaSearch, tahunPelajaran, semester],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        tahunPelajaran,
-        semester,
-        limit: '100',
-      })
+      const params = new URLSearchParams({ tahunPelajaran, semester })
       if (siswaSearch) params.set('search', siswaSearch)
       const res = await fetch(`/api/siswa/list?${params}`)
       if (!res.ok) throw new Error('Gagal memuat data siswa')
@@ -281,6 +251,7 @@ export default function MutasiKeluarPage() {
       queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['siswa'] })
+      queryClient.invalidateQueries({ queryKey: ['siswa-list'] })
       toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil disimpan' })
       closeFormDialog()
     },
@@ -292,9 +263,7 @@ export default function MutasiKeluarPage() {
   // ── API: Delete ───────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/mutasi-keluar?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/mutasi-keluar?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Gagal menghapus data')
@@ -305,7 +274,8 @@ export default function MutasiKeluarPage() {
       queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['siswa'] })
-      toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil dihapus. Status siswa dikembalikan ke Aktif.' })
+      queryClient.invalidateQueries({ queryKey: ['siswa-list'] })
+      toast({ title: 'Berhasil', description: 'Data mutasi keluar dihapus. Status siswa dikembalikan ke Aktif.' })
       setDeleteOpen(false)
       setDeletingItem(null)
     },
@@ -317,50 +287,14 @@ export default function MutasiKeluarPage() {
   // ── Siswa Selection ───────────────────────────────────────────────────────
   const handleSelectSiswa = (siswa: SiswaOption) => {
     setSelectedSiswa(siswa)
-    setForm((f) => ({
-      ...f,
-      siswaId: siswa.id,
-      nama: siswa.nama,
-      nipd: siswa.nipd || '',
-      nisn: siswa.nisn || '',
-      nik: siswa.nik || '',
-      jenisKelamin: siswa.jenisKelamin || '',
-      tempatLahir: siswa.tempatLahir || '',
-      tanggalLahir: siswa.tanggalLahir || '',
-      agama: siswa.agama || '',
-      alamat: siswa.alamat || '',
-      hp: siswa.hp || '',
-      namaAyah: siswa.namaAyah || '',
-      namaIbu: siswa.namaIbu || '',
-      rombel: siswa.rombel || '',
-      sekolahAsal: siswa.sekolahAsal || '',
-      kelas: siswa.rombel || f.kelas,
-    }))
+    setForm((f) => ({ ...f, siswaId: siswa.id }))
     setSiswaPopoverOpen(false)
   }
 
   const handleClearSiswa = () => {
     setSelectedSiswa(null)
     setSiswaSearch('')
-    setForm((f) => ({
-      ...f,
-      siswaId: '',
-      nama: '',
-      nipd: '',
-      nisn: '',
-      nik: '',
-      jenisKelamin: '',
-      tempatLahir: '',
-      tanggalLahir: '',
-      agama: '',
-      alamat: '',
-      hp: '',
-      namaAyah: '',
-      namaIbu: '',
-      rombel: '',
-      sekolahAsal: '',
-      kelas: '',
-    }))
+    setForm((f) => ({ ...f, siswaId: '' }))
   }
 
   // ── Form helpers ──────────────────────────────────────────────────────────
@@ -377,50 +311,18 @@ export default function MutasiKeluarPage() {
     setFormOpen(true)
   }
 
-  const openEditDialog = (item: MutasiKeluar) => {
+  const openEditDialog = (item: MutasiKeluarRecord) => {
     setEditingId(item.id)
     setForm({
-      siswaId: item.siswaId || '',
-      nama: item.nama,
-      nipd: item.nipd,
-      nisn: item.nisn,
-      nik: item.nik,
-      jenisKelamin: item.jenisKelamin,
-      tempatLahir: item.tempatLahir,
-      tanggalLahir: item.tanggalLahir,
-      agama: item.agama,
-      alamat: item.alamat,
-      hp: item.hp,
-      namaAyah: item.namaAyah,
-      namaIbu: item.namaIbu,
-      rombel: item.rombel,
-      sekolahAsal: item.sekolahAsal,
+      siswaId: item.siswaId,
       tujuanSekolah: item.tujuanSekolah,
-      kelas: item.kelas,
       tanggalKeluar: item.tanggalKeluar,
       alasan: item.alasan,
       noSurat: item.noSurat,
       tahunPelajaran: item.tahunPelajaran,
       semester: item.semester,
     })
-    setSelectedSiswa(item.siswaId ? {
-      id: item.siswaId,
-      nama: item.nama,
-      nipd: item.nipd,
-      nisn: item.nisn,
-      nik: item.nik,
-      jenisKelamin: item.jenisKelamin,
-      tempatLahir: item.tempatLahir,
-      tanggalLahir: item.tanggalLahir,
-      agama: item.agama,
-      alamat: item.alamat,
-      hp: item.hp,
-      namaAyah: item.namaAyah,
-      namaIbu: item.namaIbu,
-      rombel: item.rombel,
-      sekolahAsal: item.sekolahAsal,
-      no: '',
-    } : null)
+    setSelectedSiswa(item.siswa ? { ...item.siswa, no: item.siswa.no } : null)
     setSiswaSearch('')
     setFormErrors({})
     setFormOpen(true)
@@ -437,9 +339,8 @@ export default function MutasiKeluarPage() {
 
   const validate = (): boolean => {
     const errors: Partial<Record<keyof FormData, string>> = {}
-    if (!form.nama.trim()) errors.nama = 'Nama siswa wajib diisi'
+    if (!form.siswaId) errors.siswaId = 'Siswa wajib dipilih'
     if (!form.tujuanSekolah.trim()) errors.tujuanSekolah = 'Tujuan sekolah wajib diisi'
-    if (!form.kelas) errors.kelas = 'Kelas wajib diisi'
     if (!form.tanggalKeluar) errors.tanggalKeluar = 'Tanggal keluar wajib diisi'
     if (!form.alasan.trim()) errors.alasan = 'Alasan mutasi wajib diisi'
     if (!form.noSurat.trim()) errors.noSurat = 'No. surat mutasi wajib diisi'
@@ -452,18 +353,16 @@ export default function MutasiKeluarPage() {
     saveMutation.mutate(editingId ? { id: editingId, ...form } : form)
   }
 
-  const confirmDelete = (item: MutasiKeluar) => {
+  const confirmDelete = (item: MutasiKeluarRecord) => {
     setDeletingItem(item)
     setDeleteOpen(true)
   }
 
   const handleDelete = () => {
-    if (deletingItem) {
-      deleteMutation.mutate(deletingItem.id)
-    }
+    if (deletingItem) deleteMutation.mutate(deletingItem.id)
   }
 
-  const openDetail = (item: MutasiKeluar) => {
+  const openDetail = (item: MutasiKeluarRecord) => {
     setDetailItem(item)
     setDetailOpen(true)
   }
@@ -479,8 +378,7 @@ export default function MutasiKeluarPage() {
   const startIndex = (page - 1) * limit
 
   const handlePageSizeChange = (val: string) => {
-    const size = val === 'all' ? 9999 : parseInt(val)
-    setPageSize(size)
+    setPageSize(val === 'all' ? 9999 : parseInt(val))
     setPage(1)
   }
 
@@ -492,7 +390,7 @@ export default function MutasiKeluarPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Mutasi Keluar</h1>
           <p className="text-muted-foreground text-sm">
-            Kelola data siswa yang mutasi keluar dari sekolah &mdash; data terhubung dengan Data Siswa
+            Kelola data siswa yang mutasi keluar &mdash; data siswa langsung terhubung tanpa duplikasi
           </p>
         </div>
         <Button onClick={openAddDialog} className="shrink-0">
@@ -506,7 +404,7 @@ export default function MutasiKeluarPage() {
         <div className="relative max-w-sm flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
-            placeholder="Cari nama, NIPD, NISN, atau tujuan sekolah..."
+            placeholder="Cari nama, NIPD, NISN siswa..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
@@ -535,45 +433,29 @@ export default function MutasiKeluarPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Daftar Mutasi Keluar</CardTitle>
             {data && data.total > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {data.total} data
-              </Badge>
+              <Badge variant="secondary" className="text-xs">{data.total} data</Badge>
             )}
           </div>
         </CardHeader>
         <CardContent className="pt-4">
-          {/* Loading skeleton */}
           {isLoading && <TableSkeleton />}
 
-          {/* Error state */}
           {isError && !isLoading && (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-              <p className="text-muted-foreground text-sm">
-                Gagal memuat data. Silakan coba lagi.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })}
-              >
-                Coba Lagi
-              </Button>
+              <p className="text-muted-foreground text-sm">Gagal memuat data. Silakan coba lagi.</p>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })}>Coba Lagi</Button>
             </div>
           )}
 
-          {/* Empty state */}
           {!isLoading && !isError && data?.data.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
               <UserMinus className="text-muted-foreground size-10" />
               <p className="text-muted-foreground text-sm">
-                {debouncedSearch
-                  ? 'Tidak ada data yang cocok dengan pencarian.'
-                  : 'Belum ada data mutasi keluar.'}
+                {debouncedSearch ? 'Tidak ada data yang cocok.' : 'Belum ada data mutasi keluar.'}
               </p>
             </div>
           )}
 
-          {/* Data table */}
           {!isLoading && !isError && data && data.data.length > 0 && (
             <>
               <div className="max-h-[500px] overflow-y-auto">
@@ -596,51 +478,19 @@ export default function MutasiKeluarPage() {
                       <TableRow key={item.id}>
                         <TableCell className="text-center">{startIndex + idx + 1}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">{item.nama}</span>
-                            {item.siswaId && (
-                              <Badge variant="outline" className="w-fit text-[10px] px-1.5 py-0 h-5 text-emerald-600 border-emerald-300">
-                                <CheckCircle2 className="size-3 mr-0.5" />
-                                Terhubung
-                              </Badge>
-                            )}
-                          </div>
+                          <span className="font-medium">{item.siswa?.nama || '-'}</span>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">{item.nipd || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{item.nisn || '-'}</TableCell>
-                        <TableCell className="hidden md:table-cell">{item.jenisKelamin || '-'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{item.rombel || item.kelas || '-'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{item.siswa?.nipd || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{item.siswa?.nisn || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{item.siswa?.jenisKelamin || '-'}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.siswa?.rombel || '-'}</TableCell>
                         <TableCell className="hidden xl:table-cell">{item.tujuanSekolah}</TableCell>
                         <TableCell className="hidden lg:table-cell">{formatDate(item.tanggalKeluar)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              onClick={() => openDetail(item)}
-                              aria-label="Detail"
-                            >
-                              <Eye className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              onClick={() => openEditDialog(item)}
-                              aria-label="Edit"
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-destructive hover:text-destructive"
-                              onClick={() => confirmDelete(item)}
-                              aria-label="Hapus"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="size-8" onClick={() => openDetail(item)} aria-label="Detail"><Eye className="size-4" /></Button>
+                            <Button variant="ghost" size="icon" className="size-8" onClick={() => openEditDialog(item)} aria-label="Edit"><Pencil className="size-4" /></Button>
+                            <Button variant="ghost" size="icon" className="size-8 text-destructive hover:text-destructive" onClick={() => confirmDelete(item)} aria-label="Hapus"><Trash2 className="size-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -649,34 +499,23 @@ export default function MutasiKeluarPage() {
                 </Table>
               </div>
 
-              {/* Pagination */}
               {pageSize !== 9999 && data.totalPages > 1 && (
                 <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
                   <p className="text-muted-foreground text-xs">
                     Halaman {data.page} dari {data.totalPages} &middot; Total {data.total} data
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage(1)} aria-label="Halaman pertama">
-                      <ChevronsLeft className="size-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Halaman sebelumnya">
-                      <ChevronLeft className="size-4" />
-                    </Button>
+                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage(1)}><ChevronsLeft className="size-4" /></Button>
+                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="size-4" /></Button>
                     {generatePageNumbers(page, data.totalPages).map((p, i) =>
                       p === '...' ? (
-                        <span key={`ellipsis-${i}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">...</span>
+                        <span key={`e-${i}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">...</span>
                       ) : (
-                        <Button key={p} variant={page === p ? 'default' : 'outline'} size="icon" className="size-8" onClick={() => setPage(p as number)}>
-                          {p}
-                        </Button>
+                        <Button key={p} variant={page === p ? 'default' : 'outline'} size="icon" className="size-8" onClick={() => setPage(p as number)}>{p}</Button>
                       ),
                     )}
-                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)} aria-label="Halaman berikutnya">
-                      <ChevronRight className="size-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage(data.totalPages)} aria-label="Halaman terakhir">
-                      <ChevronsRight className="size-4" />
-                    </Button>
+                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}><ChevronRight className="size-4" /></Button>
+                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage(data.totalPages)}><ChevronsRight className="size-4" /></Button>
                   </div>
                 </div>
               )}
@@ -692,8 +531,8 @@ export default function MutasiKeluarPage() {
             <DialogTitle>{editingId ? 'Edit Mutasi Keluar' : 'Tambah Mutasi Keluar'}</DialogTitle>
             <DialogDescription>
               {editingId
-                ? 'Ubah data mutasi keluar siswa.'
-                : 'Pilih siswa dari Data Siswa, lalu lengkapi informasi mutasi.'}
+                ? 'Ubah informasi mutasi keluar siswa.'
+                : 'Pilih siswa dari database, lalu lengkapi informasi mutasi.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -705,16 +544,17 @@ export default function MutasiKeluarPage() {
               </Label>
               {!editingId && (
                 <p className="text-xs text-muted-foreground">
-                  Cari dan pilih siswa dari database. Data siswa akan terisi otomatis.
+                  Cari dan pilih siswa aktif dari database. Data siswa akan langsung terhubung tanpa duplikasi.
                 </p>
               )}
-              <Popover open={siswaPopoverOpen} onOpenChange={setSiswaPopoverOpen}>
+              <Popover open={siswaPopoverOpen && !editingId} onOpenChange={editingId ? undefined : setSiswaPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={siswaPopoverOpen}
                     className="w-full justify-between font-normal h-auto py-2.5"
+                    disabled={!!editingId}
                   >
                     {selectedSiswa ? (
                       <div className="flex items-center gap-2 truncate">
@@ -743,9 +583,7 @@ export default function MutasiKeluarPage() {
                             <Loader2 className="size-4 animate-spin" />
                             <span className="text-sm text-muted-foreground">Mencari...</span>
                           </div>
-                        ) : (
-                          'Siswa tidak ditemukan.'
-                        )}
+                        ) : 'Siswa tidak ditemukan.'}
                       </CommandEmpty>
                       <CommandGroup className="max-h-[300px] overflow-y-auto">
                         {siswaList.map((siswa) => (
@@ -773,147 +611,81 @@ export default function MutasiKeluarPage() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              {selectedSiswa && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive w-fit"
-                  onClick={handleClearSiswa}
-                >
-                  <XCircle className="size-3.5 mr-1" />
-                  Hapus Pilihan Siswa
+              {!editingId && selectedSiswa && (
+                <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive w-fit" onClick={handleClearSiswa}>
+                  <XCircle className="size-3.5 mr-1" /> Hapus Pilihan Siswa
                 </Button>
               )}
+              {formErrors.siswaId && <p className="text-destructive text-xs">{formErrors.siswaId}</p>}
             </div>
 
-            <Separator />
-
-            {/* ─── Data Siswa (auto-filled, read-only display) ─── */}
+            {/* ─── Preview Data Siswa ─── */}
             {selectedSiswa && (
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold flex items-center gap-1.5">
-                  <GraduationCap className="size-4" />
-                  Data Siswa (otomatis terisi)
-                </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <InfoField label="Nama" value={form.nama} />
-                  <InfoField label="NIPD" value={form.nipd} />
-                  <InfoField label="NISN" value={form.nisn} />
-                  <InfoField label="NIK" value={form.nik} />
-                  <InfoField label="Jenis Kelamin" value={form.jenisKelamin === 'L' ? 'Laki-laki' : form.jenisKelamin === 'P' ? 'Perempuan' : form.jenisKelamin} />
-                  <InfoField label="Agama" value={form.agama} />
-                  <InfoField label="Tempat, Tgl Lahir" value={[form.tempatLahir, formatDate(form.tanggalLahir)].filter(Boolean).join(', ')} />
-                  <InfoField label="No. HP" value={form.hp} />
-                  <div className="sm:col-span-2">
-                    <InfoField label="Alamat" value={form.alamat} />
-                  </div>
-                  <InfoField label="Nama Ayah" value={form.namaAyah} />
-                  <InfoField label="Nama Ibu" value={form.namaIbu} />
-                  <InfoField label="Rombel" value={form.rombel} />
-                  <InfoField label="Sekolah Asal" value={form.sekolahAsal} />
-                </div>
-              </div>
-            )}
-
-            {/* ─── Manual nama fallback (if no siswa selected) ─── */}
-            {!selectedSiswa && (
               <>
-                <div className="grid gap-2">
-                  <Label htmlFor="nama">Nama Siswa <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="nama"
-                    placeholder="Masukkan nama siswa"
-                    value={form.nama}
-                    onChange={(e) => setForm((f) => ({ ...f, nama: e.target.value }))}
-                    aria-invalid={!!formErrors.nama}
-                  />
-                  {formErrors.nama && <p className="text-destructive text-xs">{formErrors.nama}</p>}
+                <Separator />
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <GraduationCap className="size-4" />
+                    Data Siswa (dari database, tanpa duplikasi)
+                  </Label>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <InfoField label="Nama" value={selectedSiswa.nama} />
+                      <InfoField label="NIPD" value={selectedSiswa.nipd} />
+                      <InfoField label="NISN" value={selectedSiswa.nisn} />
+                      <InfoField label="NIK" value={selectedSiswa.nik} />
+                      <InfoField label="Jenis Kelamin" value={selectedSiswa.jenisKelamin === 'L' ? 'Laki-laki' : selectedSiswa.jenisKelamin === 'P' ? 'Perempuan' : selectedSiswa.jenisKelamin} />
+                      <InfoField label="Agama" value={selectedSiswa.agama} />
+                      <InfoField label="Tempat, Tgl Lahir" value={[selectedSiswa.tempatLahir, formatDate(selectedSiswa.tanggalLahir)].filter(Boolean).join(', ')} />
+                      <InfoField label="No. HP" value={selectedSiswa.hp} />
+                      <div className="sm:col-span-2"><InfoField label="Alamat" value={selectedSiswa.alamat} /></div>
+                      <InfoField label="Nama Ayah" value={selectedSiswa.namaAyah} />
+                      <InfoField label="Nama Ibu" value={selectedSiswa.namaIbu} />
+                      <InfoField label="Rombel" value={selectedSiswa.rombel} />
+                      <InfoField label="Sekolah Asal" value={selectedSiswa.sekolahAsal} />
+                    </div>
+                  </div>
                 </div>
               </>
             )}
 
             <Separator />
 
-            {/* ─── Informasi Mutasi ─── */}
+            {/* ─── Informasi Mutasi (hanya data spesifik mutasi) ─── */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-1.5">
                 <FileText className="size-4" />
                 Informasi Mutasi
               </Label>
 
-              {/* Tujuan Sekolah */}
               <div className="grid gap-2">
                 <Label htmlFor="tujuanSekolah">Tujuan Sekolah <span className="text-destructive">*</span></Label>
-                <Input
-                  id="tujuanSekolah"
-                  placeholder="Masukkan tujuan sekolah"
-                  value={form.tujuanSekolah}
-                  onChange={(e) => setForm((f) => ({ ...f, tujuanSekolah: e.target.value }))}
-                  aria-invalid={!!formErrors.tujuanSekolah}
-                />
+                <Input id="tujuanSekolah" placeholder="Masukkan tujuan sekolah" value={form.tujuanSekolah} onChange={(e) => setForm((f) => ({ ...f, tujuanSekolah: e.target.value }))} aria-invalid={!!formErrors.tujuanSekolah} />
                 {formErrors.tujuanSekolah && <p className="text-destructive text-xs">{formErrors.tujuanSekolah}</p>}
               </div>
 
-              {/* Kelas */}
-              <div className="grid gap-2">
-                <Label htmlFor="kelas">Kelas <span className="text-destructive">*</span></Label>
-                <Input
-                  id="kelas"
-                  placeholder={selectedSiswa ? form.kelas || 'Otomatis dari rombel siswa' : 'Masukkan kelas'}
-                  value={form.kelas}
-                  onChange={(e) => setForm((f) => ({ ...f, kelas: e.target.value }))}
-                  aria-invalid={!!formErrors.kelas}
-                />
-                {formErrors.kelas && <p className="text-destructive text-xs">{formErrors.kelas}</p>}
-              </div>
-
-              {/* Tanggal Keluar */}
               <div className="grid gap-2">
                 <Label htmlFor="tanggalKeluar">Tanggal Keluar <span className="text-destructive">*</span></Label>
-                <Input
-                  id="tanggalKeluar"
-                  type="date"
-                  value={form.tanggalKeluar}
-                  onChange={(e) => setForm((f) => ({ ...f, tanggalKeluar: e.target.value }))}
-                  aria-invalid={!!formErrors.tanggalKeluar}
-                />
+                <Input id="tanggalKeluar" type="date" value={form.tanggalKeluar} onChange={(e) => setForm((f) => ({ ...f, tanggalKeluar: e.target.value }))} aria-invalid={!!formErrors.tanggalKeluar} />
                 {formErrors.tanggalKeluar && <p className="text-destructive text-xs">{formErrors.tanggalKeluar}</p>}
               </div>
 
-              {/* Alasan Mutasi */}
               <div className="grid gap-2">
                 <Label htmlFor="alasan">Alasan Mutasi <span className="text-destructive">*</span></Label>
-                <Textarea
-                  id="alasan"
-                  placeholder="Masukkan alasan mutasi"
-                  rows={3}
-                  value={form.alasan}
-                  onChange={(e) => setForm((f) => ({ ...f, alasan: e.target.value }))}
-                  aria-invalid={!!formErrors.alasan}
-                />
+                <Textarea id="alasan" placeholder="Masukkan alasan mutasi" rows={3} value={form.alasan} onChange={(e) => setForm((f) => ({ ...f, alasan: e.target.value }))} aria-invalid={!!formErrors.alasan} />
                 {formErrors.alasan && <p className="text-destructive text-xs">{formErrors.alasan}</p>}
               </div>
 
-              {/* No. Surat Mutasi */}
               <div className="grid gap-2">
                 <Label htmlFor="noSurat">No. Surat Mutasi <span className="text-destructive">*</span></Label>
-                <Input
-                  id="noSurat"
-                  placeholder="Masukkan nomor surat mutasi"
-                  value={form.noSurat}
-                  onChange={(e) => setForm((f) => ({ ...f, noSurat: e.target.value }))}
-                  aria-invalid={!!formErrors.noSurat}
-                />
+                <Input id="noSurat" placeholder="Masukkan nomor surat mutasi" value={form.noSurat} onChange={(e) => setForm((f) => ({ ...f, noSurat: e.target.value }))} aria-invalid={!!formErrors.noSurat} />
                 {formErrors.noSurat && <p className="text-destructive text-xs">{formErrors.noSurat}</p>}
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeFormDialog} disabled={saveMutation.isPending}>
-              Batal
-            </Button>
+            <Button variant="outline" onClick={closeFormDialog} disabled={saveMutation.isPending}>Batal</Button>
             <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {editingId ? 'Simpan Perubahan' : 'Tambah Data'}
@@ -929,57 +701,42 @@ export default function MutasiKeluarPage() {
             <DialogTitle>Detail Mutasi Keluar</DialogTitle>
             <DialogDescription>Data lengkap siswa yang mutasi keluar.</DialogDescription>
           </DialogHeader>
-          {detailItem && (
+          {detailItem?.siswa && (
             <ScrollArea className="max-h-[70vh]">
               <div className="grid gap-6 pb-4">
-                {/* Data Siswa */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
-                    <User className="size-4" />
-                    Data Siswa
+                    <GraduationCap className="size-4" /> Data Siswa
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <InfoField label="Nama" value={detailItem.nama} />
-                    <InfoField label="NIPD" value={detailItem.nipd || '-'} />
-                    <InfoField label="NISN" value={detailItem.nisn || '-'} />
-                    <InfoField label="NIK" value={detailItem.nik || '-'} />
-                    <InfoField label="Jenis Kelamin" value={detailItem.jenisKelamin === 'L' ? 'Laki-laki' : detailItem.jenisKelamin === 'P' ? 'Perempuan' : detailItem.jenisKelamin || '-'} />
-                    <InfoField label="Agama" value={detailItem.agama || '-'} />
-                    <InfoField label="Tempat, Tgl Lahir" value={[detailItem.tempatLahir, formatDate(detailItem.tanggalLahir)].filter(Boolean).join(', ') || '-'} />
-                    <InfoField label="No. HP" value={detailItem.hp || '-'} />
-                    <div className="sm:col-span-2">
-                      <InfoField label="Alamat" value={detailItem.alamat || '-'} />
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <InfoField label="Nama" value={detailItem.siswa.nama} />
+                      <InfoField label="NIPD" value={detailItem.siswa.nipd || '-'} />
+                      <InfoField label="NISN" value={detailItem.siswa.nisn || '-'} />
+                      <InfoField label="NIK" value={detailItem.siswa.nik || '-'} />
+                      <InfoField label="Jenis Kelamin" value={detailItem.siswa.jenisKelamin === 'L' ? 'Laki-laki' : detailItem.siswa.jenisKelamin === 'P' ? 'Perempuan' : detailItem.siswa.jenisKelamin || '-'} />
+                      <InfoField label="Agama" value={detailItem.siswa.agama || '-'} />
+                      <InfoField label="Tempat, Tgl Lahir" value={[detailItem.siswa.tempatLahir, formatDate(detailItem.siswa.tanggalLahir)].filter(Boolean).join(', ') || '-'} />
+                      <InfoField label="No. HP" value={detailItem.siswa.hp || '-'} />
+                      <div className="sm:col-span-2"><InfoField label="Alamat" value={detailItem.siswa.alamat || '-'} /></div>
+                      <InfoField label="Nama Ayah" value={detailItem.siswa.namaAyah || '-'} />
+                      <InfoField label="Nama Ibu" value={detailItem.siswa.namaIbu || '-'} />
+                      <InfoField label="Rombel" value={detailItem.siswa.rombel || '-'} />
+                      <InfoField label="Sekolah Asal" value={detailItem.siswa.sekolahAsal || '-'} />
                     </div>
-                    <InfoField label="Nama Ayah" value={detailItem.namaAyah || '-'} />
-                    <InfoField label="Nama Ibu" value={detailItem.namaIbu || '-'} />
-                    <InfoField label="Rombel" value={detailItem.rombel || '-'} />
-                    <InfoField label="Sekolah Asal" value={detailItem.sekolahAsal || '-'} />
                   </div>
-                  {detailItem.siswaId && (
-                    <Badge variant="outline" className="w-fit text-xs text-emerald-600 border-emerald-300">
-                      <CheckCircle2 className="size-3 mr-1" />
-                      Terhubung ke Data Siswa
-                    </Badge>
-                  )}
                 </div>
 
                 <Separator />
 
-                {/* Data Mutasi */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                    <FileText className="size-4" />
-                    Informasi Mutasi
+                    <FileText className="size-4" /> Informasi Mutasi
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <InfoField label="Kelas" value={detailItem.kelas || '-'} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <InfoField label="Tanggal Keluar" value={formatDate(detailItem.tanggalKeluar)} />
-                    <div className="sm:col-span-2">
-                      <InfoField label="Tujuan Sekolah" value={detailItem.tujuanSekolah || '-'} />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <InfoField label="Alasan Mutasi" value={detailItem.alasan || '-'} />
-                    </div>
+                    <div className="sm:col-span-2"><InfoField label="Tujuan Sekolah" value={detailItem.tujuanSekolah || '-'} /></div>
+                    <div className="sm:col-span-2"><InfoField label="Alasan Mutasi" value={detailItem.alasan || '-'} /></div>
                     <InfoField label="No. Surat Mutasi" value={detailItem.noSurat || '-'} />
                   </div>
                 </div>
@@ -990,8 +747,7 @@ export default function MutasiKeluarPage() {
             <Button variant="outline" onClick={() => setDetailOpen(false)}>Tutup</Button>
             {detailItem && (
               <Button onClick={() => { setDetailOpen(false); openEditDialog(detailItem) }}>
-                <Pencil className="mr-2 size-4" />
-                Edit
+                <Pencil className="mr-2 size-4" /> Edit
               </Button>
             )}
           </DialogFooter>
@@ -1005,21 +761,15 @@ export default function MutasiKeluarPage() {
             <AlertDialogTitle>Hapus Data Mutasi Keluar?</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin menghapus data mutasi keluar atas nama{' '}
-              <span className="font-semibold">{deletingItem?.nama}</span>?
-              {deletingItem?.siswaId && (
-                <span className="block mt-2 text-amber-600">
-                  Status siswa akan dikembalikan ke &quot;Aktif&quot; secara otomatis.
-                </span>
-              )}
+              <span className="font-semibold">{deletingItem?.siswa?.nama}</span>?
+              <span className="block mt-2 text-amber-600">
+                Status siswa akan dikembalikan ke &quot;Aktif&quot; secara otomatis.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteMutation.isPending}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} disabled={deleteMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Hapus
             </AlertDialogAction>
@@ -1030,7 +780,7 @@ export default function MutasiKeluarPage() {
   )
 }
 
-// ── Info Field Component ──────────────────────────────────────────────────────
+// ── Info Field ────────────────────────────────────────────────────────────────
 
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
@@ -1071,9 +821,7 @@ function TableSkeleton() {
 
 function generatePageNumbers(current: number, total: number): (number | '...')[] {
   if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
-
   const pages: (number | '...')[] = []
-
   if (current <= 3) {
     pages.push(1, 2, 3, 4, '...', total)
   } else if (current >= total - 2) {
@@ -1081,6 +829,5 @@ function generatePageNumbers(current: number, total: number): (number | '...')[]
   } else {
     pages.push(1, '...', current - 1, current, current + 1, '...', total)
   }
-
   return pages
 }

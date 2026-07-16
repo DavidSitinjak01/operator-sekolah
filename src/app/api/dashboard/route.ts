@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
 
     const recentMutasiKeluar = await db.mutasiKeluar.findMany({
       where: whereTP,
+      include: { siswa: { select: { nama: true, nipd: true, nisn: true, rombel: true } } },
       orderBy: { createdAt: 'desc' },
       take: 5,
     });

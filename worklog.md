@@ -165,3 +165,27 @@ Stage Summary:
 - Deleting a mutasi keluar record restores siswa status to "Aktif"
 - Records linked to siswa show "Terhubung" badge in the table
 - Detail dialog shows all connected siswa data
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Refactor Mutasi Keluar to eliminate data duplication - use JOIN instead of copying
+
+Work Log:
+- User asked: "bagaimana menurut mu jika siswa sudah mutasi keluar? apakah data siswa bisa pindah dari database siswa utama ke data siswa mutasi? saya ingin menghindari duplikasi data"
+- Analyzed current architecture: MutasiKeluar had 14 duplicated siswa fields (nipd, nisn, nik, jenisKelamin, etc.)
+- Redesigned schema: MutasiKeluar now only has 6 fields (id, siswaId, tujuanSekolah, tanggalKeluar, alasan, noSurat + TP/semester)
+- Added @@unique([siswaId, tahunPelajaran, semester]) to prevent duplicate mutasi per siswa per TP
+- Rewrote /api/mutasi-keluar: GET uses Prisma `include: { siswa: { select: {...} } }` for JOIN; POST validates siswaId required, checks duplicate, updates siswa status; DELETE restores siswa status
+- Created /api/siswa/list endpoint for combobox (only returns active siswa)
+- Rewrote MutasiKeluarPage: Form only stores mutasi-specific data (siswaId + 4 fields); siswa data displayed read-only from combobox selection; Detail dialog shows joined siswa data
+- Fixed DashboardPage: Updated recentMutasiKeluar type to use nested `siswa` object
+- Verified with Agent Browser: API returns 200, JOIN query visible in logs, table shows siswa data from Siswa table, zero duplication
+
+Stage Summary:
+- **Architecture: Single Source of Truth** — Siswa table is the only place student data lives
+- **MutasiKeluar table: only 6 fields** — id, siswaId, tujuanSekolah, tanggalKeluar, alasan, noSurat
+- **JOIN pattern** — API uses Prisma `include` to fetch siswa data alongside mutasi data
+- **Status management** — Create mutasi → siswa.status = "Mutasi Keluar"; Delete mutasi → siswa.status = "Aktif"
+- **Duplicate prevention** — @@unique constraint prevents same siswa being mutasi keluar twice per TP/semester
+- **Zero duplication** — No siswa data is copied/stored in MutasiKeluar table
