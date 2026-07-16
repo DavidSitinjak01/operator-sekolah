@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Pencil, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/app';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,12 +31,21 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import ImportExcelDialog from '@/components/ImportExcelDialog';
 
 interface Siswa {
@@ -145,6 +155,8 @@ const ROMBEL_OPTIONS = [
   'XII Rai',
 ];
 
+const AGAMA_OPTIONS = ['Islam', 'Kristen', 'Katholik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'];
+
 const PAGE_SIZE_OPTIONS = [
   { label: '10', value: '10' },
   { label: '25', value: '25' },
@@ -162,10 +174,26 @@ export default function SiswaPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<Siswa | null>(null);
+  const [editData, setEditData] = useState<Record<string, string>>({});
 
   const { tahunPelajaran, semester } = useAppStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const handleEditClick = (siswa: Siswa) => {
+    const data: Record<string, string> = {};
+    for (const [key, value] of Object.entries(siswa)) {
+      if (key === 'no' || key === 'id') continue;
+      data[key] = String(value ?? '');
+    }
+    setEditData(data);
+    setEditTarget(siswa);
+  };
+
+  const handleChange = (key: string, value: string) => {
+    setEditData((prev) => ({ ...prev, [key]: value }));
+  };
 
   const { data, isLoading } = useQuery<SiswaResponse>({
     queryKey: ['siswa', search, rombel, page, limit, tahunPelajaran, semester],
@@ -210,6 +238,34 @@ export default function SiswaPage() {
         variant: 'destructive',
       });
       setDeleteId(null);
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/siswa`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editTarget!.id, ...editData }),
+      });
+      if (!res.ok) throw new Error('Gagal menyimpan data siswa');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast({
+        title: 'Berhasil',
+        description: 'Data siswa berhasil diperbarui.',
+      });
+      setEditTarget(null);
+    },
+    onError: () => {
+      toast({
+        title: 'Gagal',
+        description: 'Gagal menyimpan data siswa. Silakan coba lagi.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -421,7 +477,7 @@ export default function SiswaPage() {
                     {/* 39. Sekolah Asal — md+ */}
                     <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Sekolah Asal</TableHead>
                     {/* 40. Aksi — Always visible */}
-                    <TableHead className="w-20 text-center whitespace-nowrap">Aksi</TableHead>
+                    <TableHead className="w-[88px] text-center whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -514,44 +570,55 @@ export default function SiswaPage() {
                         <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.sekolahAsal || '-'}</TableCell>
                         {/* 40. Aksi */}
                         <TableCell className="text-center whitespace-nowrap">
-                          <AlertDialog
-                            open={deleteId === siswa.id}
-                            onOpenChange={(open) => {
-                              if (!open) setDeleteId(null);
-                              else setDeleteId(siswa.id);
-                            }}
-                          >
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Hapus {siswa.nama}</span>
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Hapus Data Siswa</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Apakah Anda yakin ingin menghapus data siswa{' '}
-                                  <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan
-                                  ini tidak dapat dibatalkan.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Batal</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={handleDelete}
-                                  disabled={deleteMutation.isPending}
-                                  className="bg-destructive text-white hover:bg-destructive/90"
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handleEditClick(siswa)}
+                              aria-label={`Edit ${siswa.nama}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog
+                              open={deleteId === siswa.id}
+                              onOpenChange={(open) => {
+                                if (!open) setDeleteId(null);
+                                else setDeleteId(siswa.id);
+                              }}
+                            >
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
-                                  {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Hapus {siswa.nama}</span>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus Data Siswa</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin menghapus data siswa{' '}
+                                    <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan
+                                    ini tidak dapat dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDelete}
+                                    disabled={deleteMutation.isPending}
+                                    className="bg-destructive text-white hover:bg-destructive/90"
+                                  >
+                                    {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -600,6 +667,393 @@ export default function SiswaPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Data Siswa</DialogTitle>
+            <DialogDescription>
+              Perbarui data siswa <span className="font-semibold">{editTarget?.nama}</span>. Ubah sesuai kebutuhan lalu simpan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="space-y-6 pb-2">
+              {/* Section 1: Data Pribadi */}
+              <div>
+                <h3 className="text-sm font-bold pb-2 border-b">Data Pribadi</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-nama">
+                      Nama <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="edit-nama"
+                      value={editData.nama || ''}
+                      onChange={(e) => handleChange('nama', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-nipd">NIPD</Label>
+                    <Input
+                      id="edit-nipd"
+                      value={editData.nipd || ''}
+                      onChange={(e) => handleChange('nipd', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-jk">Jenis Kelamin</Label>
+                    <Select value={editData.jenisKelamin || ''} onValueChange={(v) => handleChange('jenisKelamin', v)}>
+                      <SelectTrigger id="edit-jk">
+                        <SelectValue placeholder="Pilih JK" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="L">Laki-laki</SelectItem>
+                        <SelectItem value="P">Perempuan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-nisn">NISN</Label>
+                    <Input
+                      id="edit-nisn"
+                      value={editData.nisn || ''}
+                      onChange={(e) => handleChange('nisn', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-tempatLahir">Tempat Lahir</Label>
+                    <Input
+                      id="edit-tempatLahir"
+                      value={editData.tempatLahir || ''}
+                      onChange={(e) => handleChange('tempatLahir', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-tanggalLahir">Tanggal Lahir</Label>
+                    <Input
+                      id="edit-tanggalLahir"
+                      type="date"
+                      value={editData.tanggalLahir || ''}
+                      onChange={(e) => handleChange('tanggalLahir', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-nik">NIK</Label>
+                    <Input
+                      id="edit-nik"
+                      value={editData.nik || ''}
+                      onChange={(e) => handleChange('nik', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-agama">Agama</Label>
+                    <Select value={editData.agama || ''} onValueChange={(v) => handleChange('agama', v)}>
+                      <SelectTrigger id="edit-agama">
+                        <SelectValue placeholder="Pilih Agama" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AGAMA_OPTIONS.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Alamat & Kontak */}
+              <div>
+                <h3 className="text-sm font-bold pb-2 border-b">Alamat & Kontak</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="edit-alamat">Alamat</Label>
+                    <Input
+                      id="edit-alamat"
+                      value={editData.alamat || ''}
+                      onChange={(e) => handleChange('alamat', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-rt">RT</Label>
+                    <Input
+                      id="edit-rt"
+                      value={editData.rt || ''}
+                      onChange={(e) => handleChange('rt', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-rw">RW</Label>
+                    <Input
+                      id="edit-rw"
+                      value={editData.rw || ''}
+                      onChange={(e) => handleChange('rw', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-dusun">Dusun</Label>
+                    <Input
+                      id="edit-dusun"
+                      value={editData.dusun || ''}
+                      onChange={(e) => handleChange('dusun', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-kelurahan">Kelurahan</Label>
+                    <Input
+                      id="edit-kelurahan"
+                      value={editData.kelurahan || ''}
+                      onChange={(e) => handleChange('kelurahan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-kecamatan">Kecamatan</Label>
+                    <Input
+                      id="edit-kecamatan"
+                      value={editData.kecamatan || ''}
+                      onChange={(e) => handleChange('kecamatan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-kodePos">Kode Pos</Label>
+                    <Input
+                      id="edit-kodePos"
+                      value={editData.kodePos || ''}
+                      onChange={(e) => handleChange('kodePos', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-jenisTinggal">Jenis Tinggal</Label>
+                    <Input
+                      id="edit-jenisTinggal"
+                      value={editData.jenisTinggal || ''}
+                      onChange={(e) => handleChange('jenisTinggal', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-alatTransportasi">Alat Transportasi</Label>
+                    <Input
+                      id="edit-alatTransportasi"
+                      value={editData.alatTransportasi || ''}
+                      onChange={(e) => handleChange('alatTransportasi', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-telepon">Telepon</Label>
+                    <Input
+                      id="edit-telepon"
+                      value={editData.telepon || ''}
+                      onChange={(e) => handleChange('telepon', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-hp">HP</Label>
+                    <Input
+                      id="edit-hp"
+                      value={editData.hp || ''}
+                      onChange={(e) => handleChange('hp', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email">Email</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editData.email || ''}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Data Orang Tua */}
+              <div>
+                <h3 className="text-sm font-bold pb-2 border-b">Data Orang Tua</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-namaAyah">Nama Ayah</Label>
+                    <Input
+                      id="edit-namaAyah"
+                      value={editData.namaAyah || ''}
+                      onChange={(e) => handleChange('namaAyah', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ayahTahunLahir">Ayah Tahun Lahir</Label>
+                    <Input
+                      id="edit-ayahTahunLahir"
+                      value={editData.ayahTahunLahir || ''}
+                      onChange={(e) => handleChange('ayahTahunLahir', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ayahJenjangPendidikan">Ayah Jenjang Pendidikan</Label>
+                    <Input
+                      id="edit-ayahJenjangPendidikan"
+                      value={editData.ayahJenjangPendidikan || ''}
+                      onChange={(e) => handleChange('ayahJenjangPendidikan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ayahPekerjaan">Ayah Pekerjaan</Label>
+                    <Input
+                      id="edit-ayahPekerjaan"
+                      value={editData.ayahPekerjaan || ''}
+                      onChange={(e) => handleChange('ayahPekerjaan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-namaIbu">Nama Ibu</Label>
+                    <Input
+                      id="edit-namaIbu"
+                      value={editData.namaIbu || ''}
+                      onChange={(e) => handleChange('namaIbu', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ibuTahunLahir">Ibu Tahun Lahir</Label>
+                    <Input
+                      id="edit-ibuTahunLahir"
+                      value={editData.ibuTahunLahir || ''}
+                      onChange={(e) => handleChange('ibuTahunLahir', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ibuJenjangPendidikan">Ibu Jenjang Pendidikan</Label>
+                    <Input
+                      id="edit-ibuJenjangPendidikan"
+                      value={editData.ibuJenjangPendidikan || ''}
+                      onChange={(e) => handleChange('ibuJenjangPendidikan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ibuPekerjaan">Ibu Pekerjaan</Label>
+                    <Input
+                      id="edit-ibuPekerjaan"
+                      value={editData.ibuPekerjaan || ''}
+                      onChange={(e) => handleChange('ibuPekerjaan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-namaWali">Nama Wali</Label>
+                    <Input
+                      id="edit-namaWali"
+                      value={editData.namaWali || ''}
+                      onChange={(e) => handleChange('namaWali', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-waliTahunLahir">Wali Tahun Lahir</Label>
+                    <Input
+                      id="edit-waliTahunLahir"
+                      value={editData.waliTahunLahir || ''}
+                      onChange={(e) => handleChange('waliTahunLahir', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-waliJenjangPendidikan">Wali Jenjang Pendidikan</Label>
+                    <Input
+                      id="edit-waliJenjangPendidikan"
+                      value={editData.waliJenjangPendidikan || ''}
+                      onChange={(e) => handleChange('waliJenjangPendidikan', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-waliPekerjaan">Wali Pekerjaan</Label>
+                    <Input
+                      id="edit-waliPekerjaan"
+                      value={editData.waliPekerjaan || ''}
+                      onChange={(e) => handleChange('waliPekerjaan', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Data Sekolah */}
+              <div>
+                <h3 className="text-sm font-bold pb-2 border-b">Data Sekolah</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-rombel">Rombel</Label>
+                    <Select value={editData.rombel || ''} onValueChange={(v) => handleChange('rombel', v)}>
+                      <SelectTrigger id="edit-rombel">
+                        <SelectValue placeholder="Pilih Rombel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROMBEL_OPTIONS.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-kebutuhanKhusus">Kebutuhan Khusus</Label>
+                    <Input
+                      id="edit-kebutuhanKhusus"
+                      value={editData.kebutuhanKhusus || ''}
+                      onChange={(e) => handleChange('kebutuhanKhusus', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-sekolahAsal">Sekolah Asal</Label>
+                    <Input
+                      id="edit-sekolahAsal"
+                      value={editData.sekolahAsal || ''}
+                      onChange={(e) => handleChange('sekolahAsal', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-status">Status</Label>
+                    <Select value={editData.status || ''} onValueChange={(v) => handleChange('status', v)}>
+                      <SelectTrigger id="edit-status">
+                        <SelectValue placeholder="Pilih Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aktif">Aktif</SelectItem>
+                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditTarget(null)}
+              disabled={editMutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={() => editMutation.mutate()}
+              disabled={editMutation.isPending || !editData.nama?.trim()}
+            >
+              {editMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan Perubahan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

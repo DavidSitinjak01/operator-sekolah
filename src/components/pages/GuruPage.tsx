@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Trash2, ChevronLeft, ChevronRight, GraduationCap, FileSpreadsheet } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, GraduationCap, FileSpreadsheet, Pencil, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAppStore } from '@/store/app';
 import ImportExcelDialog from '@/components/ImportExcelDialog';
@@ -93,6 +103,49 @@ interface GuruResponse {
   limit: number;
 }
 
+// ---------- Helper: convert Guru to flat Record<string, string> ----------
+function guruToRecord(guru: Guru): Record<string, string> {
+  return {
+    no: guru.no ?? '',
+    nama: guru.nama ?? '',
+    nuptk: guru.nuptk ?? '',
+    jenisKelamin: guru.jenisKelamin ?? '',
+    tempatLahir: guru.tempatLahir ?? '',
+    tanggalLahir: guru.tanggalLahir ?? '',
+    nip: guru.nip ?? '',
+    nik: guru.nik ?? '',
+    agama: guru.agama ?? '',
+    status: guru.status ?? '',
+    kewarganegaraan: guru.kewarganegaraan ?? '',
+    alamat: guru.alamat ?? '',
+    rt: guru.rt ?? '',
+    rw: guru.rw ?? '',
+    namaDusun: guru.namaDusun ?? '',
+    desaKelurahan: guru.desaKelurahan ?? '',
+    kecamatan: guru.kecamatan ?? '',
+    kodePos: guru.kodePos ?? '',
+    telepon: guru.telepon ?? '',
+    hp: guru.hp ?? '',
+    email: guru.email ?? '',
+    statusKepegawaian: guru.statusKepegawaian ?? '',
+    jenisPTK: guru.jenisPTK ?? '',
+    tugasTambahan: guru.tugasTambahan ?? '',
+    pangkatGolongan: guru.pangkatGolongan ?? '',
+    sumberGaji: guru.sumberGaji ?? '',
+    skCPNS: guru.skCPNS ?? '',
+    tanggalCPNS: guru.tanggalCPNS ?? '',
+    skPengangkatan: guru.skPengangkatan ?? '',
+    tmtPengangkatan: guru.tmtPengangkatan ?? '',
+    lembagaPengangkatan: guru.lembagaPengangkatan ?? '',
+    tmtPNS: guru.tahunPelajaran ?? '',
+    namaIbuKandung: guru.namaIbuKandung ?? '',
+    statusPerkawinan: guru.statusPerkawinan ?? '',
+    namaSuamiIstri: guru.namaSuamiIstri ?? '',
+    nipSuamiIstri: guru.nipSuamiIstri ?? '',
+    pekerjaanSuamiIstri: guru.pekerjaanSuamiIstri ?? '',
+  };
+}
+
 // ---------- Component ----------
 export default function GuruPage() {
   const { tahunPelajaran, semester } = useAppStore();
@@ -105,6 +158,16 @@ export default function GuruPage() {
   const limit = 10;
 
   const [deleteTarget, setDeleteTarget] = useState<Guru | null>(null);
+  const [editTarget, setEditTarget] = useState<Guru | null>(null);
+  const [editData, setEditData] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ---------- Sync editData when editTarget changes ----------
+  useEffect(() => {
+    if (editTarget) {
+      setEditData(guruToRecord(editTarget));
+    }
+  }, [editTarget]);
 
   // ---------- Fetch guru data ----------
   const { data, isLoading, isError } = useQuery<GuruResponse>({
@@ -184,6 +247,81 @@ export default function GuruPage() {
 
   // ---------- Skeleton rows ----------
   const skeletonRows = Array.from({ length: 5 });
+
+  // ---------- Generic edit change handler ----------
+  const handleChange = (key: string, value: string) =>
+    setEditData((prev) => ({ ...prev, [key]: value }));
+
+  // ---------- Save handler ----------
+  const handleSave = async () => {
+    if (!editTarget) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/guru', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editTarget.id, ...editData }),
+      });
+      if (!res.ok) throw new Error('Gagal menyimpan data guru');
+      toast({ title: 'Berhasil', description: 'Data guru berhasil diperbarui.' });
+      queryClient.invalidateQueries({ queryKey: ['guru'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setEditTarget(null);
+    } catch {
+      toast({
+        title: 'Gagal',
+        description: 'Terjadi kesalahan saat menyimpan data guru.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ---------- Render helpers for edit form fields ----------
+  const renderInput = (label: string, key: string, required?: boolean) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={`edit-${key}`} className="text-sm font-medium">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <Input
+        id={`edit-${key}`}
+        value={editData[key] ?? ''}
+        onChange={(e) => handleChange(key, e.target.value)}
+        className="h-9 text-sm"
+      />
+    </div>
+  );
+
+  const renderSelect = (label: string, key: string, options: string[]) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={`edit-${key}`} className="text-sm font-medium">
+        {label}
+      </Label>
+      <Select
+        value={editData[key] ?? ''}
+        onValueChange={(val) => handleChange(key, val)}
+      >
+        <SelectTrigger id={`edit-${key}`} className="h-9 text-sm">
+          <SelectValue placeholder={`Pilih ${label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const renderSection = (title: string, children: React.ReactNode) => (
+    <div className="space-y-3">
+      <h3 className="text-sm font-bold border-b pb-1.5">{title}</h3>
+      {children}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -376,7 +514,7 @@ export default function GuruPage() {
                     <TableHead className="hidden min-w-[160px] lg:table-cell whitespace-nowrap">NIK</TableHead>
 
                     {/* Aksi — always */}
-                    <TableHead className="w-16 text-center whitespace-nowrap">Aksi</TableHead>
+                    <TableHead className="w-[88px] text-center whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -473,15 +611,26 @@ export default function GuruPage() {
 
                       {/* Aksi — always */}
                       <TableCell className="text-center whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setDeleteTarget(guru)}
-                          aria-label={`Hapus ${guru.nama}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            onClick={() => setEditTarget(guru)}
+                            aria-label={`Edit ${guru.nama}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setDeleteTarget(guru)}
+                            aria-label={`Hapus ${guru.nama}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -548,6 +697,104 @@ export default function GuruPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ---------- Edit Dialog ---------- */}
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Data Guru</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi data guru di bawah ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[70vh] pe-2">
+            <div className="space-y-6 pr-4">
+              {/* Section 1: Data Pribadi */}
+              {renderSection('Data Pribadi', (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {renderInput('No', 'no')}
+                  {renderInput('Nama', 'nama', true)}
+                  {renderInput('NUPTK', 'nuptk')}
+                  {renderSelect('JK', 'jenisKelamin', ['L', 'P'])}
+                  {renderInput('Tempat Lahir', 'tempatLahir')}
+                  {renderInput('Tanggal Lahir', 'tanggalLahir')}
+                  {renderInput('NIP', 'nip')}
+                  {renderInput('NIK', 'nik')}
+                  {renderSelect('Agama', 'agama', ['Islam', 'Kristen', 'Katholik', 'Hindu', 'Buddha', 'Konghucu', 'lainnya'])}
+                  {renderSelect('Status', 'status', ['Aktif', 'Tidak Aktif'])}
+                  {renderInput('Kewarganegaraan', 'kewarganegaraan')}
+                </div>
+              ))}
+
+              {/* Section 2: Alamat & Kontak */}
+              {renderSection('Alamat & Kontak', (
+                <div className="space-y-4">
+                  <div className="sm:col-span-2">
+                    {renderInput('Alamat', 'alamat')}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderInput('RT', 'rt')}
+                    {renderInput('RW', 'rw')}
+                    {renderInput('Nama Dusun', 'namaDusun')}
+                    {renderInput('Desa/Kelurahan', 'desaKelurahan')}
+                    {renderInput('Kecamatan', 'kecamatan')}
+                    {renderInput('Kode Pos', 'kodePos')}
+                    {renderInput('Telepon', 'telepon')}
+                    {renderInput('HP', 'hp')}
+                    {renderInput('Email', 'email')}
+                  </div>
+                </div>
+              ))}
+
+              {/* Section 3: Kepegawaian */}
+              {renderSection('Kepegawaian', (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {renderInput('Status Kepegawaian', 'statusKepegawaian')}
+                  {renderInput('Jenis PTK', 'jenisPTK')}
+                  {renderInput('Tugas Tambahan', 'tugasTambahan')}
+                  {renderInput('Pangkat/Golongan', 'pangkatGolongan')}
+                  {renderInput('Sumber Gaji', 'sumberGaji')}
+                  {renderInput('SK CPNS', 'skCPNS')}
+                  {renderInput('Tanggal CPNS', 'tanggalCPNS')}
+                  {renderInput('SK Pengangkatan', 'skPengangkatan')}
+                  {renderInput('TMT Pengangkatan', 'tmtPengangkatan')}
+                  {renderInput('Lembaga Pengangkatan', 'lembagaPengangkatan')}
+                  {renderInput('TMT PNS', 'tmtPNS')}
+                </div>
+              ))}
+
+              {/* Section 4: Data Keluarga */}
+              {renderSection('Data Keluarga', (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {renderInput('Nama Ibu Kandung', 'namaIbuKandung')}
+                  {renderSelect('Status Perkawinan', 'statusPerkawinan', ['Kawin', 'Belum Kawin', 'Cerai Hidup', 'Cerai Mati'])}
+                  {renderInput('Nama Suami/Istri', 'namaSuamiIstri')}
+                  {renderInput('NIP Suami/Istri', 'nipSuamiIstri')}
+                  {renderInput('Pekerjaan Suami/Istri', 'pekerjaanSuamiIstri')}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditTarget(null)}
+              disabled={isSaving}
+            >
+              Batal
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSaving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
