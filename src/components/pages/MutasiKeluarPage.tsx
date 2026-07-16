@@ -54,6 +54,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
+import { useAppStore } from '@/store/app'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,8 @@ interface MutasiKeluar {
   tanggalKeluar: string
   alasanMutasi: string
   noSuratMutasi: string
+  tahunPelajaran: string
+  semester: string
 }
 
 interface PaginatedResponse {
@@ -86,6 +89,8 @@ const INITIAL_FORM: FormData = {
   tanggalKeluar: '',
   alasanMutasi: '',
   noSuratMutasi: '',
+  tahunPelajaran: '2025/2026',
+  semester: 'Ganjil',
 }
 
 const KELAS_OPTIONS = ['VII-A', 'VII-B', 'VIII-A', 'VIII-B', 'IX-A', 'IX-B'] as const
@@ -97,6 +102,7 @@ const LIMIT = 10
 export default function MutasiKeluarPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { tahunPelajaran, semester } = useAppStore()
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -128,13 +134,15 @@ export default function MutasiKeluarPage() {
 
   // ── API: Fetch ────────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery<PaginatedResponse>({
-    queryKey: ['mutasi-keluar', debouncedSearch, page],
+    queryKey: ['mutasi-keluar', debouncedSearch, page, tahunPelajaran, semester],
     queryFn: async () => {
       const params = new URLSearchParams({
         search: debouncedSearch,
         page: String(page),
         limit: String(LIMIT),
       })
+      params.set('tahunPelajaran', tahunPelajaran)
+      params.set('semester', semester)
       const res = await fetch(`/api/mutasi-keluar?${params}`)
       if (!res.ok) throw new Error('Gagal memuat data mutasi keluar')
       return res.json()
@@ -159,6 +167,7 @@ export default function MutasiKeluarPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil disimpan' })
       closeFormDialog()
     },
@@ -181,6 +190,7 @@ export default function MutasiKeluarPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil dihapus' })
       setDeleteOpen(false)
       setDeletingItem(null)
@@ -193,7 +203,11 @@ export default function MutasiKeluarPage() {
   // ── Form helpers ──────────────────────────────────────────────────────────
   const openAddDialog = () => {
     setEditingId(null)
-    setForm(INITIAL_FORM)
+    setForm({
+      ...INITIAL_FORM,
+      tahunPelajaran: useAppStore.getState().tahunPelajaran,
+      semester: useAppStore.getState().semester,
+    })
     setFormErrors({})
     setFormOpen(true)
   }
@@ -208,6 +222,8 @@ export default function MutasiKeluarPage() {
       tanggalKeluar: item.tanggalKeluar,
       alasanMutasi: item.alasanMutasi,
       noSuratMutasi: item.noSuratMutasi,
+      tahunPelajaran: item.tahunPelajaran,
+      semester: item.semester,
     })
     setFormErrors({})
     setFormOpen(true)

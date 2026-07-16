@@ -26,6 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAppStore } from '@/store/app';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,8 +40,7 @@ interface DashboardData {
   guruAktif: number;
   guruNonaktif: number;
   siswaPerKelas: { kelas: string; jumlah: number }[];
-  mutasiMasukPerBulan: { tanggalMasuk: string }[];
-  mutasiKeluarPerBulan: { tanggalKeluar: string }[];
+  tahunPelajaranOverview: { tahunPelajaran: string; semester: string; jumlahSiswa: number }[];
   recentMutasiMasuk: {
     id: string;
     nama: string;
@@ -226,6 +226,89 @@ function SiswaPerKelasChart({ data }: { data: DashboardData }) {
   );
 }
 
+function TahunPelajaranOverviewTable({
+  data,
+  activeTahunPelajaran,
+  activeSemester,
+}: {
+  data: DashboardData['tahunPelajaranOverview'];
+  activeTahunPelajaran: string;
+  activeSemester: string;
+}) {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Ringkasan per Tahun Pelajaran</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Belum ada data tahun pelajaran.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Ringkasan per Tahun Pelajaran</CardTitle>
+      </CardHeader>
+      <CardContent className="max-h-96 overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Tahun Pelajaran</TableHead>
+              <TableHead>Semester</TableHead>
+              <TableHead>Jumlah Siswa</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((item, idx) => {
+              const isActive =
+                item.tahunPelajaran === activeTahunPelajaran &&
+                item.semester === activeSemester;
+              return (
+                <TableRow
+                  key={`${item.tahunPelajaran}-${item.semester}-${idx}`}
+                  className={isActive ? 'bg-emerald-50' : ''}
+                >
+                  <TableCell className="font-medium whitespace-nowrap">
+                    {item.tahunPelajaran}
+                  </TableCell>
+                  <TableCell>{item.semester}</TableCell>
+                  <TableCell className="font-medium">
+                    {item.jumlahSiswa.toLocaleString('id-ID')}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TahunPelajaranOverviewSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-56" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RecentTablesSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -365,10 +448,15 @@ function RecentMutasiKeluarTable({
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { tahunPelajaran, semester } = useAppStore();
+
   const { data, isLoading, isError } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: ['dashboard', tahunPelajaran, semester],
     queryFn: async () => {
-      const res = await fetch('/api/dashboard');
+      const params = new URLSearchParams();
+      params.set('tahunPelajaran', tahunPelajaran);
+      params.set('semester', semester);
+      const res = await fetch(`/api/dashboard?${params.toString()}`);
       if (!res.ok) throw new Error('Gagal memuat data dashboard');
       return res.json();
     },
@@ -393,7 +481,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Ringkasan data sekolah dan aktivitas terbaru.
+          Tahun Pelajaran {tahunPelajaran} &mdash; Semester {semester}
         </p>
       </div>
 
@@ -409,6 +497,17 @@ export default function DashboardPage() {
         <ChartSkeleton />
       ) : data ? (
         <SiswaPerKelasChart data={data} />
+      ) : null}
+
+      {/* Ringkasan per Tahun Pelajaran */}
+      {isLoading ? (
+        <TahunPelajaranOverviewSkeleton />
+      ) : data ? (
+        <TahunPelajaranOverviewTable
+          data={data.tahunPelajaranOverview}
+          activeTahunPelajaran={tahunPelajaran}
+          activeSemester={semester}
+        />
       ) : null}
 
       {/* Recent Activity Tables */}

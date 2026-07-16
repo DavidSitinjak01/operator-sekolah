@@ -78,3 +78,27 @@ Stage Summary:
 - All 5 pages verified working
 - CRUD operations verified (student add confirmed in table and dashboard)
 - No errors in dev log or browser console
+
+---
+Task ID: 6
+Agent: main
+Task: Add Tahun Pelajaran grouping feature
+
+Work Log:
+- Updated Prisma schema: added tahunPelajaran and semester fields (with defaults) to Siswa, Guru, MutasiMasuk, MutasiKeluar
+- Pushed schema to database (existing data gets defaults)
+- Updated Zustand store with tahunPelajaran and semester state
+- Updated all 5 API routes to filter by tahunPelajaran and semester query params
+- Updated dashboard API to return tahunPelajaranOverview grouping
+- Added Tahun Pelajaran selector (Tahun Ajaran + Semester) to sidebar
+- Updated all 5 page components to read from store and pass to API
+- All page forms auto-set tahunPelajaran/semester from sidebar selector
+- Dashboard shows "Ringkasan per Tahun Pelajaran" overview table
+- Mobile top bar shows current TP/semester badge
+
+Stage Summary:
+- Sidebar now has Tahun Ajaran dropdown (2024/2025 to 2027/2028) and Semester dropdown (Ganjil/Genap)
+- All data (siswa, guru, mutasi) is filtered by the selected TP and semester
+- Dashboard overview table shows student counts across all TP/semester combinations
+- Verified: switching from Ganjil (1 siswa) to Genap (1 siswa) correctly filters data
+- Chart and statistics cards update per TP/semester selection

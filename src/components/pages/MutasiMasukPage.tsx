@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAppStore } from '@/store/app';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,8 @@ interface MutasiMasuk {
   tanggalMasuk: string;
   alasanMutasi: string;
   noSurat: string;
+  tahunPelajaran: string;
+  semester: string;
 }
 
 interface MutasiMasukResponse {
@@ -89,6 +92,8 @@ interface FormState {
   tanggalMasuk: string;
   alasanMutasi: string;
   noSurat: string;
+  tahunPelajaran: string;
+  semester: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -103,6 +108,8 @@ const INITIAL_FORM: FormState = {
   tanggalMasuk: '',
   alasanMutasi: '',
   noSurat: '',
+  tahunPelajaran: '2025/2026',
+  semester: 'Ganjil',
 };
 
 const PAGE_SIZE = 10;
@@ -112,6 +119,7 @@ const PAGE_SIZE = 10;
 export default function MutasiMasukPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tahunPelajaran, semester } = useAppStore();
 
   // State: search & pagination
   const [search, setSearch] = useState('');
@@ -130,13 +138,15 @@ export default function MutasiMasukPage() {
   // ─── Query: Fetch data ──────────────────────────────────────────────────
 
   const { data, isLoading, isError } = useQuery<MutasiMasukResponse>({
-    queryKey: ['mutasi-masuk', search, page],
+    queryKey: ['mutasi-masuk', search, page, tahunPelajaran, semester],
     queryFn: async () => {
       const params = new URLSearchParams({
         search,
         page: String(page),
         limit: String(PAGE_SIZE),
       });
+      params.set('tahunPelajaran', tahunPelajaran);
+      params.set('semester', semester);
       const res = await fetch(`/api/mutasi-masuk?${params}`);
       if (!res.ok) {
         throw new Error('Gagal memuat data mutasi masuk');
@@ -165,6 +175,7 @@ export default function MutasiMasukPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mutasi-masuk'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setDialogOpen(false);
       resetForm();
       toast({
@@ -197,6 +208,7 @@ export default function MutasiMasukPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mutasi-masuk'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setDeleteAlertOpen(false);
       setDeleteTarget(null);
       toast({
@@ -231,7 +243,11 @@ export default function MutasiMasukPage() {
   );
 
   const openAddDialog = () => {
-    resetForm();
+    setForm({
+      ...INITIAL_FORM,
+      tahunPelajaran: useAppStore.getState().tahunPelajaran,
+      semester: useAppStore.getState().semester,
+    });
     setIsEditing(false);
     setDialogOpen(true);
   };
@@ -246,6 +262,8 @@ export default function MutasiMasukPage() {
       tanggalMasuk: item.tanggalMasuk,
       alasanMutasi: item.alasanMutasi,
       noSurat: item.noSurat,
+      tahunPelajaran: item.tahunPelajaran,
+      semester: item.semester,
     });
     setIsEditing(true);
     setDialogOpen(true);

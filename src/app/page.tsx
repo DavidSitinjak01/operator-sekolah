@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import DashboardPage from "@/components/pages/DashboardPage";
@@ -22,6 +30,15 @@ const queryClient = new QueryClient({
   },
 });
 
+const TAHUN_PELAJARAN_OPTIONS = [
+  "2024/2025",
+  "2025/2026",
+  "2026/2027",
+  "2027/2028",
+];
+
+const SEMESTER_OPTIONS = ["Ganjil", "Genap"];
+
 const navItems = [
   { key: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
   { key: "siswa" as const, label: "Data Siswa", icon: Users },
@@ -30,12 +47,58 @@ const navItems = [
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
 ];
 
+function TahunPelajaranSelector() {
+  const { tahunPelajaran, setTahunPelajaran, semester, setSemester } = useAppStore();
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-3">
+        <CalendarDays className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Tahun Pelajaran
+        </span>
+      </div>
+      <div className="px-3 space-y-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Tahun Ajaran</Label>
+          <Select value={tahunPelajaran} onValueChange={setTahunPelajaran}>
+            <SelectTrigger className="w-full h-9 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TAHUN_PELAJARAN_OPTIONS.map((tp) => (
+                <SelectItem key={tp} value={tp} className="text-sm">
+                  {tp}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Semester</Label>
+          <Select value={semester} onValueChange={setSemester}>
+            <SelectTrigger className="w-full h-9 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SEMESTER_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s} className="text-sm">
+                  Semester {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activePage, setActivePage } = useAppStore();
 
   return (
     <>
-      {/* Overlay for mobile */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -64,6 +127,11 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Tahun Pelajaran Selector */}
+        <div className="border-b border-border py-4">
+          <TahunPelajaranSelector />
         </div>
 
         {/* Navigation */}
@@ -152,6 +220,11 @@ export default function Home() {
                   <School className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-bold">Operator Sekolah</span>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  {useAppStore.getState().tahunPelajaran} — {useAppStore.getState().semester}
+                </span>
               </div>
             </header>
 

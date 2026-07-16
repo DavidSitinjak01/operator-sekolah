@@ -46,6 +46,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import { useAppStore } from '@/store/app'
 
 // --- Types ---
 interface Siswa {
@@ -60,6 +61,8 @@ interface Siswa {
   namaOrtu: string
   noTelpOrtu: string
   status: string
+  tahunPelajaran: string
+  semester: string
 }
 
 interface SiswaResponse {
@@ -89,6 +92,8 @@ const initialFormState = {
   namaOrtu: '',
   noTelpOrtu: '',
   status: 'Aktif',
+  tahunPelajaran: '2025/2026',
+  semester: 'Ganjil',
 }
 
 // --- Helper: format date ---
@@ -126,6 +131,7 @@ function TableSkeleton() {
 export default function SiswaPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { tahunPelajaran, semester } = useAppStore()
 
   // Filter states
   const [search, setSearch] = React.useState('')
@@ -144,7 +150,7 @@ export default function SiswaPage() {
 
   // --- Query: Fetch students ---
   const { data, isLoading, isError } = useQuery<SiswaResponse>({
-    queryKey: [...QUERY_KEY, search, filterKelas, filterStatus, page],
+    queryKey: [...QUERY_KEY, search, filterKelas, filterStatus, page, tahunPelajaran, semester],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
@@ -152,6 +158,8 @@ export default function SiswaPage() {
       if (filterStatus) params.set('status', filterStatus)
       params.set('page', page.toString())
       params.set('limit', ITEMS_PER_PAGE.toString())
+      params.set('tahunPelajaran', tahunPelajaran)
+      params.set('semester', semester)
 
       const res = await fetch(`/api/siswa?${params.toString()}`)
       if (!res.ok) throw new Error('Gagal memuat data siswa')
@@ -173,6 +181,7 @@ export default function SiswaPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast({
         title: isEditing ? 'Berhasil Diupdate' : 'Berhasil Ditambahkan',
         description: isEditing
@@ -201,6 +210,7 @@ export default function SiswaPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       toast({
         title: 'Berhasil Dihapus',
         description: 'Data siswa berhasil dihapus.',
@@ -219,7 +229,11 @@ export default function SiswaPage() {
 
   // --- Handlers ---
   function openAddDialog() {
-    setForm({ ...initialFormState })
+    setForm({
+      ...initialFormState,
+      tahunPelajaran: useAppStore.getState().tahunPelajaran,
+      semester: useAppStore.getState().semester,
+    })
     setIsEditing(false)
     setIsFormOpen(true)
   }
@@ -237,6 +251,8 @@ export default function SiswaPage() {
       namaOrtu: siswa.namaOrtu || '',
       noTelpOrtu: siswa.noTelpOrtu || '',
       status: siswa.status,
+      tahunPelajaran: siswa.tahunPelajaran || '',
+      semester: siswa.semester || '',
     })
     setIsEditing(true)
     setIsFormOpen(true)

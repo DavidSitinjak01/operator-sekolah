@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAppStore } from '@/store/app';
 
 // ---------- Types ----------
 interface Guru {
@@ -65,6 +66,8 @@ interface Guru {
   alamat: string;
   noTelp: string;
   status: string;
+  tahunPelajaran: string;
+  semester: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +89,8 @@ interface GuruFormData {
   alamat: string;
   noTelp: string;
   status: string;
+  tahunPelajaran: string;
+  semester: string;
 }
 
 // ---------- Constants ----------
@@ -97,6 +102,8 @@ const EMPTY_FORM: GuruFormData = {
   alamat: '',
   noTelp: '',
   status: 'Aktif',
+  tahunPelajaran: '2025/2026',
+  semester: 'Ganjil',
 };
 
 const PAGE_SIZE = 10;
@@ -105,6 +112,7 @@ const PAGE_SIZE = 10;
 export default function GuruPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tahunPelajaran, semester } = useAppStore();
 
   // Search & filter state
   const [search, setSearch] = useState('');
@@ -136,7 +144,7 @@ export default function GuruPage() {
   }, [statusFilter]);
 
   // ---------- Query ----------
-  const queryKey = ['guru', debouncedSearch, statusFilter, page];
+  const queryKey = ['guru', debouncedSearch, statusFilter, page, tahunPelajaran, semester];
 
   const { data, isLoading, isError } = useQuery<GuruResponse>({
     queryKey,
@@ -146,6 +154,8 @@ export default function GuruPage() {
       if (statusFilter) params.set('status', statusFilter);
       params.set('page', page.toString());
       params.set('limit', PAGE_SIZE.toString());
+      params.set('tahunPelajaran', tahunPelajaran);
+      params.set('semester', semester);
       const res = await fetch(`/api/guru?${params.toString()}`);
       if (!res.ok) throw new Error('Gagal memuat data guru');
       return res.json();
@@ -170,6 +180,7 @@ export default function GuruPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guru'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Berhasil', description: 'Data guru berhasil ditambahkan' });
       closeDialog();
     },
@@ -191,6 +202,7 @@ export default function GuruPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guru'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Berhasil', description: 'Data guru berhasil diperbarui' });
       closeDialog();
     },
@@ -210,6 +222,7 @@ export default function GuruPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guru'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Berhasil', description: 'Data guru berhasil dihapus' });
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -223,7 +236,11 @@ export default function GuruPage() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const openCreateDialog = useCallback(() => {
-    setFormData(EMPTY_FORM);
+    setFormData({
+      ...EMPTY_FORM,
+      tahunPelajaran: useAppStore.getState().tahunPelajaran,
+      semester: useAppStore.getState().semester,
+    });
     setIsEditing(false);
     setDialogOpen(true);
   }, []);
@@ -238,6 +255,8 @@ export default function GuruPage() {
       alamat: guru.alamat,
       noTelp: guru.noTelp,
       status: guru.status,
+      tahunPelajaran: guru.tahunPelajaran,
+      semester: guru.semester,
     });
     setIsEditing(true);
     setDialogOpen(true);

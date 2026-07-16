@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
+    const tahunPelajaran = searchParams.get('tahunPelajaran') || '';
+    const semester = searchParams.get('semester') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -16,6 +18,8 @@ export async function GET(request: NextRequest) {
         { asalSekolah: { contains: search } },
       ];
     }
+    if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
+    if (semester) where.semester = semester;
 
     const [data, total] = await Promise.all([
       db.mutasiMasuk.findMany({

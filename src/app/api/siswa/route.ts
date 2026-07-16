@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const kelas = searchParams.get('kelas') || '';
     const status = searchParams.get('status') || '';
+    const tahunPelajaran = searchParams.get('tahunPelajaran') || '';
+    const semester = searchParams.get('semester') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -19,6 +21,8 @@ export async function GET(request: NextRequest) {
     }
     if (kelas) where.kelas = kelas;
     if (status) where.status = status;
+    if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
+    if (semester) where.semester = semester;
 
     const [data, total] = await Promise.all([
       db.siswa.findMany({
