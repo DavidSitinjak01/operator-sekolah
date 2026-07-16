@@ -165,6 +165,14 @@ model MutasiMasuk {
   updatedAt       DateTime @updatedAt
 }
 
+model TahunPelajaran {
+  id              String   @id @default(cuid())
+  tahunPelajaran  String   @unique
+  createdAt       DateTime @default(now())
+
+  @@index([tahunPelajaran])
+}
+
 model MutasiKeluar {
   id               String   @id @default(cuid())
   siswaId          String

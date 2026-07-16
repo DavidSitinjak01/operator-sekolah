@@ -59,6 +59,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAppStore } from '@/store/app';
+import ExportButton from '@/components/ExportButton';
+import { MUTASI_MASUK_COLUMNS } from '@/lib/export-utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -342,11 +344,21 @@ export default function MutasiMasukPage() {
         <CardHeader>
           <CardTitle className="text-xl sm:text-2xl">Mutasi Masuk</CardTitle>
           <CardAction>
-            <Button onClick={openAddDialog}>
-              <UserPlus />
-              <span className="hidden sm:inline">Tambah Mutasi Masuk</span>
-              <span className="sm:hidden">Tambah</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <ExportButton
+                title="Laporan Mutasi Masuk"
+                subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+                columns={MUTASI_MASUK_COLUMNS}
+                apiUrl="/api/mutasi-masuk"
+                filename={`Mutasi-Masuk-${tahunPelajaran}-${semester}`}
+                orientation="portrait"
+              />
+              <Button onClick={openAddDialog}>
+                <UserPlus />
+                <span className="hidden sm:inline">Tambah Mutasi Masuk</span>
+                <span className="sm:hidden">Tambah</span>
+              </Button>
+            </div>
           </CardAction>
         </CardHeader>
         <CardContent>

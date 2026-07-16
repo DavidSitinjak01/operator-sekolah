@@ -214,3 +214,30 @@ Stage Summary:
 - 5 bug ditemukan dan diperbaiki, termasuk 3 bug kritis yang menyebabkan error runtime
 - Aplikasi 100% berjalan tanpa error di semua 5 halaman
 - Konsistensi data antara schema, API routes, dan komponen frontend terjamin
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Tambah manajemen Tahun Pelajaran (CRUD) dan fitur Export Laporan (Excel + PDF)
+
+Work Log:
+- Tambah model TahunPelajaran ke Prisma schema (id, tahunPelajaran @unique, createdAt)
+- Seed 4 data TP: 2024/2025, 2025/2026, 2026/2027, 2027/2028
+- Buat API /api/tahun-pelajaran (GET list, POST tambah, DELETE hapus)
+- Install jspdf + jspdf-autotable untuk PDF generation
+- Buat src/lib/export-utils.ts: exportToExcel() dan exportToPDF() dengan header, styling, nomor halaman
+- Buat src/components/ExportButton.tsx: komponen reusable dengan dropdown Excel/PDF
+- Buat preset kolom untuk 4 laporan: SISWA_COLUMNS (28 kolom), GURU_COLUMNS (23 kolom), MUTASI_MASUK_COLUMNS (8 kolom), MUTASI_KELUAR_COLUMNS (10 kolom)
+- Update page.tsx: sidebar TP sekarang dinamis dari API, tambah ikon ⚙️ + dialog "Kelola Tahun Pelajaran" dengan validasi format YYYY/YYYY+1
+- Tambah ExportButton ke SiswaPage, GuruPage, MutasiMasukPage, MutasiKeluarPage
+- MutasiKeluar export handle nested siswa data via flattenRow
+- ExportButton otomatis menyertakan tahunPelajaran & semester dari store
+- Verifikasi Agent Browser: semua fitur berjalan tanpa error
+
+Stage Summary:
+- Tahun Pelajaran sekarang dinamis — admin bisa tambah/hapus via dialog di sidebar
+- Validasi format TP: harus YYYY/YYYY+1 (contoh: 2026/2027)
+- 4 halaman data dilengkapi tombol Export (dropdown Excel/PDF)
+- Export Excel: header judul + subtitle + kolom dengan lebar custom
+- Export PDF: header emerald, nomor halaman, timestamp, auto-page-break
+- 0 console error di semua halaman

@@ -71,6 +71,8 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table'
+import ExportButton from '@/components/ExportButton'
+import { MUTASI_KELUAR_COLUMNS } from '@/lib/export-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -393,10 +395,36 @@ export default function MutasiKeluarPage() {
             Kelola data siswa yang mutasi keluar &mdash; data siswa langsung terhubung tanpa duplikasi
           </p>
         </div>
-        <Button onClick={openAddDialog} className="shrink-0">
-          <UserMinus className="mr-2 size-4" />
-          Tambah Mutasi Keluar
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <ExportButton
+            title="Laporan Mutasi Keluar"
+            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+            columns={MUTASI_KELUAR_COLUMNS}
+            apiUrl="/api/mutasi-keluar"
+            filename={`Mutasi-Keluar-${tahunPelajaran}-${semester}`}
+            orientation="portrait"
+            flattenRow={(row, idx) => {
+              const r = row as Record<string, unknown>
+              const siswa = (r.siswa || {}) as Record<string, unknown>
+              return {
+                no: String(idx + 1),
+                nama: String(siswa.nama || '-'),
+                nipd: String(siswa.nipd || '-'),
+                nisn: String(siswa.nisn || '-'),
+                jenisKelamin: String(siswa.jenisKelamin || '-'),
+                rombel: String(siswa.rombel || '-'),
+                tujuanSekolah: String(r.tujuanSekolah || ''),
+                tanggalKeluar: String(r.tanggalKeluar || ''),
+                alasan: String(r.alasan || ''),
+                noSurat: String(r.noSurat || ''),
+              }
+            }}
+          />
+          <Button onClick={openAddDialog}>
+            <UserMinus className="mr-2 size-4" />
+            Tambah Mutasi Keluar
+          </Button>
+        </div>
       </div>
 
       {/* Search & Page Size */}

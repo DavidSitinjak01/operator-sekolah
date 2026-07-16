@@ -47,6 +47,8 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ImportExcelDialog from '@/components/ImportExcelDialog';
+import ExportButton from '@/components/ExportButton';
+import { SISWA_COLUMNS, flattenSiswaRow } from '@/lib/export-utils';
 
 interface Siswa {
   id: string;
@@ -316,18 +318,28 @@ export default function SiswaPage() {
             </p>
           </div>
         </div>
-        <ImportExcelDialog
-          type="siswa"
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['siswa'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-          }}
-        >
-          <Button variant="outline" size="sm" className="gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Import Excel
-          </Button>
-        </ImportExcelDialog>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            title={`Laporan Data Siswa`}
+            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+            columns={SISWA_COLUMNS}
+            apiUrl="/api/siswa"
+            filename={`Data-Siswa-${tahunPelajaran}-${semester}`}
+            flattenRow={flattenSiswaRow}
+          />
+          <ImportExcelDialog
+            type="siswa"
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['siswa'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            }}
+          >
+            <Button variant="outline" size="sm" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Excel
+            </Button>
+          </ImportExcelDialog>
+        </div>
       </div>
 
       {/* Filters */}

@@ -46,6 +46,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAppStore } from '@/store/app';
 import ImportExcelDialog from '@/components/ImportExcelDialog';
+import ExportButton from '@/components/ExportButton';
+import { GURU_COLUMNS } from '@/lib/export-utils';
 
 // ---------- Types ----------
 interface Guru {
@@ -338,18 +340,27 @@ export default function GuruPage() {
             </p>
           </div>
         </div>
-        <ImportExcelDialog
-          type="guru"
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['guru'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-          }}
-        >
-          <Button variant="outline" size="sm" className="gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Import Excel
-          </Button>
-        </ImportExcelDialog>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            title="Laporan Data Guru"
+            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+            columns={GURU_COLUMNS}
+            apiUrl="/api/guru"
+            filename={`Data-Guru-${tahunPelajaran}-${semester}`}
+          />
+          <ImportExcelDialog
+            type="guru"
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['guru'] });
+              queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            }}
+          >
+            <Button variant="outline" size="sm" className="gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Excel
+            </Button>
+          </ImportExcelDialog>
+        </div>
       </div>
 
       {/* Filters Card */}

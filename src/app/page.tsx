@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays } from "lucide-react";
+import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,8 +14,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
 import DashboardPage from "@/components/pages/DashboardPage";
 import SiswaPage from "@/components/pages/SiswaPage";
 import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
@@ -30,13 +50,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const TAHUN_PELAJARAN_OPTIONS = [
-  "2024/2025",
-  "2025/2026",
-  "2026/2027",
-  "2027/2028",
-];
-
 const SEMESTER_OPTIONS = ["Ganjil", "Genap"];
 
 const navItems = [
@@ -47,26 +60,197 @@ const navItems = [
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
 ];
 
-function TahunPelajaranSelector() {
+// ─── TP Manage Dialog ────────────────────────────────────────────────────────
+
+function ManageTPDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [newTP, setNewTP] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; tahunPelajaran: string } | null>(null);
+
+  const { data: tpList = [], isLoading } = useQuery({
+    queryKey: ["tahun-pelajaran"],
+    queryFn: async () => {
+      const res = await fetch("/api/tahun-pelajaran");
+      if (!res.ok) throw new Error("Gagal memuat");
+      return res.json();
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async (tp: string) => {
+      const res = await fetch("/api/tahun-pelajaran", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tahunPelajaran: tp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menambah");
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tahun-pelajaran"] });
+      toast({ title: "Berhasil", description: "Tahun pelajaran berhasil ditambahkan" });
+      setNewTP("");
+    },
+    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch("/api/tahun-pelajaran", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menghapus");
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tahun-pelajaran"] });
+      toast({ title: "Berhasil", description: "Tahun pelajaran berhasil dihapus" });
+      setDeleteTarget(null);
+    },
+    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+  });
+
+  const handleAdd = () => {
+    const val = newTP.trim();
+    if (!val) return;
+    // Validate format: YYYY/YYYY+1
+    const match = val.match(/^(\d{4})\/(\d{4})$/);
+    if (!match || parseInt(match[2]) !== parseInt(match[1]) + 1) {
+      toast({ title: "Format Salah", description: 'Gunakan format "YYYY/YYYY+1", contoh: "2026/2027"', variant: "destructive" });
+      return;
+    }
+    addMutation.mutate(val);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Kelola Tahun Pelajaran</DialogTitle>
+            <DialogDescription>Tambah atau hapus tahun pelajaran yang tersedia di sistem.</DialogDescription>
+          </DialogHeader>
+
+          {/* Add new */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Contoh: 2026/2027"
+              value={newTP}
+              onChange={(e) => setNewTP(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className="flex-1"
+            />
+            <Button onClick={handleAdd} disabled={addMutation.isPending || !newTP.trim()} size="sm">
+              {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Tambah
+            </Button>
+          </div>
+
+          {/* List */}
+          <div className="max-h-64 overflow-y-auto space-y-1">
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!isLoading && tpList.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">Belum ada data.</p>
+            )}
+            {tpList.map((tp: { id: string; tahunPelajaran: string }) => (
+              <div
+                key={tp.id}
+                className="flex items-center justify-between px-3 py-2 rounded-md border border-border hover:bg-muted/50"
+              >
+                <span className="text-sm font-medium">{tp.tahunPelajaran}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget(tp)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Tahun Pelajaran?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Yakin ingin menghapus <strong>{deleteTarget?.tahunPelajaran}</strong>? Data siswa, guru, dan mutasi pada tahun pelajaran ini tetap ada di database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ─── Tahun Pelajaran Selector (dynamic) ──────────────────────────────────────
+
+function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
   const { tahunPelajaran, setTahunPelajaran, semester, setSemester } = useAppStore();
+
+  const { data: tpList = [] } = useQuery({
+    queryKey: ["tahun-pelajaran"],
+    queryFn: async () => {
+      const res = await fetch("/api/tahun-pelajaran");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // If API data loaded, ensure the current selection is valid
+  const options = tpList.map((tp: { tahunPelajaran: string }) => tp.tahunPelajaran);
+  const isValid = options.includes(tahunPelajaran);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 px-3">
-        <CalendarDays className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Tahun Pelajaran
-        </span>
+      <div className="flex items-center justify-between px-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Tahun Pelajaran
+          </span>
+        </div>
+        <button
+          onClick={onManage}
+          className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Kelola Tahun Pelajaran"
+        >
+          <Settings className="w-3.5 h-3.5" />
+        </button>
       </div>
       <div className="px-3 space-y-2">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Tahun Ajaran</Label>
-          <Select value={tahunPelajaran} onValueChange={setTahunPelajaran}>
+          <Select value={isValid ? tahunPelajaran : options[0] || ""} onValueChange={setTahunPelajaran}>
             <SelectTrigger className="w-full h-9 text-sm">
-              <SelectValue />
+              <SelectValue placeholder={options.length === 0 ? "Belum ada data" : "Pilih..."} />
             </SelectTrigger>
             <SelectContent>
-              {TAHUN_PELAJARAN_OPTIONS.map((tp) => (
+              {options.map((tp: string) => (
                 <SelectItem key={tp} value={tp} className="text-sm">
                   {tp}
                 </SelectItem>
@@ -94,8 +278,11 @@ function TahunPelajaranSelector() {
   );
 }
 
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activePage, setActivePage } = useAppStore();
+  const [manageTPOpen, setManageTPOpen] = useState(false);
 
   return (
     <>
@@ -131,7 +318,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         {/* Tahun Pelajaran Selector */}
         <div className="border-b border-border py-4">
-          <TahunPelajaranSelector />
+          <TahunPelajaranSelector onManage={() => setManageTPOpen(true)} />
         </div>
 
         {/* Navigation */}
@@ -172,9 +359,13 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           </p>
         </div>
       </aside>
+
+      <ManageTPDialog open={manageTPOpen} onClose={() => setManageTPOpen(false)} />
     </>
   );
 }
+
+// ─── Page Router ─────────────────────────────────────────────────────────────
 
 function PageContent() {
   const { activePage } = useAppStore();
@@ -194,6 +385,8 @@ function PageContent() {
       return <DashboardPage />;
   }
 }
+
+// ─── Root ────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
