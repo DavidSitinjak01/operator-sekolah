@@ -35,10 +35,6 @@ interface DashboardData {
   totalGuru: number;
   totalMutasiMasuk: number;
   totalMutasiKeluar: number;
-  siswaAktif: number;
-  siswaNonaktif: number;
-  guruAktif: number;
-  guruNonaktif: number;
   siswaPerRombel: { kelas: string; jumlah: number }[];
   tahunPelajaranOverview: { tahunPelajaran: string; semester: string; jumlahSiswa: number }[];
   recentMutasiMasuk: {

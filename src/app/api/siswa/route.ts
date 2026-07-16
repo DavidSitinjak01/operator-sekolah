@@ -70,9 +70,13 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const body = await request.json();
+    const id = body.id;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Hapus relasi mutasi keluar terlebih dahulu jika ada
+    await db.mutasiKeluar.deleteMany({ where: { siswaId: id } });
+
     await db.siswa.delete({ where: { id } });
     return NextResponse.json({ message: 'Siswa berhasil dihapus' });
   } catch (error) {

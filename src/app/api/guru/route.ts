@@ -58,8 +58,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const body = await request.json();
+    const id = body.id;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     await db.guru.delete({ where: { id } });
     return NextResponse.json({ message: 'Guru berhasil dihapus' });

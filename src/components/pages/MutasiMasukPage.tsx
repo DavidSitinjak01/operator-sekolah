@@ -69,7 +69,7 @@ interface MutasiMasuk {
   asalSekolah: string;
   kelas: string;
   tanggalMasuk: string;
-  alasanMutasi: string;
+  alasan: string;
   noSurat: string;
   tahunPelajaran: string;
   semester: string;
@@ -90,7 +90,7 @@ interface FormState {
   asalSekolah: string;
   kelas: string;
   tanggalMasuk: string;
-  alasanMutasi: string;
+  alasan: string;
   noSurat: string;
   tahunPelajaran: string;
   semester: string;
@@ -106,7 +106,7 @@ const INITIAL_FORM: FormState = {
   asalSekolah: '',
   kelas: '',
   tanggalMasuk: '',
-  alasanMutasi: '',
+  alasan: '',
   noSurat: '',
   tahunPelajaran: '2025/2026',
   semester: 'Ganjil',
@@ -260,7 +260,7 @@ export default function MutasiMasukPage() {
       asalSekolah: item.asalSekolah,
       kelas: item.kelas,
       tanggalMasuk: item.tanggalMasuk,
-      alasanMutasi: item.alasanMutasi,
+      alasan: item.alasan,
       noSurat: item.noSurat,
       tahunPelajaran: item.tahunPelajaran,
       semester: item.semester,
@@ -290,7 +290,7 @@ export default function MutasiMasukPage() {
       !form.asalSekolah.trim() ||
       !form.kelas ||
       !form.tanggalMasuk ||
-      !form.alasanMutasi.trim() ||
+      !form.alasan.trim() ||
       !form.noSurat.trim()
     ) {
       toast({
@@ -627,14 +627,14 @@ export default function MutasiMasukPage() {
 
             {/* Alasan Mutasi */}
             <div className="grid gap-2">
-              <Label htmlFor="alasanMutasi">
+              <Label htmlFor="alasan">
                 Alasan Mutasi <span className="text-destructive">*</span>
               </Label>
               <Textarea
-                id="alasanMutasi"
+                id="alasan"
                 placeholder="Masukkan alasan mutasi"
-                value={form.alasanMutasi}
-                onChange={(e) => handleFormChange('alasanMutasi', e.target.value)}
+                value={form.alasan}
+                onChange={(e) => handleFormChange('alasan', e.target.value)}
                 rows={3}
               />
             </div>

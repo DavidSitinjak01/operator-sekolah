@@ -189,3 +189,28 @@ Stage Summary:
 - **Status management** — Create mutasi → siswa.status = "Mutasi Keluar"; Delete mutasi → siswa.status = "Aktif"
 - **Duplicate prevention** — @@unique constraint prevents same siswa being mutasi keluar twice per TP/semester
 - **Zero duplication** — No siswa data is copied/stored in MutasiKeluar table
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Audit dan perbaiki semua bug agar aplikasi tidak error
+
+Work Log:
+- Audit menyeluruh: cek konsistensi schema ↔ API ↔ komponen frontend
+- BUG 1: Siswa DELETE API membaca id dari searchParams, tapi frontend kirim di body JSON → Fix: baca dari request body
+- BUG 2: Guru DELETE API sama seperti BUG 1 → Fix: baca dari request body
+- BUG 3: MutasiMasukPage menggunakan `alasanMutasi` di form state, tapi schema DB field-nya `alasan` → Fix: rename semua referensi ke `alasan`
+- BUG 4: DashboardPage interface mendefinisikan `siswaAktif/siswaNonaktif/guruAktif/guruNonaktif` tapi API tidak mengembalikan field tersebut → Fix: hapus dari interface
+- BUG 5: Siswa DELETE tidak menangani foreign key constraint — hapus siswa yang punya MutasiKeluar akan crash → Fix: tambah `deleteMany` pada relasi sebelum hapus siswa
+- Jalankan lint: hanya error di file script (.cjs/.mjs) yang bukan bagian aplikasi
+- Verifikasi Agent Browser: semua 5 halaman berjalan tanpa error
+  - Dashboard: 817 siswa, 42 guru, chart terrender, 0 console error
+  - Data Siswa: "Menampilkan 1-10 dari 817 siswa", 0 console error
+  - Mutasi Masuk: empty state ditampilkan dengan benar, 0 console error
+  - Mutasi Keluar: 1 data dengan siswa terhubung (JOIN berhasil), 0 console error
+  - Data Guru: "Menampilkan 1-10 dari 42 guru", 0 console error
+
+Stage Summary:
+- 5 bug ditemukan dan diperbaiki, termasuk 3 bug kritis yang menyebabkan error runtime
+- Aplikasi 100% berjalan tanpa error di semua 5 halaman
+- Konsistensi data antara schema, API routes, dan komponen frontend terjamin
