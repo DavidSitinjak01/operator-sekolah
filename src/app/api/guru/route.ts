@@ -5,7 +5,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
     const tahunPelajaran = searchParams.get('tahunPelajaran') || '';
     const semester = searchParams.get('semester') || '';
     const page = parseInt(searchParams.get('page') || '1');
@@ -16,19 +15,14 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { nama: { contains: search } },
         { nip: { contains: search } },
+        { nuptk: { contains: search } },
       ];
     }
-    if (status) where.status = status;
     if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
     if (semester) where.semester = semester;
 
     const [data, total] = await Promise.all([
-      db.guru.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
+      db.guru.findMany({ where, orderBy: { no: 'asc' }, skip: (page - 1) * limit, take: limit }),
       db.guru.count({ where }),
     ]);
 
@@ -54,7 +48,6 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...data } = body;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
-
     const guru = await db.guru.update({ where: { id }, data });
     return NextResponse.json(guru);
   } catch (error: unknown) {
@@ -68,7 +61,6 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
-
     await db.guru.delete({ where: { id } });
     return NextResponse.json({ message: 'Guru berhasil dihapus' });
   } catch (error) {

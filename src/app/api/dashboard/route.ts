@@ -16,17 +16,12 @@ export async function GET(request: NextRequest) {
     const totalMutasiMasuk = await db.mutasiMasuk.count({ where: whereTP });
     const totalMutasiKeluar = await db.mutasiKeluar.count({ where: whereTP });
 
-    const siswaPerKelas = await db.siswa.groupBy({
-      by: ['kelas'],
+    const siswaPerRombel = await db.siswa.groupBy({
+      by: ['rombel'],
       where: whereTP,
-      _count: { kelas: true },
-      orderBy: { kelas: 'asc' },
+      _count: { rombel: true },
+      orderBy: { rombel: 'asc' },
     });
-
-    const siswaAktif = await db.siswa.count({ where: { ...whereTP, status: 'Aktif' } });
-    const siswaNonaktif = await db.siswa.count({ where: { ...whereTP, status: 'Nonaktif' } });
-    const guruAktif = await db.guru.count({ where: { ...whereTP, status: 'Aktif' } });
-    const guruNonaktif = await db.guru.count({ where: { ...whereTP, status: 'Nonaktif' } });
 
     const recentMutasiMasuk = await db.mutasiMasuk.findMany({
       where: whereTP,
@@ -40,7 +35,6 @@ export async function GET(request: NextRequest) {
       take: 5,
     });
 
-    // Get all unique tahun pelajaran and semester combinations for the overview
     const siswaGroups = await db.siswa.groupBy({
       by: ['tahunPelajaran', 'semester'],
       _count: { id: true },
@@ -48,21 +42,11 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      totalSiswa,
-      totalGuru,
-      totalMutasiMasuk,
-      totalMutasiKeluar,
-      siswaAktif,
-      siswaNonaktif,
-      guruAktif,
-      guruNonaktif,
-      siswaPerKelas: siswaPerKelas.map((s) => ({ kelas: s.kelas, jumlah: s._count.kelas })),
-      recentMutasiMasuk,
-      recentMutasiKeluar,
+      totalSiswa, totalGuru, totalMutasiMasuk, totalMutasiKeluar,
+      siswaPerRombel: siswaPerRombel.map((s) => ({ kelas: s.rombel, jumlah: s._count.rombel })),
+      recentMutasiMasuk, recentMutasiKeluar,
       tahunPelajaranOverview: siswaGroups.map((g) => ({
-        tahunPelajaran: g.tahunPelajaran,
-        semester: g.semester,
-        jumlahSiswa: g._count.id,
+        tahunPelajaran: g.tahunPelajaran, semester: g.semester, jumlahSiswa: g._count.id,
       })),
     });
   } catch (error) {

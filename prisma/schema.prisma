@@ -8,36 +8,63 @@ datasource db {
 }
 
 model Siswa {
-  id              String   @id @default(cuid())
-  nis             String   @unique
-  nama            String
-  kelas           String
-  jenisKelamin    String
-  tempatLahir     String
-  tanggalLahir    String
-  alamat          String
-  namaOrtu        String
-  noTelpOrtu      String
-  status          String   @default("Aktif")
-  tahunPelajaran  String   @default("2025/2026")
-  semester        String   @default("Ganjil")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  no               String
+  nama             String
+  nipd             String   @default("")
+  jenisKelamin     String   @default("")
+  nisn             String   @default("")
+  tempatLahir      String   @default("")
+  tanggalLahir     String   @default("")
+  nik              String   @default("")
+  agama            String   @default("")
+  alamat           String   @default("")
+  hp               String   @default("")
+  email            String   @default("")
+  rombel           String   @default("")
+  kebutuhanKhusus  String   @default("")
+  sekolahAsal      String   @default("")
+  namaAyah         String   @default("")
+  namaIbu          String   @default("")
+  namaWali         String   @default("")
+  status           String   @default("Aktif")
+  tahunPelajaran   String   @default("2025/2026")
+  semester         String   @default("Ganjil")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
 }
 
 model Guru {
-  id              String   @id @default(cuid())
-  nip             String   @unique
-  nama            String
-  jenisKelamin    String
-  mataPelajaran   String
-  alamat          String
-  noTelp          String
-  status          String   @default("Aktif")
-  tahunPelajaran  String   @default("2025/2026")
-  semester        String   @default("Ganjil")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  no                 String
+  nama               String
+  nuptk              String   @default("")
+  jenisKelamin       String   @default("")
+  tempatLahir        String   @default("")
+  tanggalLahir       String   @default("")
+  nip                String   @default("")
+  statusKepegawaian  String   @default("")
+  jenisPTK           String   @default("")
+  agama              String   @default("")
+  alamat             String   @default("")
+  hp                 String   @default("")
+  email              String   @default("")
+  tugasTambahan      String   @default("")
+  pangkatGolongan    String   @default("")
+  sumberGaji         String   @default("")
+  statusPerkawinan   String   @default("")
+  kewarganegaraan    String   @default("")
+  status             String   @default("Aktif")
+  tahunPelajaran     String   @default("2025/2026")
+  semester           String   @default("Ganjil")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([tahunPelajaran, semester])
+  @@unique([no, tahunPelajaran, semester])
 }
 
 model MutasiMasuk {

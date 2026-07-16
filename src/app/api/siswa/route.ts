@@ -3,32 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
-    const kelas = searchParams.get('kelas') || '';
-    const status = searchParams.get('status') || '';
-    const tahunPelajaran = searchParams.get('tahunPelajaran') || '';
-    const semester = searchParams.get('semester') || '';
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const { search, rombel, tahunPelajaran, semester, page, limit } = Object.fromEntries(request.nextUrl.searchParams);
 
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
         { nama: { contains: search } },
-        { nis: { contains: search } },
+        { nipd: { contains: search } },
+        { nisn: { contains: search } },
+        { nik: { contains: search } },
       ];
     }
-    if (kelas) where.kelas = kelas;
-    if (status) where.status = status;
+    if (rombel) where.rombel = rombel;
     if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
     if (semester) where.semester = semester;
+
+    const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
       db.siswa.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
+        orderBy: { no: 'asc' },
+        skip,
         take: limit,
       }),
       db.siswa.count({ where }),
@@ -56,7 +52,6 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...data } = body;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
-
     const siswa = await db.siswa.update({ where: { id }, data });
     return NextResponse.json(siswa);
   } catch (error: unknown) {
@@ -70,7 +65,6 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
-
     await db.siswa.delete({ where: { id } });
     return NextResponse.json({ message: 'Siswa berhasil dihapus' });
   } catch (error) {
