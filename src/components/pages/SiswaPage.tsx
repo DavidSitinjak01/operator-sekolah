@@ -145,7 +145,13 @@ const ROMBEL_OPTIONS = [
   'XII Rai',
 ];
 
-const LIMIT = 10;
+const PAGE_SIZE_OPTIONS = [
+  { label: '10', value: '10' },
+  { label: '25', value: '25' },
+  { label: '50', value: '50' },
+  { label: '100', value: '100' },
+  { label: 'Semua', value: '9999' },
+];
 
 // Total visible columns: 39 data + 1 Aksi = 40
 const TOTAL_COLUMNS = 40;
@@ -154,6 +160,7 @@ export default function SiswaPage() {
   const [search, setSearch] = useState('');
   const [rombel, setRombel] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { tahunPelajaran, semester } = useAppStore();
@@ -161,7 +168,7 @@ export default function SiswaPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<SiswaResponse>({
-    queryKey: ['siswa', search, rombel, page, tahunPelajaran, semester],
+    queryKey: ['siswa', search, rombel, page, limit, tahunPelajaran, semester],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
@@ -169,7 +176,7 @@ export default function SiswaPage() {
       params.set('tahunPelajaran', tahunPelajaran);
       params.set('semester', semester);
       params.set('page', page.toString());
-      params.set('limit', LIMIT.toString());
+      params.set('limit', limit.toString());
 
       const res = await fetch(`/api/siswa?${params.toString()}`);
       if (!res.ok) throw new Error('Gagal memuat data siswa');
@@ -222,11 +229,19 @@ export default function SiswaPage() {
     setPage(1);
   };
 
+  const handleLimitChange = (value: string) => {
+    const newLimit = parseInt(value);
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  const showAll = limit >= 9999;
+
   const siswaList = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 1;
-  const startItem = total === 0 ? 0 : (page - 1) * LIMIT + 1;
-  const endItem = Math.min(page * LIMIT, total);
+  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endItem = showAll ? total : Math.min(page * limit, total);
 
   const deleteTarget = siswaList.find((s) => s.id === deleteId);
 
@@ -281,6 +296,18 @@ export default function SiswaPage() {
                 {ROMBEL_OPTIONS.map((r) => (
                   <SelectItem key={r} value={r}>
                     {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(limit)} onValueChange={handleLimitChange}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label} per halaman
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -535,37 +562,40 @@ export default function SiswaPage() {
           </div>
 
           {/* Pagination */}
-          {!isLoading && (
+          {!isLoading && total > 0 && (
             <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                Menampilkan <span className="font-medium">{startItem}</span>-<span className="font-medium">{endItem}</span> dari{' '}
+                Menampilkan <span className="font-medium">{showAll ? total : startItem}</span>
+                {showAll ? '' : <>-<span className="font-medium">{endItem}</span></>} dari{' '}
                 <span className="font-medium">{total}</span> siswa
               </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Halaman sebelumnya</span>
-                </Button>
-                <span className="text-sm font-medium">
-                  {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Halaman berikutnya</span>
-                </Button>
-              </div>
+              {!showAll && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="sr-only">Halaman sebelumnya</span>
+                  </Button>
+                  <span className="text-sm font-medium">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Halaman berikutnya</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
