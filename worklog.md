@@ -102,3 +102,21 @@ Stage Summary:
 - Dashboard overview table shows student counts across all TP/semester combinations
 - Verified: switching from Ganjil (1 siswa) to Genap (1 siswa) correctly filters data
 - Chart and statistics cards update per TP/semester selection
+
+---
+Task ID: 5
+Agent: main
+Task: Add Excel Import feature for Data Siswa and Data Guru
+
+Work Log:
+- Created `/api/siswa/import/route.ts` — POST endpoint accepting FormData with Excel file, tahunPelajaran, semester; parses with xlsx library, maps columns to DB fields, bulk inserts
+- Created `/api/guru/import/route.ts` — Same pattern for guru data with guru-specific column mapping
+- Created `/src/components/ImportExcelDialog.tsx` — Reusable dialog component with drag-and-drop, file selection, format hints, loading state, success/error result display, and "Import Lagi" button
+- Updated `SiswaPage.tsx` — Added "Import Excel" button in header area, triggers ImportExcelDialog with type="siswa"
+- Updated `GuruPage.tsx` — Added "Import Excel" button in header area, triggers ImportExcelDialog with type="guru"
+- Verified via Agent Browser: both Import Excel buttons visible and dialogs open correctly on both pages
+
+Stage Summary:
+- Import feature is live at Data Siswa and Data Guru pages
+- Users click "Import Excel" button → dialog opens → upload .xlsx/.xls/.csv file → data imports to selected Tahun Pelajaran & Semester
+- Column mapping is case-insensitive and flexible (handles various header formats)

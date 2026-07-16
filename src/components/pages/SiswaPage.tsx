@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Trash2, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/store/app';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import ImportExcelDialog from '@/components/ImportExcelDialog';
 
 interface Siswa {
   id: string;
@@ -193,6 +194,18 @@ export default function SiswaPage() {
             </p>
           </div>
         </div>
+        <ImportExcelDialog
+          type="siswa"
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['siswa'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          }}
+        >
+          <Button variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
+        </ImportExcelDialog>
       </div>
 
       {/* Filters */}

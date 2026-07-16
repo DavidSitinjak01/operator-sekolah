@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Trash2, ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, GraduationCap, FileSpreadsheet } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAppStore } from '@/store/app';
+import ImportExcelDialog from '@/components/ImportExcelDialog';
 
 // ---------- Types ----------
 interface Guru {
@@ -164,16 +165,30 @@ export default function GuruPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <GraduationCap className="h-5 w-5 text-primary" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <GraduationCap className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Data Guru & Tenaga Pendidik</h1>
+            <p className="text-sm text-muted-foreground">
+              Kelola data guru — {tahunPelajaran} Semester {semester}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Data Guru & Tenaga Pendidik</h1>
-          <p className="text-sm text-muted-foreground">
-            Kelola data guru — {tahunPelajaran} Semester {semester}
-          </p>
-        </div>
+        <ImportExcelDialog
+          type="guru"
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['guru'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          }}
+        >
+          <Button variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
+        </ImportExcelDialog>
       </div>
 
       {/* Filters Card */}
