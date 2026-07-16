@@ -83,6 +83,8 @@ model Siswa {
 
   @@index([tahunPelajaran, semester])
   @@index([rombel])
+
+  mutasiKeluar MutasiKeluar[]
 }
 
 model Guru {
@@ -165,8 +167,21 @@ model MutasiMasuk {
 
 model MutasiKeluar {
   id               String   @id @default(cuid())
+  siswaId          String?
   nama             String
-  nis              String
+  nipd             String   @default("")
+  nisn             String   @default("")
+  nik              String   @default("")
+  jenisKelamin     String   @default("")
+  tempatLahir      String   @default("")
+  tanggalLahir     String   @default("")
+  agama            String   @default("")
+  alamat           String   @default("")
+  hp               String   @default("")
+  namaAyah         String   @default("")
+  namaIbu          String   @default("")
+  rombel           String   @default("")
+  sekolahAsal      String   @default("")
   tujuanSekolah    String
   kelas            String
   tanggalKeluar    String
@@ -176,4 +191,9 @@ model MutasiKeluar {
   semester         String   @default("Ganjil")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  siswa            Siswa?   @relation(fields: [siswaId], references: [id])
+
+  @@index([tahunPelajaran, semester])
+  @@index([siswaId])
 }

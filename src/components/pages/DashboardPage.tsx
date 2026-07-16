@@ -39,7 +39,7 @@ interface DashboardData {
   siswaNonaktif: number;
   guruAktif: number;
   guruNonaktif: number;
-  siswaPerKelas: { kelas: string; jumlah: number }[];
+  siswaPerRombel: { kelas: string; jumlah: number }[];
   tahunPelajaranOverview: { tahunPelajaran: string; semester: string; jumlahSiswa: number }[];
   recentMutasiMasuk: {
     id: string;
@@ -51,7 +51,8 @@ interface DashboardData {
   recentMutasiKeluar: {
     id: string;
     nama: string;
-    nis: string;
+    nipd: string;
+    nisn: string;
     tujuanSekolah: string;
     tanggalKeluar: string;
   }[];
@@ -187,7 +188,7 @@ function SiswaPerKelasChart({ data }: { data: DashboardData }) {
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={data.siswaPerKelas}
+              data={data.siswaPerRombel}
               margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -418,7 +419,7 @@ function RecentMutasiKeluarTable({
           <TableHeader>
             <TableRow>
               <TableHead>Nama</TableHead>
-              <TableHead>NIS</TableHead>
+              <TableHead>NIPD</TableHead>
               <TableHead>Sekolah Tujuan</TableHead>
               <TableHead>Tanggal</TableHead>
             </TableRow>
@@ -429,7 +430,7 @@ function RecentMutasiKeluarTable({
                 <TableCell className="font-medium whitespace-nowrap">
                   {item.nama}
                 </TableCell>
-                <TableCell>{item.nis}</TableCell>
+                <TableCell>{item.nipd || item.nisn || '-'}</TableCell>
                 <TableCell className="max-w-[180px] truncate">
                   {item.tujuanSekolah}
                 </TableCell>

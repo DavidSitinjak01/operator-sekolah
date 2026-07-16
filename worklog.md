@@ -142,4 +142,26 @@ Stage Summary:
 - All 817 siswa and 42 guru from Dapodik Excel files successfully imported
 - Table column order matches Excel exactly
 - Import API now supports Dapodik format (merged header rows) and simple format
-- All fields stored in database including parent data, KIP/KPS info, health data, etc.
+- All fields stored in database including parent data, KIP/KPS info, health data, etc.---
+Task ID: 1
+Agent: Main Agent
+Task: Connect all Siswa data to Mutasi Keluar page
+
+Work Log:
+- Read existing MutasiKeluarPage, schema, API routes, and DashboardPage
+- Updated prisma/schema.prisma: Added siswaId (optional FK) to MutasiKeluar, added 14 new siswa reference fields (nipd, nisn, nik, jenisKelamin, tempatLahir, tanggalLahir, agama, alamat, hp, namaAyah, namaIbu, rombel, sekolahAsal), added relation to Siswa model, added indexes
+- Ran `bun run db:push` to apply schema changes
+- Created `/api/siswa/list` endpoint: Returns active siswa list with search, TP/semester filter, ordered by rombel then no, limited to 100 results
+- Updated `/api/mutasi-keluar/route.ts`: POST/PUT auto-fills from siswa when siswaId provided; POST updates siswa status to "Mutasi Keluar"; DELETE restores siswa status to "Aktif"; GET search now includes nipd and nisn
+- Rewrote `MutasiKeluarPage.tsx`: Searchable siswa combobox using Command+Popover, auto-fills all siswa data on selection, shows data siswa section with all fields, detail dialog with full siswa+mutasi info, page size selector, "Terhubung" badge for linked records, proper responsive columns
+- Fixed DashboardPage: Updated type from `nis` to `nipd`/`nisn` for recentMutasiKeluar, fixed `siswaPerKelas` → `siswaPerRombel` (pre-existing bug)
+- Verified with Agent Browser: Dashboard loads with 817 siswa, Mutasi Keluar page renders correctly, siswa combobox shows all 817 siswa with name/gender/rombel/NIPD/NISN, selecting a siswa auto-fills all 14 data fields correctly
+
+Stage Summary:
+- Mutasi Keluar is now fully connected to Siswa data
+- When creating mutasi keluar, operator can search and select from existing siswa (817 records)
+- All siswa data auto-fills: NIPD, NISN, NIK, jenis kelamin, tempat/tgl lahir, agama, alamat, HP, nama ayah/ibu, rombel, sekolah asal
+- Siswa status automatically changes to "Mutasi Keluar" when recorded
+- Deleting a mutasi keluar record restores siswa status to "Aktif"
+- Records linked to siswa show "Terhubung" badge in the table
+- Detail dialog shows all connected siswa data
