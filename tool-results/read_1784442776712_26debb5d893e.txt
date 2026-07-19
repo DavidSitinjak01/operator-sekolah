@@ -1,0 +1,811 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect } from 'react';
+     4→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+     5→import { Search, Trash2, ChevronLeft, ChevronRight, GraduationCap, FileSpreadsheet, Pencil, Loader2 } from 'lucide-react';
+     6→
+     7→import { Button } from '@/components/ui/button';
+     8→import { Input } from '@/components/ui/input';
+     9→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    10→import { Skeleton } from '@/components/ui/skeleton';
+    11→import {
+    12→  Table,
+    13→  TableBody,
+    14→  TableCell,
+    15→  TableHead,
+    16→  TableHeader,
+    17→  TableRow,
+    18→} from '@/components/ui/table';
+    19→import {
+    20→  Select,
+    21→  SelectContent,
+    22→  SelectItem,
+    23→  SelectTrigger,
+    24→  SelectValue,
+    25→} from '@/components/ui/select';
+    26→import {
+    27→  AlertDialog,
+    28→  AlertDialogAction,
+    29→  AlertDialogCancel,
+    30→  AlertDialogContent,
+    31→  AlertDialogDescription,
+    32→  AlertDialogFooter,
+    33→  AlertDialogHeader,
+    34→  AlertDialogTitle,
+    35→} from '@/components/ui/alert-dialog';
+    36→import {
+    37→  Dialog,
+    38→  DialogContent,
+    39→  DialogHeader,
+    40→  DialogTitle,
+    41→  DialogDescription,
+    42→  DialogFooter,
+    43→} from '@/components/ui/dialog';
+    44→import { ScrollArea } from '@/components/ui/scroll-area';
+    45→import { Label } from '@/components/ui/label';
+    46→import { useToast } from '@/hooks/use-toast';
+    47→import { useAppStore } from '@/store/app';
+    48→import ImportExcelDialog from '@/components/ImportExcelDialog';
+    49→import ExportButton from '@/components/ExportButton';
+    50→import { GURU_COLUMNS } from '@/lib/export-utils';
+    51→
+    52→// ---------- Types ----------
+    53→interface Guru {
+    54→  id: string;
+    55→  no: string;
+    56→  nama: string;
+    57→  nuptk: string;
+    58→  jenisKelamin: string;
+    59→  tempatLahir: string;
+    60→  tanggalLahir: string;
+    61→  nip: string;
+    62→  statusKepegawaian: string;
+    63→  jenisPTK: string;
+    64→  agama: string;
+    65→  alamat: string;
+    66→  rt: string;
+    67→  rw: string;
+    68→  namaDusun: string;
+    69→  desaKelurahan: string;
+    70→  kecamatan: string;
+    71→  kodePos: string;
+    72→  telepon: string;
+    73→  hp: string;
+    74→  email: string;
+    75→  tugasTambahan: string;
+    76→  skCPNS: string;
+    77→  tanggalCPNS: string;
+    78→  skPengangkatan: string;
+    79→  tmtPengangkatan: string;
+    80→  lembagaPengangkatan: string;
+    81→  pangkatGolongan: string;
+    82→  sumberGaji: string;
+    83→  namaIbuKandung: string;
+    84→  statusPerkawinan: string;
+    85→  namaSuamiIstri: string;
+    86→  nipSuamiIstri: string;
+    87→  pekerjaanSuamiIstri: string;
+    88→  kewarganegaraan: string;
+    89→  nik: string;
+    90→  noKK: string;
+    91→  karpeg: string;
+    92→  karisKarsu: string;
+    93→  lintang: string;
+    94→  bujur: string;
+    95→  nuks: string;
+    96→  status: string;
+    97→  tahunPelajaran: string;
+    98→  semester: string;
+    99→}
+   100→
+   101→interface GuruResponse {
+   102→  data: Guru[];
+   103→  total: number;
+   104→  page: number;
+   105→  limit: number;
+   106→}
+   107→
+   108→// ---------- Helper: convert Guru to flat Record<string, string> ----------
+   109→function guruToRecord(guru: Guru): Record<string, string> {
+   110→  return {
+   111→    no: guru.no ?? '',
+   112→    nama: guru.nama ?? '',
+   113→    nuptk: guru.nuptk ?? '',
+   114→    jenisKelamin: guru.jenisKelamin ?? '',
+   115→    tempatLahir: guru.tempatLahir ?? '',
+   116→    tanggalLahir: guru.tanggalLahir ?? '',
+   117→    nip: guru.nip ?? '',
+   118→    nik: guru.nik ?? '',
+   119→    agama: guru.agama ?? '',
+   120→    status: guru.status ?? '',
+   121→    kewarganegaraan: guru.kewarganegaraan ?? '',
+   122→    alamat: guru.alamat ?? '',
+   123→    rt: guru.rt ?? '',
+   124→    rw: guru.rw ?? '',
+   125→    namaDusun: guru.namaDusun ?? '',
+   126→    desaKelurahan: guru.desaKelurahan ?? '',
+   127→    kecamatan: guru.kecamatan ?? '',
+   128→    kodePos: guru.kodePos ?? '',
+   129→    telepon: guru.telepon ?? '',
+   130→    hp: guru.hp ?? '',
+   131→    email: guru.email ?? '',
+   132→    statusKepegawaian: guru.statusKepegawaian ?? '',
+   133→    jenisPTK: guru.jenisPTK ?? '',
+   134→    tugasTambahan: guru.tugasTambahan ?? '',
+   135→    pangkatGolongan: guru.pangkatGolongan ?? '',
+   136→    sumberGaji: guru.sumberGaji ?? '',
+   137→    skCPNS: guru.skCPNS ?? '',
+   138→    tanggalCPNS: guru.tanggalCPNS ?? '',
+   139→    skPengangkatan: guru.skPengangkatan ?? '',
+   140→    tmtPengangkatan: guru.tmtPengangkatan ?? '',
+   141→    lembagaPengangkatan: guru.lembagaPengangkatan ?? '',
+   142→    tmtPNS: guru.tahunPelajaran ?? '',
+   143→    namaIbuKandung: guru.namaIbuKandung ?? '',
+   144→    statusPerkawinan: guru.statusPerkawinan ?? '',
+   145→    namaSuamiIstri: guru.namaSuamiIstri ?? '',
+   146→    nipSuamiIstri: guru.nipSuamiIstri ?? '',
+   147→    pekerjaanSuamiIstri: guru.pekerjaanSuamiIstri ?? '',
+   148→  };
+   149→}
+   150→
+   151→// ---------- Component ----------
+   152→export default function GuruPage() {
+   153→  const { tahunPelajaran, semester } = useAppStore();
+   154→  const { toast } = useToast();
+   155→  const queryClient = useQueryClient();
+   156→
+   157→  const [search, setSearch] = useState('');
+   158→  const [page, setPage] = useState(1);
+   159→  const [rombelFilter, setRombelFilter] = useState<string>('all');
+   160→  const limit = 10;
+   161→
+   162→  const [deleteTarget, setDeleteTarget] = useState<Guru | null>(null);
+   163→  const [editTarget, setEditTarget] = useState<Guru | null>(null);
+   164→  const [editData, setEditData] = useState<Record<string, string>>({});
+   165→  const [isSaving, setIsSaving] = useState(false);
+   166→
+   167→  // ---------- Sync editData when editTarget changes ----------
+   168→  useEffect(() => {
+   169→    if (editTarget) {
+   170→      setEditData(guruToRecord(editTarget));
+   171→    }
+   172→  }, [editTarget]);
+   173→
+   174→  // ---------- Fetch guru data ----------
+   175→  const { data, isLoading, isError } = useQuery<GuruResponse>({
+   176→    queryKey: ['guru', search, page, tahunPelajaran, semester],
+   177→    queryFn: async () => {
+   178→      const params = new URLSearchParams({
+   179→        search,
+   180→        tahunPelajaran,
+   181→        semester,
+   182→        page: page.toString(),
+   183→        limit: limit.toString(),
+   184→      });
+   185→      const res = await fetch(`/api/guru?${params}`);
+   186→      if (!res.ok) throw new Error('Gagal memuat data guru');
+   187→      return res.json();
+   188→    },
+   189→  });
+   190→
+   191→  // ---------- Fetch unique rombel values ----------
+   192→  const { data: rombelOptions } = useQuery<string[]>({
+   193→    queryKey: ['guru-rombel', tahunPelajaran, semester],
+   194→    queryFn: async () => {
+   195→      const params = new URLSearchParams({
+   196→        tahunPelajaran,
+   197→        semester,
+   198→        page: '1',
+   199→        limit: '9999',
+   200→      });
+   201→      const res = await fetch(`/api/guru?${params}`);
+   202→      if (!res.ok) return [];
+   203→      const json: GuruResponse = await res.json();
+   204→      const rombelSet = new Set<string>();
+   205→      json.data.forEach((g) => {
+   206→        if (g.tugasTambahan) rombelSet.add(g.tugasTambahan);
+   207→      });
+   208→      return Array.from(rombelSet).sort();
+   209→    },
+   210→  });
+   211→
+   212→  // ---------- Delete mutation ----------
+   213→  const deleteMutation = useMutation({
+   214→    mutationFn: async (id: string) => {
+   215→      const res = await fetch(`/api/guru`, {
+   216→        method: 'DELETE',
+   217→        headers: { 'Content-Type': 'application/json' },
+   218→        body: JSON.stringify({ id }),
+   219→      });
+   220→      if (!res.ok) throw new Error('Gagal menghapus data guru');
+   221→      return res.json();
+   222→    },
+   223→    onSuccess: () => {
+   224→      toast({ title: 'Berhasil', description: 'Data guru berhasil dihapus.' });
+   225→      queryClient.invalidateQueries({ queryKey: ['guru'] });
+   226→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   227→      setDeleteTarget(null);
+   228→    },
+   229→    onError: () => {
+   230→      toast({
+   231→        title: 'Gagal',
+   232→        description: 'Terjadi kesalahan saat menghapus data guru.',
+   233→        variant: 'destructive',
+   234→      });
+   235→    },
+   236→  });
+   237→
+   238→  // ---------- Filtered data by rombel ----------
+   239→  const gurus = data?.data ?? [];
+   240→  const total = data?.total ?? 0;
+   241→  const filteredGurus =
+   242→    rombelFilter === 'all'
+   243→      ? gurus
+   244→      : gurus.filter((g) => g.tugasTambahan === rombelFilter);
+   245→
+   246→  const startItem = (page - 1) * limit + 1;
+   247→  const endItem = Math.min(page * limit, filteredGurus.length > 0 ? (page - 1) * limit + filteredGurus.length : 0);
+   248→  const totalPages = Math.ceil(total / limit);
+   249→
+   250→  // ---------- Skeleton rows ----------
+   251→  const skeletonRows = Array.from({ length: 5 });
+   252→
+   253→  // ---------- Generic edit change handler ----------
+   254→  const handleChange = (key: string, value: string) =>
+   255→    setEditData((prev) => ({ ...prev, [key]: value }));
+   256→
+   257→  // ---------- Save handler ----------
+   258→  const handleSave = async () => {
+   259→    if (!editTarget) return;
+   260→    setIsSaving(true);
+   261→    try {
+   262→      const res = await fetch('/api/guru', {
+   263→        method: 'PUT',
+   264→        headers: { 'Content-Type': 'application/json' },
+   265→        body: JSON.stringify({ id: editTarget.id, ...editData }),
+   266→      });
+   267→      if (!res.ok) throw new Error('Gagal menyimpan data guru');
+   268→      toast({ title: 'Berhasil', description: 'Data guru berhasil diperbarui.' });
+   269→      queryClient.invalidateQueries({ queryKey: ['guru'] });
+   270→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   271→      setEditTarget(null);
+   272→    } catch {
+   273→      toast({
+   274→        title: 'Gagal',
+   275→        description: 'Terjadi kesalahan saat menyimpan data guru.',
+   276→        variant: 'destructive',
+   277→      });
+   278→    } finally {
+   279→      setIsSaving(false);
+   280→    }
+   281→  };
+   282→
+   283→  // ---------- Render helpers for edit form fields ----------
+   284→  const renderInput = (label: string, key: string, required?: boolean) => (
+   285→    <div className="space-y-1.5">
+   286→      <Label htmlFor={`edit-${key}`} className="text-sm font-medium">
+   287→        {label} {required && <span className="text-destructive">*</span>}
+   288→      </Label>
+   289→      <Input
+   290→        id={`edit-${key}`}
+   291→        value={editData[key] ?? ''}
+   292→        onChange={(e) => handleChange(key, e.target.value)}
+   293→        className="h-9 text-sm"
+   294→      />
+   295→    </div>
+   296→  );
+   297→
+   298→  const renderSelect = (label: string, key: string, options: string[]) => (
+   299→    <div className="space-y-1.5">
+   300→      <Label htmlFor={`edit-${key}`} className="text-sm font-medium">
+   301→        {label}
+   302→      </Label>
+   303→      <Select
+   304→        value={editData[key] ?? ''}
+   305→        onValueChange={(val) => handleChange(key, val)}
+   306→      >
+   307→        <SelectTrigger id={`edit-${key}`} className="h-9 text-sm">
+   308→          <SelectValue placeholder={`Pilih ${label}`} />
+   309→        </SelectTrigger>
+   310→        <SelectContent>
+   311→          {options.map((opt) => (
+   312→            <SelectItem key={opt} value={opt}>
+   313→              {opt}
+   314→            </SelectItem>
+   315→          ))}
+   316→        </SelectContent>
+   317→      </Select>
+   318→    </div>
+   319→  );
+   320→
+   321→  const renderSection = (title: string, children: React.ReactNode) => (
+   322→    <div className="space-y-3">
+   323→      <h3 className="text-sm font-bold border-b pb-1.5">{title}</h3>
+   324→      {children}
+   325→    </div>
+   326→  );
+   327→
+   328→  return (
+   329→    <div className="space-y-6">
+   330→      {/* Header */}
+   331→      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   332→        <div className="flex items-center gap-3">
+   333→          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+   334→            <GraduationCap className="h-5 w-5 text-primary" />
+   335→          </div>
+   336→          <div>
+   337→            <h1 className="text-2xl font-bold tracking-tight">Data Guru & Tenaga Pendidik</h1>
+   338→            <p className="text-sm text-muted-foreground">
+   339→              Kelola data guru — {tahunPelajaran} Semester {semester}
+   340→            </p>
+   341→          </div>
+   342→        </div>
+   343→        <div className="flex items-center gap-2">
+   344→          <ExportButton
+   345→            title="Laporan Data Guru"
+   346→            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+   347→            columns={GURU_COLUMNS}
+   348→            apiUrl="/api/guru"
+   349→            filename={`Data-Guru-${tahunPelajaran}-${semester}`}
+   350→          />
+   351→          <ImportExcelDialog
+   352→            type="guru"
+   353→            onSuccess={() => {
+   354→              queryClient.invalidateQueries({ queryKey: ['guru'] });
+   355→              queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   356→            }}
+   357→          >
+   358→            <Button variant="outline" size="sm" className="gap-2">
+   359→              <FileSpreadsheet className="h-4 w-4" />
+   360→              Import Excel
+   361→            </Button>
+   362→          </ImportExcelDialog>
+   363→        </div>
+   364→      </div>
+   365→
+   366→      {/* Filters Card */}
+   367→      <Card>
+   368→        <CardContent className="pt-6">
+   369→          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+   370→            {/* Search */}
+   371→            <div className="relative flex-1">
+   372→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   373→              <Input
+   374→                placeholder="Cari berdasarkan nama, NIP, atau NUPTK..."
+   375→                className="pl-9"
+   376→                value={search}
+   377→                onChange={(e) => {
+   378→                  setSearch(e.target.value);
+   379→                  setPage(1);
+   380→                }}
+   381→              />
+   382→            </div>
+   383→
+   384→            {/* Rombel filter */}
+   385→            <div className="w-full sm:w-56">
+   386→              <Select
+   387→                value={rombelFilter}
+   388→                onValueChange={(val) => {
+   389→                  setRombelFilter(val);
+   390→                  setPage(1);
+   391→                }}
+   392→              >
+   393→                <SelectTrigger>
+   394→                  <SelectValue placeholder="Filter Rombel" />
+   395→                </SelectTrigger>
+   396→                <SelectContent>
+   397→                  <SelectItem value="all">Semua Rombel</SelectItem>
+   398→                  {rombelOptions?.map((r) => (
+   399→                    <SelectItem key={r} value={r}>
+   400→                      {r}
+   401→                    </SelectItem>
+   402→                  ))}
+   403→                </SelectContent>
+   404→              </Select>
+   405→            </div>
+   406→          </div>
+   407→        </CardContent>
+   408→      </Card>
+   409→
+   410→      {/* Table Card */}
+   411→      <Card>
+   412→        <CardHeader className="pb-3">
+   413→          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   414→            <CardTitle className="text-lg font-semibold">Daftar Guru</CardTitle>
+   415→            {!isLoading && !isError && (
+   416→              <p className="text-sm text-muted-foreground">
+   417→                Menampilkan {total > 0 ? startItem : 0}-{endItem} dari {total} guru
+   418→              </p>
+   419→            )}
+   420→          </div>
+   421→        </CardHeader>
+   422→        <CardContent>
+   423→          <div className="overflow-x-auto">
+   424→            {isLoading ? (
+   425→              /* ---------- Skeleton ---------- */
+   426→              <div className="space-y-3">
+   427→                <Skeleton className="h-10 w-full" />
+   428→                {skeletonRows.map((_, i) => (
+   429→                  <Skeleton key={i} className="h-12 w-full" />
+   430→                ))}
+   431→              </div>
+   432→            ) : isError ? (
+   433→              <div className="flex flex-col items-center justify-center py-16 text-center">
+   434→                <GraduationCap className="mb-4 h-12 w-12 text-muted-foreground/40" />
+   435→                <p className="text-sm font-medium text-muted-foreground">
+   436→                  Gagal memuat data guru
+   437→                </p>
+   438→              </div>
+   439→            ) : filteredGurus.length === 0 ? (
+   440→              <div className="flex flex-col items-center justify-center py-16 text-center">
+   441→                <Search className="mb-4 h-12 w-12 text-muted-foreground/40" />
+   442→                <p className="text-sm font-medium text-muted-foreground">
+   443→                  Tidak ada data guru yang ditemukan
+   444→                </p>
+   445→                {search && (
+   446→                  <p className="mt-1 text-xs text-muted-foreground">
+   447→                    Coba ubah kata kunci pencarian
+   448→                  </p>
+   449→                )}
+   450→              </div>
+   451→            ) : (
+   452→              /* ---------- Table ---------- */
+   453→              <Table>
+   454→                <TableHeader>
+   455→                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+   456→                    {/* 1. No — always */}
+   457→                    <TableHead className="w-12 text-center whitespace-nowrap">No</TableHead>
+   458→                    {/* 2. Nama — always */}
+   459→                    <TableHead className="min-w-[160px] whitespace-nowrap">Nama</TableHead>
+   460→                    {/* 3. NUPTK — md+ */}
+   461→                    <TableHead className="hidden min-w-[140px] md:table-cell whitespace-nowrap">NUPTK</TableHead>
+   462→                    {/* 4. JK — always */}
+   463→                    <TableHead className="w-16 text-center whitespace-nowrap">JK</TableHead>
+   464→                    {/* 5. Tempat Lahir — md+ */}
+   465→                    <TableHead className="hidden min-w-[130px] md:table-cell whitespace-nowrap">Tempat Lahir</TableHead>
+   466→                    {/* 6. Tanggal Lahir — md+ */}
+   467→                    <TableHead className="hidden min-w-[110px] md:table-cell whitespace-nowrap">Tanggal Lahir</TableHead>
+   468→                    {/* 7. NIP — sm+ */}
+   469→                    <TableHead className="hidden min-w-[140px] sm:table-cell whitespace-nowrap">NIP</TableHead>
+   470→                    {/* 8. Status Kepegawaian — md+ */}
+   471→                    <TableHead className="hidden min-w-[140px] md:table-cell whitespace-nowrap">Status Kepegawaian</TableHead>
+   472→                    {/* 9. Jenis PTK — md+ */}
+   473→                    <TableHead className="hidden min-w-[120px] md:table-cell whitespace-nowrap">Jenis PTK</TableHead>
+   474→                    {/* 10. Agama — sm+ */}
+   475→                    <TableHead className="hidden min-w-[80px] sm:table-cell whitespace-nowrap">Agama</TableHead>
+   476→                    {/* 11. Alamat — lg+ */}
+   477→                    <TableHead className="hidden min-w-[180px] lg:table-cell whitespace-nowrap">Alamat</TableHead>
+   478→                    {/* 12. RT — xl+ */}
+   479→                    <TableHead className="hidden min-w-[50px] xl:table-cell whitespace-nowrap">RT</TableHead>
+   480→                    {/* 13. RW — xl+ */}
+   481→                    <TableHead className="hidden min-w-[50px] xl:table-cell whitespace-nowrap">RW</TableHead>
+   482→                    {/* 14. Nama Dusun — xl+ */}
+   483→                    <TableHead className="hidden min-w-[120px] xl:table-cell whitespace-nowrap">Nama Dusun</TableHead>
+   484→                    {/* 15. Desa/Kelurahan — lg+ */}
+   485→                    <TableHead className="hidden min-w-[140px] lg:table-cell whitespace-nowrap">Desa/Kelurahan</TableHead>
+   486→                    {/* 16. Kecamatan — lg+ */}
+   487→                    <TableHead className="hidden min-w-[130px] lg:table-cell whitespace-nowrap">Kecamatan</TableHead>
+   488→                    {/* 17. Kode Pos — xl+ */}
+   489→                    <TableHead className="hidden min-w-[80px] xl:table-cell whitespace-nowrap">Kode Pos</TableHead>
+   490→                    {/* 18. Telepon — xl+ */}
+   491→                    <TableHead className="hidden min-w-[110px] xl:table-cell whitespace-nowrap">Telepon</TableHead>
+   492→                    {/* 19. HP — sm+ */}
+   493→                    <TableHead className="hidden min-w-[120px] sm:table-cell whitespace-nowrap">HP</TableHead>
+   494→                    {/* 20. Email — lg+ */}
+   495→                    <TableHead className="hidden min-w-[160px] lg:table-cell whitespace-nowrap">Email</TableHead>
+   496→                    {/* 21. Tugas Tambahan — md+ */}
+   497→                    <TableHead className="hidden min-w-[180px] md:table-cell whitespace-nowrap">Tugas Tambahan</TableHead>
+   498→                    {/* 22. SK CPNS — xl+ */}
+   499→                    <TableHead className="hidden min-w-[140px] xl:table-cell whitespace-nowrap">SK CPNS</TableHead>
+   500→                    {/* 23. Tanggal CPNS — xl+ */}
+   501→                    <TableHead className="hidden min-w-[110px] xl:table-cell whitespace-nowrap">Tanggal CPNS</TableHead>
+   502→                    {/* 24. SK Pengangkatan — xl+ */}
+   503→                    <TableHead className="hidden min-w-[140px] xl:table-cell whitespace-nowrap">SK Pengangkatan</TableHead>
+   504→                    {/* 25. TMT Pengangkatan — xl+ */}
+   505→                    <TableHead className="hidden min-w-[130px] xl:table-cell whitespace-nowrap">TMT Pengangkatan</TableHead>
+   506→                    {/* 26. Lembaga Pengangkatan — xl+ */}
+   507→                    <TableHead className="hidden min-w-[160px] xl:table-cell whitespace-nowrap">Lembaga Pengangkatan</TableHead>
+   508→                    {/* 27. Pangkat/Golongan — lg+ */}
+   509→                    <TableHead className="hidden min-w-[130px] lg:table-cell whitespace-nowrap">Pangkat/Golongan</TableHead>
+   510→                    {/* 28. Sumber Gaji — lg+ */}
+   511→                    <TableHead className="hidden min-w-[120px] lg:table-cell whitespace-nowrap">Sumber Gaji</TableHead>
+   512→                    {/* 29. Nama Ibu Kandung — xl+ */}
+   513→                    <TableHead className="hidden min-w-[160px] xl:table-cell whitespace-nowrap">Nama Ibu Kandung</TableHead>
+   514→                    {/* 30. Status Perkawinan — lg+ */}
+   515→                    <TableHead className="hidden min-w-[130px] lg:table-cell whitespace-nowrap">Status Perkawinan</TableHead>
+   516→                    {/* 31. Nama Suami/Istri — xl+ */}
+   517→                    <TableHead className="hidden min-w-[160px] xl:table-cell whitespace-nowrap">Nama Suami/Istri</TableHead>
+   518→                    {/* 32. NIP Suami/Istri — xl+ */}
+   519→                    <TableHead className="hidden min-w-[140px] xl:table-cell whitespace-nowrap">NIP Suami/Istri</TableHead>
+   520→                    {/* 33. Pekerjaan Suami/Istri — xl+ */}
+   521→                    <TableHead className="hidden min-w-[160px] xl:table-cell whitespace-nowrap">Pekerjaan Suami/Istri</TableHead>
+   522→                    {/* 34. Kewarganegaraan — lg+ */}
+   523→                    <TableHead className="hidden min-w-[120px] lg:table-cell whitespace-nowrap">Kewarganegaraan</TableHead>
+   524→                    {/* 35. NIK — lg+ */}
+   525→                    <TableHead className="hidden min-w-[160px] lg:table-cell whitespace-nowrap">NIK</TableHead>
+   526→
+   527→                    {/* Aksi — always */}
+   528→                    <TableHead className="w-[88px] text-center whitespace-nowrap">Aksi</TableHead>
+   529→                  </TableRow>
+   530→                </TableHeader>
+   531→                <TableBody>
+   532→                  {filteredGurus.map((guru) => (
+   533→                    <TableRow key={guru.id}>
+   534→                      {/* 1. No — always */}
+   535→                      <TableCell className="text-center text-sm text-muted-foreground whitespace-nowrap">
+   536→                        {guru.no}
+   537→                      </TableCell>
+   538→                      {/* 2. Nama — always */}
+   539→                      <TableCell className="font-medium whitespace-nowrap">{guru.nama}</TableCell>
+   540→                      {/* 3. NUPTK — md+ */}
+   541→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">{guru.nuptk || '-'}</TableCell>
+   542→                      {/* 4. JK — always */}
+   543→                      <TableCell className="text-center whitespace-nowrap">{guru.jenisKelamin}</TableCell>
+   544→                      {/* 5. Tempat Lahir — md+ */}
+   545→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">{guru.tempatLahir || '-'}</TableCell>
+   546→                      {/* 6. Tanggal Lahir — md+ */}
+   547→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">{guru.tanggalLahir || '-'}</TableCell>
+   548→                      {/* 7. NIP — sm+ */}
+   549→                      <TableCell className="hidden text-sm sm:table-cell whitespace-nowrap">{guru.nip || '-'}</TableCell>
+   550→                      {/* 8. Status Kepegawaian — md+ */}
+   551→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">
+   552→                        {guru.statusKepegawaian || '-'}
+   553→                      </TableCell>
+   554→                      {/* 9. Jenis PTK — md+ */}
+   555→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">
+   556→                        {guru.jenisPTK || '-'}
+   557→                      </TableCell>
+   558→                      {/* 10. Agama — sm+ */}
+   559→                      <TableCell className="hidden text-sm sm:table-cell whitespace-nowrap">{guru.agama || '-'}</TableCell>
+   560→                      {/* 11. Alamat — lg+ */}
+   561→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">
+   562→                        {guru.alamat || '-'}
+   563→                      </TableCell>
+   564→                      {/* 12. RT — xl+ */}
+   565→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.rt || '-'}</TableCell>
+   566→                      {/* 13. RW — xl+ */}
+   567→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.rw || '-'}</TableCell>
+   568→                      {/* 14. Nama Dusun — xl+ */}
+   569→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.namaDusun || '-'}</TableCell>
+   570→                      {/* 15. Desa/Kelurahan — lg+ */}
+   571→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">{guru.desaKelurahan || '-'}</TableCell>
+   572→                      {/* 16. Kecamatan — lg+ */}
+   573→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">{guru.kecamatan || '-'}</TableCell>
+   574→                      {/* 17. Kode Pos — xl+ */}
+   575→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.kodePos || '-'}</TableCell>
+   576→                      {/* 18. Telepon — xl+ */}
+   577→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.telepon || '-'}</TableCell>
+   578→                      {/* 19. HP — sm+ */}
+   579→                      <TableCell className="hidden text-sm sm:table-cell whitespace-nowrap">{guru.hp || '-'}</TableCell>
+   580→                      {/* 20. Email — lg+ */}
+   581→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">{guru.email || '-'}</TableCell>
+   582→                      {/* 21. Tugas Tambahan — md+ */}
+   583→                      <TableCell className="hidden text-sm md:table-cell whitespace-nowrap">
+   584→                        {guru.tugasTambahan || '-'}
+   585→                      </TableCell>
+   586→                      {/* 22. SK CPNS — xl+ */}
+   587→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.skCPNS || '-'}</TableCell>
+   588→                      {/* 23. Tanggal CPNS — xl+ */}
+   589→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.tanggalCPNS || '-'}</TableCell>
+   590→                      {/* 24. SK Pengangkatan — xl+ */}
+   591→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.skPengangkatan || '-'}</TableCell>
+   592→                      {/* 25. TMT Pengangkatan — xl+ */}
+   593→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.tmtPengangkatan || '-'}</TableCell>
+   594→                      {/* 26. Lembaga Pengangkatan — xl+ */}
+   595→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.lembagaPengangkatan || '-'}</TableCell>
+   596→                      {/* 27. Pangkat/Golongan — lg+ */}
+   597→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">
+   598→                        {guru.pangkatGolongan || '-'}
+   599→                      </TableCell>
+   600→                      {/* 28. Sumber Gaji — lg+ */}
+   601→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">
+   602→                        {guru.sumberGaji || '-'}
+   603→                      </TableCell>
+   604→                      {/* 29. Nama Ibu Kandung — xl+ */}
+   605→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.namaIbuKandung || '-'}</TableCell>
+   606→                      {/* 30. Status Perkawinan — lg+ */}
+   607→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">
+   608→                        {guru.statusPerkawinan || '-'}
+   609→                      </TableCell>
+   610→                      {/* 31. Nama Suami/Istri — xl+ */}
+   611→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.namaSuamiIstri || '-'}</TableCell>
+   612→                      {/* 32. NIP Suami/Istri — xl+ */}
+   613→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.nipSuamiIstri || '-'}</TableCell>
+   614→                      {/* 33. Pekerjaan Suami/Istri — xl+ */}
+   615→                      <TableCell className="hidden text-sm xl:table-cell whitespace-nowrap">{guru.pekerjaanSuamiIstri || '-'}</TableCell>
+   616→                      {/* 34. Kewarganegaraan — lg+ */}
+   617→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">
+   618→                        {guru.kewarganegaraan || '-'}
+   619→                      </TableCell>
+   620→                      {/* 35. NIK — lg+ */}
+   621→                      <TableCell className="hidden text-sm lg:table-cell whitespace-nowrap">{guru.nik || '-'}</TableCell>
+   622→
+   623→                      {/* Aksi — always */}
+   624→                      <TableCell className="text-center whitespace-nowrap">
+   625→                        <div className="flex items-center justify-center gap-1">
+   626→                          <Button
+   627→                            variant="ghost"
+   628→                            size="icon"
+   629→                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+   630→                            onClick={() => setEditTarget(guru)}
+   631→                            aria-label={`Edit ${guru.nama}`}
+   632→                          >
+   633→                            <Pencil className="h-4 w-4" />
+   634→                          </Button>
+   635→                          <Button
+   636→                            variant="ghost"
+   637→                            size="icon"
+   638→                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+   639→                            onClick={() => setDeleteTarget(guru)}
+   640→                            aria-label={`Hapus ${guru.nama}`}
+   641→                          >
+   642→                            <Trash2 className="h-4 w-4" />
+   643→                          </Button>
+   644→                        </div>
+   645→                      </TableCell>
+   646→                    </TableRow>
+   647→                  ))}
+   648→                </TableBody>
+   649→              </Table>
+   650→            )}
+   651→          </div>
+   652→
+   653→          {/* ---------- Pagination ---------- */}
+   654→          {!isLoading && !isError && filteredGurus.length > 0 && (
+   655→            <div className="mt-4 flex items-center justify-between">
+   656→              <p className="text-sm text-muted-foreground">
+   657→                Halaman {page} dari {totalPages || 1}
+   658→              </p>
+   659→              <div className="flex items-center gap-2">
+   660→                <Button
+   661→                  variant="outline"
+   662→                  size="icon"
+   663→                  className="h-8 w-8"
+   664→                  disabled={page <= 1}
+   665→                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+   666→                  aria-label="Halaman sebelumnya"
+   667→                >
+   668→                  <ChevronLeft className="h-4 w-4" />
+   669→                </Button>
+   670→                <Button
+   671→                  variant="outline"
+   672→                  size="icon"
+   673→                  className="h-8 w-8"
+   674→                  disabled={page >= totalPages}
+   675→                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   676→                  aria-label="Halaman berikutnya"
+   677→                >
+   678→                  <ChevronRight className="h-4 w-4" />
+   679→                </Button>
+   680→              </div>
+   681→            </div>
+   682→          )}
+   683→        </CardContent>
+   684→      </Card>
+   685→
+   686→      {/* ---------- Delete Confirmation Dialog ---------- */}
+   687→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+   688→        <AlertDialogContent>
+   689→          <AlertDialogHeader>
+   690→            <AlertDialogTitle>Hapus Data Guru</AlertDialogTitle>
+   691→            <AlertDialogDescription>
+   692→              Apakah Anda yakin ingin menghapus data{' '}
+   693→              <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan ini tidak
+   694→              dapat dibatalkan.
+   695→            </AlertDialogDescription>
+   696→          </AlertDialogHeader>
+   697→          <AlertDialogFooter>
+   698→            <AlertDialogCancel disabled={deleteMutation.isPending}>Batal</AlertDialogCancel>
+   699→            <AlertDialogAction
+   700→              className="bg-destructive text-white hover:bg-destructive/90"
+   701→              onClick={() => {
+   702→                if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+   703→              }}
+   704→              disabled={deleteMutation.isPending}
+   705→            >
+   706→              {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
+   707→            </AlertDialogAction>
+   708→          </AlertDialogFooter>
+   709→        </AlertDialogContent>
+   710→      </AlertDialog>
+   711→
+   712→      {/* ---------- Edit Dialog ---------- */}
+   713→      <Dialog
+   714→        open={!!editTarget}
+   715→        onOpenChange={(open) => !open && setEditTarget(null)}
+   716→      >
+   717→        <DialogContent className="max-w-2xl">
+   718→          <DialogHeader>
+   719→            <DialogTitle>Edit Data Guru</DialogTitle>
+   720→            <DialogDescription>
+   721→              Perbarui informasi data guru di bawah ini.
+   722→            </DialogDescription>
+   723→          </DialogHeader>
+   724→
+   725→          <ScrollArea className="max-h-[70vh] pe-2">
+   726→            <div className="space-y-6 pr-4">
+   727→              {/* Section 1: Data Pribadi */}
+   728→              {renderSection('Data Pribadi', (
+   729→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   730→                  {renderInput('No', 'no')}
+   731→                  {renderInput('Nama', 'nama', true)}
+   732→                  {renderInput('NUPTK', 'nuptk')}
+   733→                  {renderSelect('JK', 'jenisKelamin', ['L', 'P'])}
+   734→                  {renderInput('Tempat Lahir', 'tempatLahir')}
+   735→                  {renderInput('Tanggal Lahir', 'tanggalLahir')}
+   736→                  {renderInput('NIP', 'nip')}
+   737→                  {renderInput('NIK', 'nik')}
+   738→                  {renderSelect('Agama', 'agama', ['Islam', 'Kristen', 'Katholik', 'Hindu', 'Buddha', 'Konghucu', 'lainnya'])}
+   739→                  {renderSelect('Status', 'status', ['Aktif', 'Tidak Aktif'])}
+   740→                  {renderInput('Kewarganegaraan', 'kewarganegaraan')}
+   741→                </div>
+   742→              ))}
+   743→
+   744→              {/* Section 2: Alamat & Kontak */}
+   745→              {renderSection('Alamat & Kontak', (
+   746→                <div className="space-y-4">
+   747→                  <div className="sm:col-span-2">
+   748→                    {renderInput('Alamat', 'alamat')}
+   749→                  </div>
+   750→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   751→                    {renderInput('RT', 'rt')}
+   752→                    {renderInput('RW', 'rw')}
+   753→                    {renderInput('Nama Dusun', 'namaDusun')}
+   754→                    {renderInput('Desa/Kelurahan', 'desaKelurahan')}
+   755→                    {renderInput('Kecamatan', 'kecamatan')}
+   756→                    {renderInput('Kode Pos', 'kodePos')}
+   757→                    {renderInput('Telepon', 'telepon')}
+   758→                    {renderInput('HP', 'hp')}
+   759→                    {renderInput('Email', 'email')}
+   760→                  </div>
+   761→                </div>
+   762→              ))}
+   763→
+   764→              {/* Section 3: Kepegawaian */}
+   765→              {renderSection('Kepegawaian', (
+   766→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   767→                  {renderInput('Status Kepegawaian', 'statusKepegawaian')}
+   768→                  {renderInput('Jenis PTK', 'jenisPTK')}
+   769→                  {renderInput('Tugas Tambahan', 'tugasTambahan')}
+   770→                  {renderInput('Pangkat/Golongan', 'pangkatGolongan')}
+   771→                  {renderInput('Sumber Gaji', 'sumberGaji')}
+   772→                  {renderInput('SK CPNS', 'skCPNS')}
+   773→                  {renderInput('Tanggal CPNS', 'tanggalCPNS')}
+   774→                  {renderInput('SK Pengangkatan', 'skPengangkatan')}
+   775→                  {renderInput('TMT Pengangkatan', 'tmtPengangkatan')}
+   776→                  {renderInput('Lembaga Pengangkatan', 'lembagaPengangkatan')}
+   777→                  {renderInput('TMT PNS', 'tmtPNS')}
+   778→                </div>
+   779→              ))}
+   780→
+   781→              {/* Section 4: Data Keluarga */}
+   782→              {renderSection('Data Keluarga', (
+   783→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   784→                  {renderInput('Nama Ibu Kandung', 'namaIbuKandung')}
+   785→                  {renderSelect('Status Perkawinan', 'statusPerkawinan', ['Kawin', 'Belum Kawin', 'Cerai Hidup', 'Cerai Mati'])}
+   786→                  {renderInput('Nama Suami/Istri', 'namaSuamiIstri')}
+   787→                  {renderInput('NIP Suami/Istri', 'nipSuamiIstri')}
+   788→                  {renderInput('Pekerjaan Suami/Istri', 'pekerjaanSuamiIstri')}
+   789→                </div>
+   790→              ))}
+   791→            </div>
+   792→          </ScrollArea>
+   793→
+   794→          <DialogFooter>
+   795→            <Button
+   796→              variant="outline"
+   797→              onClick={() => setEditTarget(null)}
+   798→              disabled={isSaving}
+   799→            >
+   800→              Batal
+   801→            </Button>
+   802→            <Button onClick={handleSave} disabled={isSaving}>
+   803→              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   804→              {isSaving ? 'Menyimpan...' : 'Simpan'}
+   805→            </Button>
+   806→          </DialogFooter>
+   807→        </DialogContent>
+   808→      </Dialog>
+   809→    </div>
+   810→  );
+   811→}

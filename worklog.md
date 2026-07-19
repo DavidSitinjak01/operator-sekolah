@@ -241,3 +241,28 @@ Stage Summary:
 - Export Excel: header judul + subtitle + kolom dengan lebar custom
 - Export PDF: header emerald, nomor halaman, timestamp, auto-page-break
 - 0 console error di semua halaman
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix search functionality across all pages
+
+Work Log:
+- Analyzed all 4 pages: SiswaPage, GuruPage, MutasiMasukPage, MutasiKeluarPage
+- Tested API endpoints directly - confirmed they return correct results
+- Found bugs:
+  1. SiswaPage: No debounce, every keystroke triggers API call
+  2. GuruPage: search param always sent (even empty) via URLSearchParams constructor
+  3. MutasiMasukPage: Required clicking search button (not real-time)
+  4. MutasiKeluarPage: Debounce broken - cleanup returned from useCallback instead of useEffect
+- Fixed all 4 pages with proper 300ms debounce using useEffect
+- Changed all queryFn to conditionally set search param only when non-empty
+- MutasiMasukPage: removed button-triggered search, now real-time with debounce
+- Verified all 4 pages in browser: Siswa(10), Guru(2), MutasiMasuk(1), MutasiKeluar(1) results found
+- Force pushed to GitHub (fc885f8)
+
+Stage Summary:
+- Files changed: SiswaPage.tsx, GuruPage.tsx, MutasiMasukPage.tsx, MutasiKeluarPage.tsx
+- All pages now use consistent debounce pattern with useEffect
+- Search params only sent when non-empty
+- Browser verified all searches return correct data

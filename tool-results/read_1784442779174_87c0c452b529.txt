@@ -1,0 +1,779 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useCallback } from 'react';
+     4→     4→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+     5→     5→import {
+     6→     6→  UserPlus,
+     7→     7→  Search,
+     8→     8→  Pencil,
+     9→     9→  Trash2,
+    10→    10→  ChevronLeft,
+    11→    11→  ChevronRight,
+    12→    12→  Loader2,
+    13→    13→} from 'lucide-react';
+    14→    14→
+    15→    15→import { Button } from '@/components/ui/button';
+    16→    16→import { Input } from '@/components/ui/input';
+    17→    17→import { Textarea } from '@/components/ui/textarea';
+    18→    18→import { Label } from '@/components/ui/label';
+    19→    19→import { Skeleton } from '@/components/ui/skeleton';
+    20→    20→import {
+    21→    21→  Card,
+    22→    22→  CardContent,
+    23→    23→  CardHeader,
+    24→    24→  CardTitle,
+    25→    25→  CardAction,
+    26→    26→} from '@/components/ui/card';
+    27→    27→import {
+    28→    28→  Table,
+    29→    29→  TableBody,
+    30→    30→  TableCell,
+    31→    31→  TableHead,
+    32→    32→  TableHeader,
+    33→    33→  TableRow,
+    34→    34→} from '@/components/ui/table';
+    35→    35→import {
+    36→    36→  Dialog,
+    37→    37→  DialogContent,
+    38→    38→  DialogDescription,
+    39→    39→  DialogFooter,
+    40→    40→  DialogHeader,
+    41→    41→  DialogTitle,
+    42→    42→} from '@/components/ui/dialog';
+    43→    43→import {
+    44→    44→  AlertDialog,
+    45→    45→  AlertDialogAction,
+    46→    46→  AlertDialogCancel,
+    47→    47→  AlertDialogContent,
+    48→    48→  AlertDialogDescription,
+    49→    49→  AlertDialogFooter,
+    50→    50→  AlertDialogHeader,
+    51→    51→  AlertDialogTitle,
+    52→    52→} from '@/components/ui/alert-dialog';
+    53→    53→import {
+    54→    54→  Select,
+    55→    55→  SelectContent,
+    56→    56→  SelectItem,
+    57→    57→  SelectTrigger,
+    58→    58→  SelectValue,
+    59→    59→} from '@/components/ui/select';
+    60→    60→import { useToast } from '@/hooks/use-toast';
+    61→    61→import { useAppStore } from '@/store/app';
+    62→    62→import ExportButton from '@/components/ExportButton';
+    63→    63→import { MUTASI_MASUK_COLUMNS } from '@/lib/export-utils';
+    64→    64→
+    65→    65→// ─── Types ───────────────────────────────────────────────────────────────────
+    66→    66→
+    67→    67→interface MutasiMasuk {
+    68→    68→  id: string;
+    69→    69→  nama: string;
+    70→    70→  nis: string;
+    71→    71→  asalSekolah: string;
+    72→    72→  kelas: string;
+    73→    73→  tanggalMasuk: string;
+    74→    74→  alasan: string;
+    75→    75→  noSurat: string;
+    76→    76→  tahunPelajaran: string;
+    77→    77→  semester: string;
+    78→    78→}
+    79→    79→
+    80→    80→interface MutasiMasukResponse {
+    81→    81→  data: MutasiMasuk[];
+    82→    82→  total: number;
+    83→    83→  page: number;
+    84→    84→  limit: number;
+    85→    85→  totalPages: number;
+    86→    86→}
+    87→    87→
+    88→    88→interface FormState {
+    89→    89→  id?: string;
+    90→    90→  nama: string;
+    91→    91→  nis: string;
+    92→    92→  asalSekolah: string;
+    93→    93→  kelas: string;
+    94→    94→  tanggalMasuk: string;
+    95→    95→  alasan: string;
+    96→    96→  noSurat: string;
+    97→    97→  tahunPelajaran: string;
+    98→    98→  semester: string;
+    99→    99→}
+   100→   100→
+   101→   101→// ─── Constants ───────────────────────────────────────────────────────────────
+   102→   102→
+   103→   103→const KELAS_OPTIONS = ['VII-A', 'VII-B', 'VIII-A', 'VIII-B', 'IX-A', 'IX-B'];
+   104→   104→
+   105→   105→const INITIAL_FORM: FormState = {
+   106→   106→  nama: '',
+   107→   107→  nis: '',
+   108→   108→  asalSekolah: '',
+   109→   109→  kelas: '',
+   110→   110→  tanggalMasuk: '',
+   111→   111→  alasan: '',
+   112→   112→  noSurat: '',
+   113→   113→  tahunPelajaran: '2025/2026',
+   114→   114→  semester: 'Ganjil',
+   115→   115→};
+   116→   116→
+   117→   117→const PAGE_SIZE = 10;
+   118→   118→
+   119→   119→// ─── Component ───────────────────────────────────────────────────────────────
+   120→   120→
+   121→   121→export default function MutasiMasukPage() {
+   122→   122→  const queryClient = useQueryClient();
+   123→   123→  const { toast } = useToast();
+   124→   124→  const { tahunPelajaran, semester } = useAppStore();
+   125→   125→
+   126→   126→  // State: search & pagination
+   127→   127→  const [search, setSearch] = useState('');
+   128→   128→  const [searchInput, setSearchInput] = useState('');
+   129→   129→  const [page, setPage] = useState(1);
+   130→   130→
+   131→   131→  // State: dialog
+   132→   132→  const [dialogOpen, setDialogOpen] = useState(false);
+   133→   133→  const [isEditing, setIsEditing] = useState(false);
+   134→   134→  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+   135→   135→
+   136→   136→  // State: alert dialog
+   137→   137→  const [deleteTarget, setDeleteTarget] = useState<MutasiMasuk | null>(null);
+   138→   138→  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+   139→   139→
+   140→   140→  // ─── Query: Fetch data ──────────────────────────────────────────────────
+   141→   141→
+   142→   142→  const { data, isLoading, isError } = useQuery<MutasiMasukResponse>({
+   143→   143→    queryKey: ['mutasi-masuk', search, page, tahunPelajaran, semester],
+   144→   144→    queryFn: async () => {
+   145→   145→      const params = new URLSearchParams({
+   146→   146→        search,
+   147→   147→        page: String(page),
+   148→   148→        limit: String(PAGE_SIZE),
+   149→   149→      });
+   150→   150→      params.set('tahunPelajaran', tahunPelajaran);
+   151→   151→      params.set('semester', semester);
+   152→   152→      const res = await fetch(`/api/mutasi-masuk?${params}`);
+   153→   153→      if (!res.ok) {
+   154→   154→        throw new Error('Gagal memuat data mutasi masuk');
+   155→   155→      }
+   156→   156→      return res.json();
+   157→   157→    },
+   158→   158→  });
+   159→   159→
+   160→   160→  // ─── Mutation: Create / Update ──────────────────────────────────────────
+   161→   161→
+   162→   162→  const saveMutation = useMutation({
+   163→   163→    mutationFn: async (payload: FormState) => {
+   164→   164→      const isEdit = !!payload.id;
+   165→   165→      const method = isEdit ? 'PUT' : 'POST';
+   166→   166→      const body = isEdit ? payload : { ...payload, id: undefined };
+   167→   167→      const res = await fetch('/api/mutasi-masuk', {
+   168→   168→        method,
+   169→   169→        headers: { 'Content-Type': 'application/json' },
+   170→   170→        body: JSON.stringify(body),
+   171→   171→      });
+   172→   172→      if (!res.ok) {
+   173→   173→        const err = await res.json().catch(() => ({}));
+   174→   174→        throw new Error(err.message || 'Gagal menyimpan data');
+   175→   175→      }
+   176→   176→      return res.json();
+   177→   177→    },
+   178→   178→    onSuccess: () => {
+   179→   179→      queryClient.invalidateQueries({ queryKey: ['mutasi-masuk'] });
+   180→   180→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   181→   181→      setDialogOpen(false);
+   182→   182→      resetForm();
+   183→   183→      toast({
+   184→   184→        title: isEditing ? 'Berhasil Diperbarui' : 'Berhasil Ditambahkan',
+   185→   185→        description: isEditing
+   186→   186→          ? 'Data mutasi masuk berhasil diperbarui.'
+   187→   187→          : 'Data mutasi masuk berhasil ditambahkan.',
+   188→   188→      });
+   189→   189→    },
+   190→   190→    onError: (error: Error) => {
+   191→   191→      toast({
+   192→   192→        title: 'Gagal Menyimpan',
+   193→   193→        description: error.message || 'Terjadi kesalahan saat menyimpan data.',
+   194→   194→        variant: 'destructive',
+   195→   195→      });
+   196→   196→    },
+   197→   197→  });
+   198→   198→
+   199→   199→  // ─── Mutation: Delete ───────────────────────────────────────────────────
+   200→   200→
+   201→   201→  const deleteMutation = useMutation({
+   202→   202→    mutationFn: async (id: string) => {
+   203→   203→      const res = await fetch(`/api/mutasi-masuk?id=${id}`, {
+   204→   204→        method: 'DELETE',
+   205→   205→      });
+   206→   206→      if (!res.ok) {
+   207→   207→        throw new Error('Gagal menghapus data');
+   208→   208→      }
+   209→   209→      return res.json();
+   210→   210→    },
+   211→   211→    onSuccess: () => {
+   212→   212→      queryClient.invalidateQueries({ queryKey: ['mutasi-masuk'] });
+   213→   213→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   214→   214→      setDeleteAlertOpen(false);
+   215→   215→      setDeleteTarget(null);
+   216→   216→      toast({
+   217→   217→        title: 'Berhasil Dihapus',
+   218→   218→        description: 'Data mutasi masuk berhasil dihapus.',
+   219→   219→        variant: 'default',
+   220→   220→      });
+   221→   221→    },
+   222→   222→    onError: (error: Error) => {
+   223→   223→      toast({
+   224→   224→        title: 'Gagal Menghapus',
+   225→   225→        description: error.message || 'Terjadi kesalahan saat menghapus data.',
+   226→   226→        variant: 'destructive',
+   227→   227→      });
+   228→   228→    },
+   229→   229→  });
+   230→   230→
+   231→   231→  // ─── Handlers ───────────────────────────────────────────────────────────
+   232→   232→
+   233→   233→  const handleSearch = useCallback(() => {
+   234→   234→    setSearch(searchInput);
+   235→   235→    setPage(1);
+   236→   236→  }, [searchInput]);
+   237→   237→
+   238→   238→  const handleKeyDown = useCallback(
+   239→   239→    (e: React.KeyboardEvent<HTMLInputElement>) => {
+   240→   240→      if (e.key === 'Enter') {
+   241→   241→        handleSearch();
+   242→   242→      }
+   243→   243→    },
+   244→   244→    [handleSearch]
+   245→   245→  );
+   246→   246→
+   247→   247→  const openAddDialog = () => {
+   248→   248→    setForm({
+   249→   249→      ...INITIAL_FORM,
+   250→   250→      tahunPelajaran: useAppStore.getState().tahunPelajaran,
+   251→   251→      semester: useAppStore.getState().semester,
+   252→   252→    });
+   253→   253→    setIsEditing(false);
+   254→   254→    setDialogOpen(true);
+   255→   255→  };
+   256→   256→
+   257→   257→  const openEditDialog = (item: MutasiMasuk) => {
+   258→   258→    setForm({
+   259→   259→      id: item.id,
+   260→   260→      nama: item.nama,
+   261→   261→      nis: item.nis,
+   262→   262→      asalSekolah: item.asalSekolah,
+   263→   263→      kelas: item.kelas,
+   264→   264→      tanggalMasuk: item.tanggalMasuk,
+   265→   265→      alasan: item.alasan,
+   266→   266→      noSurat: item.noSurat,
+   267→   267→      tahunPelajaran: item.tahunPelajaran,
+   268→   268→      semester: item.semester,
+   269→   269→    });
+   270→   270→    setIsEditing(true);
+   271→   271→    setDialogOpen(true);
+   272→   272→  };
+   273→   273→
+   274→   274→  const openDeleteAlert = (item: MutasiMasuk) => {
+   275→   275→    setDeleteTarget(item);
+   276→   276→    setDeleteAlertOpen(true);
+   277→   277→  };
+   278→   278→
+   279→   279→  const resetForm = () => {
+   280→   280→    setForm(INITIAL_FORM);
+   281→   281→    setIsEditing(false);
+   282→   282→  };
+   283→   283→
+   284→   284→  const handleFormChange = (field: keyof FormState, value: string) => {
+   285→   285→    setForm((prev) => ({ ...prev, [field]: value }));
+   286→   286→  };
+   287→   287→
+   288→   288→  const handleSave = () => {
+   289→   289→    if (
+   290→   290→      !form.nama.trim() ||
+   291→   291→      !form.nis.trim() ||
+   292→   292→      !form.asalSekolah.trim() ||
+   293→   293→      !form.kelas ||
+   294→   294→      !form.tanggalMasuk ||
+   295→   295→      !form.alasan.trim() ||
+   296→   296→      !form.noSurat.trim()
+   297→   297→    ) {
+   298→   298→      toast({
+   299→   299→        title: 'Formulir Tidak Lengkap',
+   300→   300→        description: 'Harap isi semua field yang wajib diisi.',
+   301→   301→        variant: 'destructive',
+   302→   302→      });
+   303→   303→      return;
+   304→   304→    }
+   305→   305→    saveMutation.mutate(form);
+   306→   306→  };
+   307→   307→
+   308→   308→  const handleDelete = () => {
+   309→   309→    if (deleteTarget) {
+   310→   310→      deleteMutation.mutate(deleteTarget.id);
+   311→   311→    }
+   312→   312→  };
+   313→   313→
+   314→   314→  const handlePageChange = (newPage: number) => {
+   315→   315→    if (newPage >= 1 && newPage <= (data?.totalPages ?? 1)) {
+   316→   316→      setPage(newPage);
+   317→   317→    }
+   318→   318→  };
+   319→   319→
+   320→   320→  // ─── Helpers ────────────────────────────────────────────────────────────
+   321→   321→
+   322→   322→  const formatDate = (dateStr: string) => {
+   323→   323→    if (!dateStr) return '-';
+   324→   324→    try {
+   325→   325→      const date = new Date(dateStr);
+   326→   326→      return date.toLocaleDateString('id-ID', {
+   327→   327→        day: '2-digit',
+   328→   328→        month: '2-digit',
+   329→   329→        year: 'numeric',
+   330→   330→      });
+   331→   331→    } catch {
+   332→   332→      return dateStr;
+   333→   333→    }
+   334→   334→  };
+   335→   335→
+   336→   336→  const rowNumber = (index: number) => (page - 1) * PAGE_SIZE + index + 1;
+   337→   337→
+   338→   338→  // ─── Render ─────────────────────────────────────────────────────────────
+   339→   339→
+   340→   340→  return (
+   341→   341→    <section className="space-y-6" aria-label="Mutasi Masuk">
+   342→   342→      {/* Header */}
+   343→   343→      <Card>
+   344→   344→        <CardHeader>
+   345→   345→          <CardTitle className="text-xl sm:text-2xl">Mutasi Masuk</CardTitle>
+   346→   346→          <CardAction>
+   347→   347→            <div className="flex items-center gap-2">
+   348→   348→              <ExportButton
+   349→   349→                title="Laporan Mutasi Masuk"
+   350→   350→                subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+   351→   351→                columns={MUTASI_MASUK_COLUMNS}
+   352→   352→                apiUrl="/api/mutasi-masuk"
+   353→   353→                filename={`Mutasi-Masuk-${tahunPelajaran}-${semester}`}
+   354→   354→                orientation="portrait"
+   355→   355→              />
+   356→   356→              <Button onClick={openAddDialog}>
+   357→   357→                <UserPlus />
+   358→   358→                <span className="hidden sm:inline">Tambah Mutasi Masuk</span>
+   359→   359→                <span className="sm:hidden">Tambah</span>
+   360→   360→              </Button>
+   361→   361→            </div>
+   362→   362→          </CardAction>
+   363→   363→        </CardHeader>
+   364→   364→        <CardContent>
+   365→   365→          {/* Search */}
+   366→   366→          <div className="flex flex-col sm:flex-row gap-2">
+   367→   367→            <div className="relative flex-1">
+   368→   368→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   369→   369→              <Input
+   370→   370→                placeholder="Cari berdasarkan nama, NIS, atau asal sekolah..."
+   371→   371→                value={searchInput}
+   372→   372→                onChange={(e) => setSearchInput(e.target.value)}
+   373→   373→                onKeyDown={handleKeyDown}
+   374→   374→                className="pl-9"
+   375→   375→              />
+   376→   376→            </div>
+   377→   377→            <Button variant="outline" onClick={handleSearch}>
+   378→   378→              <Search />
+   379→   379→              <span>Cari</span>
+   380→   380→            </Button>
+   381→   381→          </div>
+   382→   382→        </CardContent>
+   383→   383→      </Card>
+   384→   384→
+   385→   385→      {/* Table */}
+   386→   386→      <Card>
+   387→   387→        <CardContent className="p-0">
+   388→   388→          {isLoading ? (
+   389→   389→            <TableSkeleton />
+   390→   390→          ) : isError ? (
+   391→   391→            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+   392→   392→              <p className="text-muted-foreground">
+   393→   393→                Gagal memuat data. Silakan coba lagi.
+   394→   394→              </p>
+   395→   395→              <Button
+   396→   396→                variant="outline"
+   397→   397→                className="mt-4"
+   398→   398→                onClick={() =>
+   399→   399→                  queryClient.invalidateQueries({
+   400→   400→                    queryKey: ['mutasi-masuk'],
+   401→   401→                  })
+   402→   402→                }
+   403→   403→              >
+   404→   404→                Coba Lagi
+   405→   405→              </Button>
+   406→   406→            </div>
+   407→   407→          ) : data && data.data.length === 0 ? (
+   408→   408→            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+   409→   409→              <p className="text-muted-foreground">Belum ada data mutasi masuk.</p>
+   410→   410→              <Button className="mt-4" onClick={openAddDialog}>
+   411→   411→                <UserPlus />
+   412→   412→                <span>Tambah Data Pertama</span>
+   413→   413→              </Button>
+   414→   414→            </div>
+   415→   415→          ) : (
+   416→   416→            <>
+   417→   417→              <div className="overflow-x-auto">
+   418→   418→                <Table>
+   419→   419→                  <TableHeader>
+   420→   420→                    <TableRow>
+   421→   421→                      <TableHead className="w-12 text-center">No</TableHead>
+   422→   422→                      <TableHead>Nama</TableHead>
+   423→   423→                      <TableHead>NIS</TableHead>
+   424→   424→                      <TableHead className="hidden md:table-cell">
+   425→   425→                        Asal Sekolah
+   426→   426→                      </TableHead>
+   427→   427→                      <TableHead className="hidden sm:table-cell">
+   428→   428→                        Kelas
+   429→   429→                      </TableHead>
+   430→   430→                      <TableHead className="hidden lg:table-cell">
+   431→   431→                        Tgl Masuk
+   432→   432→                      </TableHead>
+   433→   433→                      <TableHead className="hidden lg:table-cell">
+   434→   434→                        No. Surat
+   435→   435→                      </TableHead>
+   436→   436→                      <TableHead className="text-center">Aksi</TableHead>
+   437→   437→                    </TableRow>
+   438→   438→                  </TableHeader>
+   439→   439→                  <TableBody>
+   440→   440→                    {data?.data.map((item, idx) => (
+   441→   441→                      <TableRow key={item.id}>
+   442→   442→                        <TableCell className="text-center">
+   443→   443→                          {rowNumber(idx)}
+   444→   444→                        </TableCell>
+   445→   445→                        <TableCell className="font-medium">{item.nama}</TableCell>
+   446→   446→                        <TableCell>{item.nis}</TableCell>
+   447→   447→                        <TableCell className="hidden md:table-cell">
+   448→   448→                          {item.asalSekolah}
+   449→   449→                        </TableCell>
+   450→   450→                        <TableCell className="hidden sm:table-cell">
+   451→   451→                          {item.kelas}
+   452→   452→                        </TableCell>
+   453→   453→                        <TableCell className="hidden lg:table-cell">
+   454→   454→                          {formatDate(item.tanggalMasuk)}
+   455→   455→                        </TableCell>
+   456→   456→                        <TableCell className="hidden lg:table-cell">
+   457→   457→                          {item.noSurat}
+   458→   458→                        </TableCell>
+   459→   459→                        <TableCell>
+   460→   460→                          <div className="flex items-center justify-center gap-1">
+   461→   461→                            <Button
+   462→   462→                              variant="ghost"
+   463→   463→                              size="icon"
+   464→   464→                              onClick={() => openEditDialog(item)}
+   465→   465→                              aria-label={`Edit ${item.nama}`}
+   466→   466→                            >
+   467→   467→                              <Pencil className="size-4" />
+   468→   468→                            </Button>
+   469→   469→                            <Button
+   470→   470→                              variant="ghost"
+   471→   471→                              size="icon"
+   472→   472→                              onClick={() => openDeleteAlert(item)}
+   473→   473→                              aria-label={`Hapus ${item.nama}`}
+   474→   474→                              className="text-destructive hover:text-destructive"
+   475→   475→                            >
+   476→   476→                              <Trash2 className="size-4" />
+   477→   477→                            </Button>
+   478→   478→                          </div>
+   479→   479→                        </TableCell>
+   480→   480→                      </TableRow>
+   481→   481→                    ))}
+   482→   482→                  </TableBody>
+   483→   483→                </Table>
+   484→   484→              </div>
+   485→   485→
+   486→   486→              {/* Pagination */}
+   487→   487→              {data && data.totalPages > 1 && (
+   488→   488→                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t px-4 py-3">
+   489→   489→                  <p className="text-sm text-muted-foreground">
+   490→   490→                    Halaman {data.page} dari {data.totalPages}{' '}
+   491→   491→                    <span className="hidden sm:inline">
+   492→   492→                      &middot; Total {data.total} data
+   493→   493→                    </span>
+   494→   494→                  </p>
+   495→   495→                  <div className="flex items-center gap-2">
+   496→   496→                    <Button
+   497→   497→                      variant="outline"
+   498→   498→                      size="icon"
+   499→   499→                      disabled={page <= 1}
+   500→   500→                      onClick={() => handlePageChange(page - 1)}
+   501→   501→                      aria-label="Halaman sebelumnya"
+   502→   502→                    >
+   503→   503→                      <ChevronLeft className="size-4" />
+   504→   504→                    </Button>
+   505→   505→                    <div className="flex items-center gap-1">
+   506→   506→                      {generatePageNumbers(page, data.totalPages).map(
+   507→   507→                        (p, i) =>
+   508→   508→                          p === '...' ? (
+   509→   509→                            <span
+   510→   510→                              key={`ellipsis-${i}`}
+   511→   511→                              className="px-2 text-muted-foreground"
+   512→   512→                            >
+   513→   513→                              ...
+   514→   514→                            </span>
+   515→   515→                          ) : (
+   516→   516→                            <Button
+   517→   517→                              key={p}
+   518→   518→                              variant={p === page ? 'default' : 'outline'}
+   519→   519→                              size="icon"
+   520→   520→                              className="size-9"
+   521→   521→                              onClick={() => handlePageChange(p as number)}
+   522→   522→                              aria-label={`Halaman ${p}`}
+   523→   523→                            >
+   524→   524→                              {p}
+   525→   525→                            </Button>
+   526→   526→                          )
+   527→   527→                      )}
+   528→   528→                    </div>
+   529→   529→                    <Button
+   530→   530→                      variant="outline"
+   531→   531→                      size="icon"
+   532→   532→                      disabled={page >= data.totalPages}
+   533→   533→                      onClick={() => handlePageChange(page + 1)}
+   534→   534→                      aria-label="Halaman berikutnya"
+   535→   535→                    >
+   536→   536→                      <ChevronRight className="size-4" />
+   537→   537→                    </Button>
+   538→   538→                  </div>
+   539→   539→                </div>
+   540→   540→              )}
+   541→   541→            </>
+   542→   542→          )}
+   543→   543→        </CardContent>
+   544→   544→      </Card>
+   545→   545→
+   546→   546→      {/* Add / Edit Dialog */}
+   547→   547→      <Dialog open={dialogOpen} onOpenChange={(open) => {
+   548→   548→        if (!open) resetForm();
+   549→   549→        setDialogOpen(open);
+   550→   550→      }}>
+   551→   551→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   552→   552→          <DialogHeader>
+   553→   553→            <DialogTitle>
+   554→   554→              {isEditing ? 'Edit Mutasi Masuk' : 'Tambah Mutasi Masuk'}
+   555→   555→            </DialogTitle>
+   556→   556→            <DialogDescription>
+   557→   557→              {isEditing
+   558→   558→                ? 'Perbarui data mutasi masuk siswa.'
+   559→   559→                : 'Isi data mutasi masuk siswa baru.'}
+   560→   560→            </DialogDescription>
+   561→   561→          </DialogHeader>
+   562→   562→
+   563→   563→          <div className="grid gap-4 py-2">
+   564→   564→            {/* Nama Siswa */}
+   565→   565→            <div className="grid gap-2">
+   566→   566→              <Label htmlFor="nama">
+   567→   567→                Nama Siswa <span className="text-destructive">*</span>
+   568→   568→              </Label>
+   569→   569→              <Input
+   570→   570→                id="nama"
+   571→   571→                placeholder="Masukkan nama siswa"
+   572→   572→                value={form.nama}
+   573→   573→                onChange={(e) => handleFormChange('nama', e.target.value)}
+   574→   574→              />
+   575→   575→            </div>
+   576→   576→
+   577→   577→            {/* NIS */}
+   578→   578→            <div className="grid gap-2">
+   579→   579→              <Label htmlFor="nis">
+   580→   580→                NIS <span className="text-destructive">*</span>
+   581→   581→              </Label>
+   582→   582→              <Input
+   583→   583→                id="nis"
+   584→   584→                placeholder="Masukkan NIS"
+   585→   585→                value={form.nis}
+   586→   586→                onChange={(e) => handleFormChange('nis', e.target.value)}
+   587→   587→              />
+   588→   588→            </div>
+   589→   589→
+   590→   590→            {/* Asal Sekolah */}
+   591→   591→            <div className="grid gap-2">
+   592→   592→              <Label htmlFor="asalSekolah">
+   593→   593→                Asal Sekolah <span className="text-destructive">*</span>
+   594→   594→              </Label>
+   595→   595→              <Input
+   596→   596→                id="asalSekolah"
+   597→   597→                placeholder="Masukkan asal sekolah"
+   598→   598→                value={form.asalSekolah}
+   599→   599→                onChange={(e) => handleFormChange('asalSekolah', e.target.value)}
+   600→   600→              />
+   601→   601→            </div>
+   602→   602→
+   603→   603→            {/* Kelas */}
+   604→   604→            <div className="grid gap-2">
+   605→   605→              <Label htmlFor="kelas">
+   606→   606→                Kelas <span className="text-destructive">*</span>
+   607→   607→              </Label>
+   608→   608→              <Select
+   609→   609→                value={form.kelas}
+   610→   610→                onValueChange={(val) => handleFormChange('kelas', val)}
+   611→   611→              >
+   612→   612→                <SelectTrigger id="kelas" className="w-full">
+   613→   613→                  <SelectValue placeholder="Pilih kelas" />
+   614→   614→                </SelectTrigger>
+   615→   615→                <SelectContent>
+   616→   616→                  {KELAS_OPTIONS.map((k) => (
+   617→   617→                    <SelectItem key={k} value={k}>
+   618→   618→                      {k}
+   619→   619→                    </SelectItem>
+   620→   620→                  ))}
+   621→   621→                </SelectContent>
+   622→   622→              </Select>
+   623→   623→            </div>
+   624→   624→
+   625→   625→            {/* Tanggal Masuk */}
+   626→   626→            <div className="grid gap-2">
+   627→   627→              <Label htmlFor="tanggalMasuk">
+   628→   628→                Tanggal Masuk <span className="text-destructive">*</span>
+   629→   629→              </Label>
+   630→   630→              <Input
+   631→   631→                id="tanggalMasuk"
+   632→   632→                type="date"
+   633→   633→                value={form.tanggalMasuk}
+   634→   634→                onChange={(e) =>
+   635→   635→                  handleFormChange('tanggalMasuk', e.target.value)
+   636→   636→                }
+   637→   637→              />
+   638→   638→            </div>
+   639→   639→
+   640→   640→            {/* Alasan Mutasi */}
+   641→   641→            <div className="grid gap-2">
+   642→   642→              <Label htmlFor="alasan">
+   643→   643→                Alasan Mutasi <span className="text-destructive">*</span>
+   644→   644→              </Label>
+   645→   645→              <Textarea
+   646→   646→                id="alasan"
+   647→   647→                placeholder="Masukkan alasan mutasi"
+   648→   648→                value={form.alasan}
+   649→   649→                onChange={(e) => handleFormChange('alasan', e.target.value)}
+   650→   650→                rows={3}
+   651→   651→              />
+   652→   652→            </div>
+   653→   653→
+   654→   654→            {/* No. Surat Mutasi */}
+   655→   655→            <div className="grid gap-2">
+   656→   656→              <Label htmlFor="noSurat">
+   657→   657→                No. Surat Mutasi <span className="text-destructive">*</span>
+   658→   658→              </Label>
+   659→   659→              <Input
+   660→   660→                id="noSurat"
+   661→   661→                placeholder="Masukkan nomor surat mutasi"
+   662→   662→                value={form.noSurat}
+   663→   663→                onChange={(e) => handleFormChange('noSurat', e.target.value)}
+   664→   664→              />
+   665→   665→            </div>
+   666→   666→          </div>
+   667→   667→
+   668→   668→          <DialogFooter>
+   669→   669→            <Button
+   670→   670→              variant="outline"
+   671→   671→              onClick={() => {
+   672→   672→                resetForm();
+   673→   673→                setDialogOpen(false);
+   674→   674→              }}
+   675→   675→              disabled={saveMutation.isPending}
+   676→   676→            >
+   677→   677→              Batal
+   678→   678→            </Button>
+   679→   679→            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+   680→   680→              {saveMutation.isPending && (
+   681→   681→                <Loader2 className="size-4 animate-spin" />
+   682→   682→              )}
+   683→   683→              {isEditing ? 'Simpan Perubahan' : 'Tambah Data'}
+   684→   684→            </Button>
+   685→   685→          </DialogFooter>
+   686→   686→        </DialogContent>
+   687→   687→      </Dialog>
+   688→   688→
+   689→   689→      {/* Delete Alert Dialog */}
+   690→   690→      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+   691→   691→        <AlertDialogContent>
+   692→   692→          <AlertDialogHeader>
+   693→   693→            <AlertDialogTitle>Hapus Data Mutasi Masuk?</AlertDialogTitle>
+   694→   694→            <AlertDialogDescription>
+   695→   695→              Apakah Anda yakin ingin menghapus data mutasi masuk dari{' '}
+   696→   696→              <strong>{deleteTarget?.nama}</strong>? Tindakan ini tidak dapat
+   697→   697→              dibatalkan.
+   698→   698→            </AlertDialogDescription>
+   699→   699→          </AlertDialogHeader>
+   700→   700→          <AlertDialogFooter>
+   701→   701→            <AlertDialogCancel
+   702→   702→              disabled={deleteMutation.isPending}
+   703→   703→              onClick={() => {
+   704→   704→                setDeleteTarget(null);
+   705→   705→              }}
+   706→   706→            >
+   707→   707→              Batal
+   708→   708→            </AlertDialogCancel>
+   709→   709→            <AlertDialogAction
+   710→   710→              onClick={handleDelete}
+   711→   711→              disabled={deleteMutation.isPending}
+   712→   712→              className="bg-destructive text-white hover:bg-destructive/90"
+   713→   713→            >
+   714→   714→              {deleteMutation.isPending && (
+   715→   715→                <Loader2 className="size-4 animate-spin" />
+   716→   716→              )}
+   717→   717→              Hapus
+   718→   718→            </AlertDialogAction>
+   719→   719→          </AlertDialogFooter>
+   720→   720→        </AlertDialogContent>
+   721→   721→      </AlertDialog>
+   722→   722→    </section>
+   723→   723→  );
+   724→   724→}
+   725→   725→
+   726→   726→// ─── Skeleton Loader ─────────────────────────────────────────────────────────
+   727→   727→
+   728→   728→function TableSkeleton() {
+   729→   729→  return (
+   730→   730→    <div className="p-4 space-y-3">
+   731→   731→      {/* Header row skeleton */}
+   732→   732→      <div className="flex gap-4">
+   733→   733→        {Array.from({ length: 8 }).map((_, i) => (
+   734→   734→          <Skeleton key={i} className="h-4 flex-1" />
+   735→   735→        ))}
+   736→   736→      </div>
+   737→   737→      {/* Data row skeletons */}
+   738→   738→      {Array.from({ length: 5 }).map((_, i) => (
+   739→   739→        <div key={i} className="flex gap-4 items-center">
+   740→   740→          {Array.from({ length: 8 }).map((_, j) => (
+   741→   741→            <Skeleton key={j} className="h-9 flex-1" />
+   742→   742→          ))}
+   743→   743→        </div>
+   744→   744→      ))}
+   745→   745→    </div>
+   746→   746→  );
+   747→   747→}
+   748→   748→
+   749→   749→// ─── Pagination Helper ───────────────────────────────────────────────────────
+   750→   750→
+   751→   751→function generatePageNumbers(
+   752→   752→  current: number,
+   753→   753→  total: number
+   754→   754→): (number | string)[] {
+   755→   755→  if (total <= 7) {
+   756→   756→    return Array.from({ length: total }, (_, i) => i + 1);
+   757→   757→  }
+   758→   758→
+   759→   759→  const pages: (number | string)[] = [1];
+   760→   760→
+   761→   761→  if (current > 3) {
+   762→   762→    pages.push('...');
+   763→   763→  }
+   764→   764→
+   765→   765→  const start = Math.max(2, current - 1);
+   766→   766→  const end = Math.min(total - 1, current + 1);
+   767→   767→
+   768→   768→  for (let i = start; i <= end; i++) {
+   769→   769→    pages.push(i);
+   770→   770→  }
+   771→   771→
+   772→   772→  if (current < total - 2) {
+   773→   773→    pages.push('...');
+   774→   774→  }
+   775→   775→
+   776→   776→  pages.push(total);
+   777→   777→
+   778→   778→  return pages;
+   779→   779→}
