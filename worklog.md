@@ -266,3 +266,65 @@ Stage Summary:
 - All pages now use consistent debounce pattern with useEffect
 - Search params only sent when non-empty
 - Browser verified all searches return correct data
+---
+Task ID: 2
+Agent: main
+Task: Fix student search, push to GitHub, configure Vercel deployment
+
+Work Log:
+- Investigated student name search across all features (SiswaPage, MutasiMasukPage, MutasiKeluarPage)
+- Tested API endpoints directly - search works correctly (e.g., /api/siswa?search=an returns 393 results)
+- Tested search in browser using agent-browser - SiswaPage search, MutasiKeluar student combobox both work
+- Found that search was already fixed in previous commit fc885f8 "fix: perbaiki pencarian di semua halaman"
+- Updated GitHub remote with new token ***REDACTED***
+- Pushed latest code to GitHub (main branch, commits 826198a..47f8f7b)
+- Updated package.json for Vercel: added "postinstall": "prisma generate" and changed build to "prisma generate && next build"
+- Attempted Vercel deployment with deploy token dpl_8AoAiC413AcSeYqNuw1AGA9xU9fp
+- Determined deploy token (dpl_ prefix) is Git-only credential, cannot create Vercel project via API/CLI
+- Project is Vercel-ready (postinstall, build script, .gitignore all configured)
+
+Stage Summary:
+- Search bug was already fixed in previous session (commit fc885f8)
+- Code pushed to GitHub successfully
+- Vercel deploy token (dpl_) cannot create new projects - user needs to create project on vercel.com dashboard and import from GitHub
+---
+Task ID: 3
+Agent: main
+Task: Configure Vercel deployment using Vercel API token
+
+Work Log:
+- User provided Vercel API token (vcp_ prefix)
+- Checked Vercel account: user davidsitinjak01, team davidsitinjak01s-projects
+- Found existing project "operator-sekolah" (prj_XERum18Tg5pbdgyYI2nKsaFzc5Vh)
+- Project already connected to GitHub repo DavidSitinjak01/operator-sekolah
+- Got correct repoId: 1303899997, production branch: main
+- Triggered production deployment via Vercel API (dpl_CrPGLx1qvz9xrV6z23vorWcRCvFX)
+- Deployment completed successfully (READY state)
+- Verified production URL responds HTTP 200
+
+Stage Summary:
+- Production URL: https://operator-sekolah.vercel.app
+- Domain verified: operator-sekolah.vercel.app
+- GitHub → Vercel auto-deploy is active (every push to main triggers deployment)
+- DATABASE_URL and DIRECT_URL env vars are configured on Vercel (values masked/secret)
+---
+Task ID: 4
+Agent: main
+Task: Configure Neon PostgreSQL database and deploy to Vercel
+
+Work Log:
+- User provided Neon PostgreSQL URL
+- Set DATABASE_URL on Vercel for production environment
+- Created scripts/prepare-prisma.js for dual-database support (SQLite local / PostgreSQL Vercel)
+- Updated package.json postinstall to run prepare-prisma.js before prisma generate
+- Pushed Prisma schema to Neon (all tables created: Siswa, Guru, MutasiMasuk, MutasiKeluar, TahunPelajaran)
+- Fixed GitHub push protection (removed secrets from worklog)
+- Pushed code to GitHub (commit 8ad0f90)
+- Triggered production deployment (dpl_GyA3JK7CXcxy8MV5gzMgtdmtfYxA) - READY
+- Verified: API returns real data (1634 siswa, dashboard works)
+
+Stage Summary:
+- Vercel production live: https://operator-sekolah.vercel.app
+- Database: Neon PostgreSQL connected and working
+- Dual-DB: SQLite for local dev, PostgreSQL for Vercel (auto-switch via prepare-prisma.js)
+- Auto-deploy: every push to main branch auto-deploys to Vercel
