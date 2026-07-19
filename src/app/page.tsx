@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2 } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
+import AuthGuard from "@/components/AuthGuard";
 import DashboardPage from "@/components/pages/DashboardPage";
 import SiswaPage from "@/components/pages/SiswaPage";
 import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
@@ -283,6 +285,7 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activePage, setActivePage } = useAppStore();
   const [manageTPOpen, setManageTPOpen] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <>
@@ -352,11 +355,39 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            &copy; {new Date().getFullYear()} Operator Sekolah
-          </p>
+        {/* User & Footer */}
+        <div className="border-t border-border">
+          {/* User info */}
+          <div className="px-4 py-3 flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex-shrink-0">
+              {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {session?.user?.name || "User"}
+              </p>
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3 text-emerald-500" />
+                <p className="text-xs text-muted-foreground capitalize">
+                  {(session?.user as { role?: string })?.role || "operator"}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              title="Keluar"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="px-4 py-2">
+            <p className="text-xs text-muted-foreground text-center">
+              &copy; {new Date().getFullYear()} Operator Sekolah
+            </p>
+          </div>
         </div>
       </aside>
 
@@ -392,8 +423,18 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col bg-gray-50/50">
+    <AuthGuard>
+      <QueryClientProvider client={queryClient}>
+        <DashboardShell sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Toaster />
+      </QueryClientProvider>
+    </AuthGuard>
+  );
+}
+
+function DashboardShell({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
         <div className="flex flex-1">
           <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -435,7 +476,5 @@ export default function Home() {
           </p>
         </footer>
       </div>
-      <Toaster />
-    </QueryClientProvider>
   );
 }

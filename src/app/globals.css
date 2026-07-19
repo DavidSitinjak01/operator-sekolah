@@ -120,3 +120,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-100vh) scale(0.6);
+    opacity: 0;
+  }
+}
