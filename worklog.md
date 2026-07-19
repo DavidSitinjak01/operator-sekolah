@@ -328,3 +328,32 @@ Stage Summary:
 - Database: Neon PostgreSQL connected and working
 - Dual-DB: SQLite for local dev, PostgreSQL for Vercel (auto-switch via prepare-prisma.js)
 - Auto-deploy: every push to main branch auto-deploys to Vercel
+
+---
+Task ID: 5
+Agent: main
+Task: Implement complete authentication system with NextAuth.js v4
+
+Work Log:
+- Installed bcryptjs + @types/bcryptjs for password hashing
+- Added User model back to Prisma schema (id, username, password, role, nama, active, timestamps)
+- Pushed schema to SQLite database, regenerated Prisma Client
+- Created `/src/lib/auth.ts` — NextAuth v4 config with Credentials provider, JWT strategy, role stored in token
+- Created `/src/app/api/auth/[...nextauth]/route.ts` — GET + POST handlers for NextAuth
+- Created `/src/components/LoginPage.tsx` — Emerald-themed underwater/ocean login page with glassmorphism card, animated bubbles, light rays, wave SVG
+- Created `/src/components/AuthGuard.tsx` — Client component wrapping SessionProvider, shows LoginPage when no session, loading spinner during session check
+- Updated `/src/app/page.tsx` — Wrapped entire app in AuthGuard, added user info + logout button to sidebar footer, shows role badge with Shield icon
+- Inserted default admin user (username: admin, password: admin123, role: admin) into SQLite
+- Added NEXTAUTH_URL and NEXTAUTH_SECRET to .env file
+- Added `@keyframes float` animation to globals.css for login page bubbles
+- Verified: /api/auth/csrf returns 200, /api/auth/callback/credentials returns 302 on successful login, main page returns 200
+- Lint clean: zero errors in src/ directory
+
+Stage Summary:
+- Full authentication system implemented with NextAuth.js v4 Credentials provider
+- Login page: underwater/ocean theme with glassmorphism card, emerald color scheme, animated bubbles
+- Auth flow: LoginPage → signIn('credentials') → JWT token with role → session → dashboard
+- Sidebar shows logged-in user name, role badge, and logout button
+- Default admin: username=admin, password=admin123, role=admin
+- JWT session strategy with 8-hour expiry
+- User model supports: admin, operator, and custom roles
