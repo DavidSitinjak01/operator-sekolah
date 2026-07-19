@@ -155,6 +155,7 @@ export default function GuruPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [rombelFilter, setRombelFilter] = useState<string>('all');
   const limit = 10;
@@ -171,17 +172,24 @@ export default function GuruPage() {
     }
   }, [editTarget]);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // ---------- Fetch guru data ----------
   const { data, isLoading, isError } = useQuery<GuruResponse>({
-    queryKey: ['guru', search, page, tahunPelajaran, semester],
+    queryKey: ['guru', debouncedSearch, page, tahunPelajaran, semester],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        search,
-        tahunPelajaran,
-        semester,
-        page: page.toString(),
-        limit: limit.toString(),
-      });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      params.set('tahunPelajaran', tahunPelajaran);
+      params.set('semester', semester);
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
       const res = await fetch(`/api/guru?${params}`);
       if (!res.ok) throw new Error('Gagal memuat data guru');
       return res.json();

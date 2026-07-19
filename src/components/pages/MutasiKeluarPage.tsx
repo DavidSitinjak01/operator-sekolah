@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   UserMinus,
@@ -194,14 +194,12 @@ export default function MutasiKeluarPage() {
   const [deletingItem, setDeletingItem] = useState<MutasiKeluarRecord | null>(null)
 
   // ── Debounced search ──────────────────────────────────────────────────────
-  const handleSearchChange = useCallback((value: string) => {
-    setSearch(value)
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(value)
-      setPage(1)
-    }, 300)
-    return () => clearTimeout(timeout)
-  }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // ── API: Fetch Siswa List (for combobox) ─────────────────────────────────
   const { data: siswaList = [], isLoading: siswaLoading } = useQuery<SiswaOption[]>({
@@ -220,13 +218,12 @@ export default function MutasiKeluarPage() {
   const { data, isLoading, isError } = useQuery<PaginatedResponse>({
     queryKey: ['mutasi-keluar', debouncedSearch, page, limit, tahunPelajaran, semester],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        search: debouncedSearch,
-        page: String(page),
-        limit: String(limit),
-        tahunPelajaran,
-        semester,
-      })
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+      params.set('tahunPelajaran', tahunPelajaran);
+      params.set('semester', semester);
       const res = await fetch(`/api/mutasi-keluar?${params}`)
       if (!res.ok) throw new Error('Gagal memuat data mutasi keluar')
       return res.json()
@@ -434,7 +431,7 @@ export default function MutasiKeluarPage() {
           <Input
             placeholder="Cari nama, NIPD, NISN siswa..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>

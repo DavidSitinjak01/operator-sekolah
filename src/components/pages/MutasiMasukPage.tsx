@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   UserPlus,
@@ -125,7 +125,7 @@ export default function MutasiMasukPage() {
 
   // State: search & pagination
   const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
 
   // State: dialog
@@ -137,16 +137,23 @@ export default function MutasiMasukPage() {
   const [deleteTarget, setDeleteTarget] = useState<MutasiMasuk | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // ─── Query: Fetch data ──────────────────────────────────────────────────
 
   const { data, isLoading, isError } = useQuery<MutasiMasukResponse>({
-    queryKey: ['mutasi-masuk', search, page, tahunPelajaran, semester],
+    queryKey: ['mutasi-masuk', debouncedSearch, page, tahunPelajaran, semester],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        search,
-        page: String(page),
-        limit: String(PAGE_SIZE),
-      });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      params.set('page', String(page));
+      params.set('limit', String(PAGE_SIZE));
       params.set('tahunPelajaran', tahunPelajaran);
       params.set('semester', semester);
       const res = await fetch(`/api/mutasi-masuk?${params}`);
@@ -229,20 +236,6 @@ export default function MutasiMasukPage() {
   });
 
   // ─── Handlers ───────────────────────────────────────────────────────────
-
-  const handleSearch = useCallback(() => {
-    setSearch(searchInput);
-    setPage(1);
-  }, [searchInput]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        handleSearch();
-      }
-    },
-    [handleSearch]
-  );
 
   const openAddDialog = () => {
     setForm({
@@ -368,15 +361,13 @@ export default function MutasiMasukPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Cari berdasarkan nama, NIS, atau asal sekolah..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={handleKeyDown}
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="pl-9"
               />
             </div>
-            <Button variant="outline" onClick={handleSearch}>
+            <Button variant="outline" disabled>
               <Search />
-              <span>Cari</span>
             </Button>
           </div>
         </CardContent>

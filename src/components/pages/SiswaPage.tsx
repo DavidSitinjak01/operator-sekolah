@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Pencil, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/app';
@@ -172,6 +172,7 @@ const TOTAL_COLUMNS = 40;
 
 export default function SiswaPage() {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [rombel, setRombel] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -197,11 +198,19 @@ export default function SiswaPage() {
     setEditData((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery<SiswaResponse>({
-    queryKey: ['siswa', search, rombel, page, limit, tahunPelajaran, semester],
+    queryKey: ['siswa', debouncedSearch, rombel, page, limit, tahunPelajaran, semester],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (rombel) params.set('rombel', rombel);
       params.set('tahunPelajaran', tahunPelajaran);
       params.set('semester', semester);
