@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "prisma generate && next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/prepare-prisma.js && prisma generate",
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
