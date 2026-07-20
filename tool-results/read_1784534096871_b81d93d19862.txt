@@ -1,0 +1,1099 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+     5→import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Pencil, Loader2, CreditCard } from 'lucide-react';
+     6→import { useAppStore } from '@/store/app';
+     7→import { useToast } from '@/hooks/use-toast';
+     8→
+     9→import { Button } from '@/components/ui/button';
+    10→import { Input } from '@/components/ui/input';
+    11→import { Label } from '@/components/ui/label';
+    12→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    13→import { Skeleton } from '@/components/ui/skeleton';
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from '@/components/ui/table';
+    22→import {
+    23→  AlertDialog,
+    24→  AlertDialogAction,
+    25→  AlertDialogCancel,
+    26→  AlertDialogContent,
+    27→  AlertDialogDescription,
+    28→  AlertDialogFooter,
+    29→  AlertDialogHeader,
+    30→  AlertDialogTitle,
+    31→  AlertDialogTrigger,
+    32→} from '@/components/ui/alert-dialog';
+    33→import {
+    34→  Dialog,
+    35→  DialogContent,
+    36→  DialogHeader,
+    37→  DialogTitle,
+    38→  DialogDescription,
+    39→  DialogFooter,
+    40→} from '@/components/ui/dialog';
+    41→import {
+    42→  Select,
+    43→  SelectContent,
+    44→  SelectItem,
+    45→  SelectTrigger,
+    46→  SelectValue,
+    47→} from '@/components/ui/select';
+    48→import { ScrollArea } from '@/components/ui/scroll-area';
+    49→import ImportExcelDialog from '@/components/ImportExcelDialog';
+    50→import ExportButton from '@/components/ExportButton';
+    51→import KartuPelajarDialog from '@/components/KartuPelajar';
+    52→import { SISWA_COLUMNS, flattenSiswaRow } from '@/lib/export-utils';
+    53→
+    54→interface Siswa {
+    55→  id: string;
+    56→  no: number;
+    57→  nama: string;
+    58→  nipd: string;
+    59→  jenisKelamin: string;
+    60→  nisn: string;
+    61→  tempatLahir: string;
+    62→  tanggalLahir: string;
+    63→  nik: string;
+    64→  agama: string;
+    65→  alamat: string;
+    66→  rt: string;
+    67→  rw: string;
+    68→  dusun: string;
+    69→  kelurahan: string;
+    70→  kecamatan: string;
+    71→  kodePos: string;
+    72→  jenisTinggal: string;
+    73→  alatTransportasi: string;
+    74→  telepon: string;
+    75→  hp: string;
+    76→  email: string;
+    77→  skhun: string;
+    78→  penerimaKPS: string;
+    79→  noKPS: string;
+    80→  namaAyah: string;
+    81→  ayahTahunLahir: string;
+    82→  ayahJenjangPendidikan: string;
+    83→  ayahPekerjaan: string;
+    84→  ayahPenghasilan: string;
+    85→  ayahNik: string;
+    86→  namaIbu: string;
+    87→  ibuTahunLahir: string;
+    88→  ibuJenjangPendidikan: string;
+    89→  ibuPekerjaan: string;
+    90→  ibuPenghasilan: string;
+    91→  ibuNik: string;
+    92→  namaWali: string;
+    93→  waliTahunLahir: string;
+    94→  waliJenjangPendidikan: string;
+    95→  waliPekerjaan: string;
+    96→  waliPenghasilan: string;
+    97→  waliNik: string;
+    98→  rombel: string;
+    99→  noPesertaUN: string;
+   100→  noSeriIjazah: string;
+   101→  penerimaKIP: string;
+   102→  nomorKIP: string;
+   103→  namaKIP: string;
+   104→  nomorKKS: string;
+   105→  noRegAktaLahir: string;
+   106→  bank: string;
+   107→  nomorRekeningBank: string;
+   108→  rekeningAtasNama: string;
+   109→  layakPIP: string;
+   110→  alasanLayakPIP: string;
+   111→  kebutuhanKhusus: string;
+   112→  sekolahAsal: string;
+   113→  anakKeBerapa: string;
+   114→  lintang: string;
+   115→  bujur: string;
+   116→  noKK: string;
+   117→  beratBadan: string;
+   118→  tinggiBadan: string;
+   119→  lingkarKepala: string;
+   120→  jmlSaudaraKandung: string;
+   121→  jarakRumahKeSekolah: string;
+   122→  status: string;
+   123→  tahunPelajaran: string;
+   124→  semester: string;
+   125→}
+   126→
+   127→interface SiswaResponse {
+   128→  data: Siswa[];
+   129→  total: number;
+   130→  page: number;
+   131→  limit: number;
+   132→  totalPages: number;
+   133→}
+   134→
+   135→const ROMBEL_OPTIONS = [
+   136→  'X Baluse',
+   137→  'X Bulusa',
+   138→  'X Kalabubu',
+   139→  'X Laeru',
+   140→  'X Lasara',
+   141→  'X Rai',
+   142→  'X Seubagoa',
+   143→  'X Toho',
+   144→  'X Tologu',
+   145→  'XI Baluse',
+   146→  'XI Bulusa',
+   147→  'XI Kalabubu',
+   148→  'XI Laeru',
+   149→  'XI Lasara',
+   150→  'XI Rai',
+   151→  'XI Seubagoa',
+   152→  'XI Toho',
+   153→  'XI Tutuhao',
+   154→  'XII Baluse',
+   155→  'XII Bulusa',
+   156→  'XII Kalabubu',
+   157→  'XII Lasara',
+   158→  'XII Rai',
+   159→];
+   160→
+   161→const AGAMA_OPTIONS = ['Islam', 'Kristen', 'Katholik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'];
+   162→
+   163→const PAGE_SIZE_OPTIONS = [
+   164→  { label: '10', value: '10' },
+   165→  { label: '25', value: '25' },
+   166→  { label: '50', value: '50' },
+   167→  { label: '100', value: '100' },
+   168→  { label: 'Semua', value: '9999' },
+   169→];
+   170→
+   171→// Total visible columns: 39 data + 1 Aksi = 40
+   172→const TOTAL_COLUMNS = 40;
+   173→
+   174→export default function SiswaPage() {
+   175→  const [search, setSearch] = useState('');
+   176→  const [debouncedSearch, setDebouncedSearch] = useState('');
+   177→  const [rombel, setRombel] = useState('');
+   178→  const [page, setPage] = useState(1);
+   179→  const [limit, setLimit] = useState(10);
+   180→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   181→  const [kartuSiswa, setKartuSiswa] = useState<Siswa | null>(null);
+   182→  const [editTarget, setEditTarget] = useState<Siswa | null>(null);
+   183→  const [editData, setEditData] = useState<Record<string, string>>({});
+   184→
+   185→  const { tahunPelajaran, semester } = useAppStore();
+   186→  const { toast } = useToast();
+   187→  const queryClient = useQueryClient();
+   188→
+   189→  const handleEditClick = (siswa: Siswa) => {
+   190→    const data: Record<string, string> = {};
+   191→    for (const [key, value] of Object.entries(siswa)) {
+   192→      if (key === 'no' || key === 'id') continue;
+   193→      data[key] = String(value ?? '');
+   194→    }
+   195→    setEditData(data);
+   196→    setEditTarget(siswa);
+   197→  };
+   198→
+   199→  const handleChange = (key: string, value: string) => {
+   200→    setEditData((prev) => ({ ...prev, [key]: value }));
+   201→  };
+   202→
+   203→  // Debounce search input
+   204→  useEffect(() => {
+   205→    const timer = setTimeout(() => {
+   206→      setDebouncedSearch(search);
+   207→    }, 300);
+   208→    return () => clearTimeout(timer);
+   209→  }, [search]);
+   210→
+   211→  const { data, isLoading } = useQuery<SiswaResponse>({
+   212→    queryKey: ['siswa', debouncedSearch, rombel, page, limit, tahunPelajaran, semester],
+   213→    queryFn: async () => {
+   214→      const params = new URLSearchParams();
+   215→      if (debouncedSearch) params.set('search', debouncedSearch);
+   216→      if (rombel) params.set('rombel', rombel);
+   217→      params.set('tahunPelajaran', tahunPelajaran);
+   218→      params.set('semester', semester);
+   219→      params.set('page', page.toString());
+   220→      params.set('limit', limit.toString());
+   221→
+   222→      const res = await fetch(`/api/siswa?${params.toString()}`);
+   223→      if (!res.ok) throw new Error('Gagal memuat data siswa');
+   224→      return res.json();
+   225→    },
+   226→  });
+   227→
+   228→  const deleteMutation = useMutation({
+   229→    mutationFn: async (id: string) => {
+   230→      const res = await fetch(`/api/siswa`, {
+   231→        method: 'DELETE',
+   232→        headers: { 'Content-Type': 'application/json' },
+   233→        body: JSON.stringify({ id }),
+   234→      });
+   235→      if (!res.ok) throw new Error('Gagal menghapus data siswa');
+   236→      return res.json();
+   237→    },
+   238→    onSuccess: () => {
+   239→      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+   240→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   241→      toast({
+   242→        title: 'Berhasil',
+   243→        description: 'Data siswa berhasil dihapus.',
+   244→      });
+   245→      setDeleteId(null);
+   246→    },
+   247→    onError: () => {
+   248→      toast({
+   249→        title: 'Gagal',
+   250→        description: 'Gagal menghapus data siswa. Silakan coba lagi.',
+   251→        variant: 'destructive',
+   252→      });
+   253→      setDeleteId(null);
+   254→    },
+   255→  });
+   256→
+   257→  const editMutation = useMutation({
+   258→    mutationFn: async () => {
+   259→      const res = await fetch(`/api/siswa`, {
+   260→        method: 'PUT',
+   261→        headers: { 'Content-Type': 'application/json' },
+   262→        body: JSON.stringify({ id: editTarget!.id, ...editData }),
+   263→      });
+   264→      if (!res.ok) throw new Error('Gagal menyimpan data siswa');
+   265→      return res.json();
+   266→    },
+   267→    onSuccess: () => {
+   268→      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+   269→      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   270→      toast({
+   271→        title: 'Berhasil',
+   272→        description: 'Data siswa berhasil diperbarui.',
+   273→      });
+   274→      setEditTarget(null);
+   275→    },
+   276→    onError: () => {
+   277→      toast({
+   278→        title: 'Gagal',
+   279→        description: 'Gagal menyimpan data siswa. Silakan coba lagi.',
+   280→        variant: 'destructive',
+   281→      });
+   282→    },
+   283→  });
+   284→
+   285→  const handleDelete = () => {
+   286→    if (deleteId) {
+   287→      deleteMutation.mutate(deleteId);
+   288→    }
+   289→  };
+   290→
+   291→  const handleSearchChange = (value: string) => {
+   292→    setSearch(value);
+   293→    setPage(1);
+   294→  };
+   295→
+   296→  const handleRombelChange = (value: string) => {
+   297→    setRombel(value === '__all__' ? '' : value);
+   298→    setPage(1);
+   299→  };
+   300→
+   301→  const handleLimitChange = (value: string) => {
+   302→    const newLimit = parseInt(value);
+   303→    setLimit(newLimit);
+   304→    setPage(1);
+   305→  };
+   306→
+   307→  const showAll = limit >= 9999;
+   308→
+   309→  const siswaList = data?.data ?? [];
+   310→  const total = data?.total ?? 0;
+   311→  const totalPages = data?.totalPages ?? 1;
+   312→  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+   313→  const endItem = showAll ? total : Math.min(page * limit, total);
+   314→
+   315→  const deleteTarget = siswaList.find((s) => s.id === deleteId);
+   316→
+   317→  return (
+   318→    <div className="space-y-6">
+   319→      {/* Header */}
+   320→      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   321→        <div className="flex items-center gap-3">
+   322→          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+   323→            <Users className="h-5 w-5 text-primary" />
+   324→          </div>
+   325→          <div>
+   326→            <h1 className="text-2xl font-bold tracking-tight">Data Siswa</h1>
+   327→            <p className="text-sm text-muted-foreground">
+   328→              Kelola data siswa {tahunPelajaran} — Semester {semester}
+   329→            </p>
+   330→          </div>
+   331→        </div>
+   332→        <div className="flex items-center gap-2">
+   333→          <ExportButton
+   334→            title={`Laporan Data Siswa`}
+   335→            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+   336→            columns={SISWA_COLUMNS}
+   337→            apiUrl="/api/siswa"
+   338→            filename={`Data-Siswa-${tahunPelajaran}-${semester}`}
+   339→            flattenRow={flattenSiswaRow}
+   340→          />
+   341→          <ImportExcelDialog
+   342→            type="siswa"
+   343→            onSuccess={() => {
+   344→              queryClient.invalidateQueries({ queryKey: ['siswa'] });
+   345→              queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+   346→            }}
+   347→          >
+   348→            <Button variant="outline" size="sm" className="gap-2">
+   349→              <FileSpreadsheet className="h-4 w-4" />
+   350→              Import Excel
+   351→            </Button>
+   352→          </ImportExcelDialog>
+   353→        </div>
+   354→      </div>
+   355→
+   356→      {/* Filters */}
+   357→      <Card>
+   358→        <CardContent className="p-4">
+   359→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+   360→            <div className="relative flex-1">
+   361→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   362→              <Input
+   363→                placeholder="Cari nama, NIPD, NISN, atau NIK..."
+   364→                value={search}
+   365→                onChange={(e) => handleSearchChange(e.target.value)}
+   366→                className="pl-9"
+   367→              />
+   368→            </div>
+   369→            <Select value={rombel || '__all__'} onValueChange={handleRombelChange}>
+   370→              <SelectTrigger className="w-full sm:w-[200px]">
+   371→                <SelectValue placeholder="Semua Rombel" />
+   372→              </SelectTrigger>
+   373→              <SelectContent>
+   374→                <SelectItem value="__all__">Semua Rombel</SelectItem>
+   375→                {ROMBEL_OPTIONS.map((r) => (
+   376→                  <SelectItem key={r} value={r}>
+   377→                    {r}
+   378→                  </SelectItem>
+   379→                ))}
+   380→              </SelectContent>
+   381→            </Select>
+   382→            <Select value={String(limit)} onValueChange={handleLimitChange}>
+   383→              <SelectTrigger className="w-full sm:w-[140px]">
+   384→                <SelectValue />
+   385→              </SelectTrigger>
+   386→              <SelectContent>
+   387→                {PAGE_SIZE_OPTIONS.map((opt) => (
+   388→                  <SelectItem key={opt.value} value={opt.value}>
+   389→                    {opt.label} per halaman
+   390→                  </SelectItem>
+   391→                ))}
+   392→              </SelectContent>
+   393→            </Select>
+   394→          </div>
+   395→        </CardContent>
+   396→      </Card>
+   397→
+   398→      {/* Table */}
+   399→      <Card>
+   400→        <CardContent className="p-0">
+   401→          <div className="overflow-x-auto">
+   402→            {isLoading ? (
+   403→              <div className="p-6 space-y-4">
+   404→                <div className="flex items-center justify-between">
+   405→                  <Skeleton className="h-5 w-48" />
+   406→                  <Skeleton className="h-9 w-24" />
+   407→                </div>
+   408→                <div className="space-y-3">
+   409→                  {Array.from({ length: 5 }).map((_, i) => (
+   410→                    <div key={i} className="flex gap-4">
+   411→                      <Skeleton className="h-8 w-10" />
+   412→                      <Skeleton className="h-8 flex-1" />
+   413→                      <Skeleton className="h-8 w-16" />
+   414→                      <Skeleton className="h-8 w-20" />
+   415→                      <Skeleton className="h-8 w-9" />
+   416→                    </div>
+   417→                  ))}
+   418→                </div>
+   419→              </div>
+   420→            ) : (
+   421→              <Table>
+   422→                <TableHeader>
+   423→                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+   424→                    {/* 1. No — Always visible */}
+   425→                    <TableHead className="w-12 text-center whitespace-nowrap">No</TableHead>
+   426→                    {/* 2. Aksi — Always visible */}
+   427→                    <TableHead className="w-[120px] text-center whitespace-nowrap">Aksi</TableHead>
+   428→                    {/* 3. Nama — Always visible */}
+   429→                    <TableHead className="min-w-[180px] whitespace-nowrap">Nama</TableHead>
+   430→                    {/* 3. NIPD — sm+ */}
+   431→                    <TableHead className="hidden sm:table-cell min-w-[100px] whitespace-nowrap">NIPD</TableHead>
+   432→                    {/* 4. JK — Always visible */}
+   433→                    <TableHead className="w-14 text-center whitespace-nowrap">JK</TableHead>
+   434→                    {/* 5. NISN — sm+ */}
+   435→                    <TableHead className="hidden sm:table-cell min-w-[130px] whitespace-nowrap">NISN</TableHead>
+   436→                    {/* 6. Tempat Lahir — md+ */}
+   437→                    <TableHead className="hidden md:table-cell min-w-[120px] whitespace-nowrap">Tempat Lahir</TableHead>
+   438→                    {/* 7. Tanggal Lahir — md+ */}
+   439→                    <TableHead className="hidden md:table-cell min-w-[110px] whitespace-nowrap">Tanggal Lahir</TableHead>
+   440→                    {/* 8. NIK — lg+ */}
+   441→                    <TableHead className="hidden lg:table-cell min-w-[140px] whitespace-nowrap">NIK</TableHead>
+   442→                    {/* 9. Agama — sm+ */}
+   443→                    <TableHead className="hidden sm:table-cell min-w-[100px] whitespace-nowrap">Agama</TableHead>
+   444→                    {/* 10. Alamat — lg+ */}
+   445→                    <TableHead className="hidden lg:table-cell min-w-[200px] whitespace-nowrap">Alamat</TableHead>
+   446→                    {/* 11. RT — xl+ */}
+   447→                    <TableHead className="hidden xl:table-cell min-w-[60px] whitespace-nowrap">RT</TableHead>
+   448→                    {/* 12. RW — xl+ */}
+   449→                    <TableHead className="hidden xl:table-cell min-w-[60px] whitespace-nowrap">RW</TableHead>
+   450→                    {/* 13. Dusun — xl+ */}
+   451→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Dusun</TableHead>
+   452→                    {/* 14. Kelurahan — lg+ */}
+   453→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Kelurahan</TableHead>
+   454→                    {/* 15. Kecamatan — lg+ */}
+   455→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Kecamatan</TableHead>
+   456→                    {/* 16. Kode Pos — xl+ */}
+   457→                    <TableHead className="hidden xl:table-cell min-w-[80px] whitespace-nowrap">Kode Pos</TableHead>
+   458→                    {/* 17. Jenis Tinggal — lg+ */}
+   459→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Jenis Tinggal</TableHead>
+   460→                    {/* 18. Alat Transportasi — lg+ */}
+   461→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Alat Transportasi</TableHead>
+   462→                    {/* 19. Telepon — xl+ */}
+   463→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Telepon</TableHead>
+   464→                    {/* 20. HP — sm+ */}
+   465→                    <TableHead className="hidden sm:table-cell min-w-[120px] whitespace-nowrap">HP</TableHead>
+   466→                    {/* 21. E-Mail — lg+ */}
+   467→                    <TableHead className="hidden lg:table-cell min-w-[180px] whitespace-nowrap">E-Mail</TableHead>
+   468→                    {/* 22. SKHUN — xl+ */}
+   469→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">SKHUN</TableHead>
+   470→                    {/* 23. Penerima KPS — xl+ */}
+   471→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Penerima KPS</TableHead>
+   472→                    {/* 24. No. KPS — lg+ */}
+   473→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">No. KPS</TableHead>
+   474→                    {/* 25. Nama Ayah — md+ */}
+   475→                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Ayah</TableHead>
+   476→                    {/* 26. Ayah Tahun Lahir — xl+ */}
+   477→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Ayah Tahun Lahir</TableHead>
+   478→                    {/* 27. Ayah Jenjang Pendidikan — xl+ */}
+   479→                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Ayah Jenjang</TableHead>
+   480→                    {/* 28. Ayah Pekerjaan — lg+ */}
+   481→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Ayah Pekerjaan</TableHead>
+   482→                    {/* 29. Nama Ibu — md+ */}
+   483→                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Ibu</TableHead>
+   484→                    {/* 30. Ibu Tahun Lahir — xl+ */}
+   485→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Ibu Tahun Lahir</TableHead>
+   486→                    {/* 31. Ibu Jenjang Pendidikan — xl+ */}
+   487→                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Ibu Jenjang</TableHead>
+   488→                    {/* 32. Ibu Pekerjaan — lg+ */}
+   489→                    <TableHead className="hidden lg:table-cell min-w-[120px] whitespace-nowrap">Ibu Pekerjaan</TableHead>
+   490→                    {/* 33. Nama Wali — md+ */}
+   491→                    <TableHead className="hidden md:table-cell min-w-[130px] whitespace-nowrap">Nama Wali</TableHead>
+   492→                    {/* 34. Wali Tahun Lahir — xl+ */}
+   493→                    <TableHead className="hidden xl:table-cell min-w-[100px] whitespace-nowrap">Wali Tahun Lahir</TableHead>
+   494→                    {/* 35. Wali Jenjang Pendidikan — xl+ */}
+   495→                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Wali Jenjang</TableHead>
+   496→                    {/* 36. Wali Pekerjaan — xl+ */}
+   497→                    <TableHead className="hidden xl:table-cell min-w-[120px] whitespace-nowrap">Wali Pekerjaan</TableHead>
+   498→                    {/* 37. Rombel Saat Ini — Always visible */}
+   499→                    <TableHead className="min-w-[120px] whitespace-nowrap">Rombel</TableHead>
+   500→                    {/* 38. Kebutuhan Khusus — md+ */}
+   501→                    <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Kebutuhan Khusus</TableHead>
+   502→                    {/* 39. Sekolah Asal — md+ */}
+   503→                    <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Sekolah Asal</TableHead>
+   504→                  </TableRow>
+   505→                </TableHeader>
+   506→                <TableBody>
+   507→                  {siswaList.length === 0 ? (
+   508→                    <TableRow>
+   509→                      <TableCell colSpan={TOTAL_COLUMNS} className="h-32 text-center text-muted-foreground">
+   510→                        Tidak ada data siswa ditemukan.
+   511→                      </TableCell>
+   512→                    </TableRow>
+   513→                  ) : (
+   514→                    siswaList.map((siswa) => (
+   515→                      <TableRow key={siswa.id}>
+   516→                        {/* 1. No */}
+   517→                        <TableCell className="text-center font-medium whitespace-nowrap">{siswa.no}</TableCell>
+   518→                        {/* 2. Aksi */}
+   519→                        <TableCell className="text-center whitespace-nowrap">
+   520→                          <div className="flex items-center justify-center gap-1">
+   521→                            <Button
+   522→                              variant="ghost"
+   523→                              size="icon"
+   524→                              className="h-8 w-8 hover:bg-emerald-100 hover:text-emerald-700"
+   525→                              onClick={() => setKartuSiswa(siswa)}
+   526→                              aria-label={`Kartu Pelajar ${siswa.nama}`}
+   527→                              title="Kartu Pelajar"
+   528→                            >
+   529→                              <CreditCard className="h-4 w-4" />
+   530→                            </Button>
+   531→                            <Button
+   532→                              variant="ghost"
+   533→                              size="icon"
+   534→                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+   535→                              onClick={() => handleEditClick(siswa)}
+   536→                              aria-label={`Edit ${siswa.nama}`}
+   537→                            >
+   538→                              <Pencil className="h-4 w-4" />
+   539→                            </Button>
+   540→                            <AlertDialog
+   541→                              open={deleteId === siswa.id}
+   542→                              onOpenChange={(open) => {
+   543→                                if (!open) setDeleteId(null);
+   544→                                else setDeleteId(siswa.id);
+   545→                              }}
+   546→                            >
+   547→                              <AlertDialogTrigger asChild>
+   548→                                <Button
+   549→                                  variant="ghost"
+   550→                                  size="icon"
+   551→                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+   552→                                >
+   553→                                  <Trash2 className="h-4 w-4" />
+   554→                                  <span className="sr-only">Hapus {siswa.nama}</span>
+   555→                                </Button>
+   556→                              </AlertDialogTrigger>
+   557→                              <AlertDialogContent>
+   558→                                <AlertDialogHeader>
+   559→                                  <AlertDialogTitle>Hapus Data Siswa</AlertDialogTitle>
+   560→                                  <AlertDialogDescription>
+   561→                                    Apakah Anda yakin ingin menghapus data siswa{' '}
+   562→                                    <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan
+   563→                                    ini tidak dapat dibatalkan.
+   564→                                  </AlertDialogDescription>
+   565→                                </AlertDialogHeader>
+   566→                                <AlertDialogFooter>
+   567→                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+   568→                                  <AlertDialogAction
+   569→                                    onClick={handleDelete}
+   570→                                    disabled={deleteMutation.isPending}
+   571→                                    className="bg-destructive text-white hover:bg-destructive/90"
+   572→                                  >
+   573→                                    {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
+   574→                                  </AlertDialogAction>
+   575→                                </AlertDialogFooter>
+   576→                              </AlertDialogContent>
+   577→                            </AlertDialog>
+   578→                          </div>
+   579→                        </TableCell>
+   580→                        {/* 3. Nama */}
+   581→                        <TableCell className="font-medium whitespace-nowrap">{siswa.nama}</TableCell>
+   582→                        {/* 3. NIPD — sm+ */}
+   583→                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.nipd || '-'}</TableCell>
+   584→                        {/* 4. JK */}
+   585→                        <TableCell className="text-center whitespace-nowrap">{siswa.jenisKelamin || '-'}</TableCell>
+   586→                        {/* 5. NISN — sm+ */}
+   587→                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.nisn || '-'}</TableCell>
+   588→                        {/* 6. Tempat Lahir — md+ */}
+   589→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.tempatLahir || '-'}</TableCell>
+   590→                        {/* 7. Tanggal Lahir — md+ */}
+   591→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.tanggalLahir || '-'}</TableCell>
+   592→                        {/* 8. NIK — lg+ */}
+   593→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.nik || '-'}</TableCell>
+   594→                        {/* 9. Agama — sm+ */}
+   595→                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.agama || '-'}</TableCell>
+   596→                        {/* 10. Alamat — lg+ */}
+   597→                        <TableCell className="hidden lg:table-cell max-w-[200px] truncate whitespace-nowrap">{siswa.alamat || '-'}</TableCell>
+   598→                        {/* 11. RT — xl+ */}
+   599→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.rt || '-'}</TableCell>
+   600→                        {/* 12. RW — xl+ */}
+   601→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.rw || '-'}</TableCell>
+   602→                        {/* 13. Dusun — xl+ */}
+   603→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.dusun || '-'}</TableCell>
+   604→                        {/* 14. Kelurahan — lg+ */}
+   605→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.kelurahan || '-'}</TableCell>
+   606→                        {/* 15. Kecamatan — lg+ */}
+   607→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.kecamatan || '-'}</TableCell>
+   608→                        {/* 16. Kode Pos — xl+ */}
+   609→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.kodePos || '-'}</TableCell>
+   610→                        {/* 17. Jenis Tinggal — lg+ */}
+   611→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.jenisTinggal || '-'}</TableCell>
+   612→                        {/* 18. Alat Transportasi — lg+ */}
+   613→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.alatTransportasi || '-'}</TableCell>
+   614→                        {/* 19. Telepon — xl+ */}
+   615→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.telepon || '-'}</TableCell>
+   616→                        {/* 20. HP — sm+ */}
+   617→                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.hp || '-'}</TableCell>
+   618→                        {/* 21. E-Mail — lg+ */}
+   619→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.email || '-'}</TableCell>
+   620→                        {/* 22. SKHUN — xl+ */}
+   621→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.skhun || '-'}</TableCell>
+   622→                        {/* 23. Penerima KPS — xl+ */}
+   623→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.penerimaKPS || '-'}</TableCell>
+   624→                        {/* 24. No. KPS — lg+ */}
+   625→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.noKPS || '-'}</TableCell>
+   626→                        {/* 25. Nama Ayah — md+ */}
+   627→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaAyah || '-'}</TableCell>
+   628→                        {/* 26. Ayah Tahun Lahir — xl+ */}
+   629→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ayahTahunLahir || '-'}</TableCell>
+   630→                        {/* 27. Ayah Jenjang Pendidikan — xl+ */}
+   631→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ayahJenjangPendidikan || '-'}</TableCell>
+   632→                        {/* 28. Ayah Pekerjaan — lg+ */}
+   633→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.ayahPekerjaan || '-'}</TableCell>
+   634→                        {/* 29. Nama Ibu — md+ */}
+   635→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaIbu || '-'}</TableCell>
+   636→                        {/* 30. Ibu Tahun Lahir — xl+ */}
+   637→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ibuTahunLahir || '-'}</TableCell>
+   638→                        {/* 31. Ibu Jenjang Pendidikan — xl+ */}
+   639→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.ibuJenjangPendidikan || '-'}</TableCell>
+   640→                        {/* 32. Ibu Pekerjaan — lg+ */}
+   641→                        <TableCell className="hidden lg:table-cell whitespace-nowrap">{siswa.ibuPekerjaan || '-'}</TableCell>
+   642→                        {/* 33. Nama Wali — md+ */}
+   643→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.namaWali || '-'}</TableCell>
+   644→                        {/* 34. Wali Tahun Lahir — xl+ */}
+   645→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliTahunLahir || '-'}</TableCell>
+   646→                        {/* 35. Wali Jenjang Pendidikan — xl+ */}
+   647→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliJenjangPendidikan || '-'}</TableCell>
+   648→                        {/* 36. Wali Pekerjaan — xl+ */}
+   649→                        <TableCell className="hidden xl:table-cell whitespace-nowrap">{siswa.waliPekerjaan || '-'}</TableCell>
+   650→                        {/* 37. Rombel */}
+   651→                        <TableCell className="whitespace-nowrap">{siswa.rombel || '-'}</TableCell>
+   652→                        {/* 38. Kebutuhan Khusus — md+ */}
+   653→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.kebutuhanKhusus || '-'}</TableCell>
+   654→                        {/* 39. Sekolah Asal — md+ */}
+   655→                        <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.sekolahAsal || '-'}</TableCell>
+   656→                      </TableRow>
+   657→                    ))
+   658→                  )}
+   659→                </TableBody>
+   660→              </Table>
+   661→            )}
+   662→          </div>
+   663→
+   664→          {/* Pagination */}
+   665→          {!isLoading && total > 0 && (
+   666→            <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+   667→              <p className="text-sm text-muted-foreground">
+   668→                Menampilkan <span className="font-medium">{showAll ? total : startItem}</span>
+   669→                {showAll ? '' : <>-<span className="font-medium">{endItem}</span></>} dari{' '}
+   670→                <span className="font-medium">{total}</span> siswa
+   671→              </p>
+   672→              {!showAll && (
+   673→                <div className="flex items-center gap-2">
+   674→                  <Button
+   675→                    variant="outline"
+   676→                    size="icon"
+   677→                    className="h-8 w-8"
+   678→                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+   679→                    disabled={page <= 1}
+   680→                  >
+   681→                    <ChevronLeft className="h-4 w-4" />
+   682→                    <span className="sr-only">Halaman sebelumnya</span>
+   683→                  </Button>
+   684→                  <span className="text-sm font-medium">
+   685→                    {page} / {totalPages}
+   686→                  </span>
+   687→                  <Button
+   688→                    variant="outline"
+   689→                    size="icon"
+   690→                    className="h-8 w-8"
+   691→                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   692→                    disabled={page >= totalPages}
+   693→                  >
+   694→                    <ChevronRight className="h-4 w-4" />
+   695→                    <span className="sr-only">Halaman berikutnya</span>
+   696→                  </Button>
+   697→                </div>
+   698→              )}
+   699→            </div>
+   700→          )}
+   701→        </CardContent>
+   702→      </Card>
+   703→
+   704→      {/* Edit Dialog */}
+   705→      <Dialog
+   706→        open={!!editTarget}
+   707→        onOpenChange={(open) => {
+   708→          if (!open) setEditTarget(null);
+   709→        }}
+   710→      >
+   711→        <DialogContent className="sm:max-w-2xl">
+   712→          <DialogHeader>
+   713→            <DialogTitle>Edit Data Siswa</DialogTitle>
+   714→            <DialogDescription>
+   715→              Perbarui data siswa <span className="font-semibold">{editTarget?.nama}</span>. Ubah sesuai kebutuhan lalu simpan.
+   716→            </DialogDescription>
+   717→          </DialogHeader>
+   718→
+   719→          <ScrollArea className="max-h-[70vh] pr-4">
+   720→            <div className="space-y-6 pb-2">
+   721→              {/* Section 1: Data Pribadi */}
+   722→              <div>
+   723→                <h3 className="text-sm font-bold pb-2 border-b">Data Pribadi</h3>
+   724→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+   725→                  <div className="space-y-2">
+   726→                    <Label htmlFor="edit-nama">
+   727→                      Nama <span className="text-destructive">*</span>
+   728→                    </Label>
+   729→                    <Input
+   730→                      id="edit-nama"
+   731→                      value={editData.nama || ''}
+   732→                      onChange={(e) => handleChange('nama', e.target.value)}
+   733→                      required
+   734→                    />
+   735→                  </div>
+   736→                  <div className="space-y-2">
+   737→                    <Label htmlFor="edit-nipd">NIPD</Label>
+   738→                    <Input
+   739→                      id="edit-nipd"
+   740→                      value={editData.nipd || ''}
+   741→                      onChange={(e) => handleChange('nipd', e.target.value)}
+   742→                    />
+   743→                  </div>
+   744→                  <div className="space-y-2">
+   745→                    <Label htmlFor="edit-jk">Jenis Kelamin</Label>
+   746→                    <Select value={editData.jenisKelamin || ''} onValueChange={(v) => handleChange('jenisKelamin', v)}>
+   747→                      <SelectTrigger id="edit-jk">
+   748→                        <SelectValue placeholder="Pilih JK" />
+   749→                      </SelectTrigger>
+   750→                      <SelectContent>
+   751→                        <SelectItem value="L">Laki-laki</SelectItem>
+   752→                        <SelectItem value="P">Perempuan</SelectItem>
+   753→                      </SelectContent>
+   754→                    </Select>
+   755→                  </div>
+   756→                  <div className="space-y-2">
+   757→                    <Label htmlFor="edit-nisn">NISN</Label>
+   758→                    <Input
+   759→                      id="edit-nisn"
+   760→                      value={editData.nisn || ''}
+   761→                      onChange={(e) => handleChange('nisn', e.target.value)}
+   762→                    />
+   763→                  </div>
+   764→                  <div className="space-y-2">
+   765→                    <Label htmlFor="edit-tempatLahir">Tempat Lahir</Label>
+   766→                    <Input
+   767→                      id="edit-tempatLahir"
+   768→                      value={editData.tempatLahir || ''}
+   769→                      onChange={(e) => handleChange('tempatLahir', e.target.value)}
+   770→                    />
+   771→                  </div>
+   772→                  <div className="space-y-2">
+   773→                    <Label htmlFor="edit-tanggalLahir">Tanggal Lahir</Label>
+   774→                    <Input
+   775→                      id="edit-tanggalLahir"
+   776→                      type="date"
+   777→                      value={editData.tanggalLahir || ''}
+   778→                      onChange={(e) => handleChange('tanggalLahir', e.target.value)}
+   779→                    />
+   780→                  </div>
+   781→                  <div className="space-y-2">
+   782→                    <Label htmlFor="edit-nik">NIK</Label>
+   783→                    <Input
+   784→                      id="edit-nik"
+   785→                      value={editData.nik || ''}
+   786→                      onChange={(e) => handleChange('nik', e.target.value)}
+   787→                    />
+   788→                  </div>
+   789→                  <div className="space-y-2">
+   790→                    <Label htmlFor="edit-agama">Agama</Label>
+   791→                    <Select value={editData.agama || ''} onValueChange={(v) => handleChange('agama', v)}>
+   792→                      <SelectTrigger id="edit-agama">
+   793→                        <SelectValue placeholder="Pilih Agama" />
+   794→                      </SelectTrigger>
+   795→                      <SelectContent>
+   796→                        {AGAMA_OPTIONS.map((a) => (
+   797→                          <SelectItem key={a} value={a}>
+   798→                            {a}
+   799→                          </SelectItem>
+   800→                        ))}
+   801→                      </SelectContent>
+   802→                    </Select>
+   803→                  </div>
+   804→                </div>
+   805→              </div>
+   806→
+   807→              {/* Section 2: Alamat & Kontak */}
+   808→              <div>
+   809→                <h3 className="text-sm font-bold pb-2 border-b">Alamat & Kontak</h3>
+   810→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+   811→                  <div className="space-y-2 sm:col-span-2">
+   812→                    <Label htmlFor="edit-alamat">Alamat</Label>
+   813→                    <Input
+   814→                      id="edit-alamat"
+   815→                      value={editData.alamat || ''}
+   816→                      onChange={(e) => handleChange('alamat', e.target.value)}
+   817→                    />
+   818→                  </div>
+   819→                  <div className="space-y-2">
+   820→                    <Label htmlFor="edit-rt">RT</Label>
+   821→                    <Input
+   822→                      id="edit-rt"
+   823→                      value={editData.rt || ''}
+   824→                      onChange={(e) => handleChange('rt', e.target.value)}
+   825→                    />
+   826→                  </div>
+   827→                  <div className="space-y-2">
+   828→                    <Label htmlFor="edit-rw">RW</Label>
+   829→                    <Input
+   830→                      id="edit-rw"
+   831→                      value={editData.rw || ''}
+   832→                      onChange={(e) => handleChange('rw', e.target.value)}
+   833→                    />
+   834→                  </div>
+   835→                  <div className="space-y-2">
+   836→                    <Label htmlFor="edit-dusun">Dusun</Label>
+   837→                    <Input
+   838→                      id="edit-dusun"
+   839→                      value={editData.dusun || ''}
+   840→                      onChange={(e) => handleChange('dusun', e.target.value)}
+   841→                    />
+   842→                  </div>
+   843→                  <div className="space-y-2">
+   844→                    <Label htmlFor="edit-kelurahan">Kelurahan</Label>
+   845→                    <Input
+   846→                      id="edit-kelurahan"
+   847→                      value={editData.kelurahan || ''}
+   848→                      onChange={(e) => handleChange('kelurahan', e.target.value)}
+   849→                    />
+   850→                  </div>
+   851→                  <div className="space-y-2">
+   852→                    <Label htmlFor="edit-kecamatan">Kecamatan</Label>
+   853→                    <Input
+   854→                      id="edit-kecamatan"
+   855→                      value={editData.kecamatan || ''}
+   856→                      onChange={(e) => handleChange('kecamatan', e.target.value)}
+   857→                    />
+   858→                  </div>
+   859→                  <div className="space-y-2">
+   860→                    <Label htmlFor="edit-kodePos">Kode Pos</Label>
+   861→                    <Input
+   862→                      id="edit-kodePos"
+   863→                      value={editData.kodePos || ''}
+   864→                      onChange={(e) => handleChange('kodePos', e.target.value)}
+   865→                    />
+   866→                  </div>
+   867→                  <div className="space-y-2">
+   868→                    <Label htmlFor="edit-jenisTinggal">Jenis Tinggal</Label>
+   869→                    <Input
+   870→                      id="edit-jenisTinggal"
+   871→                      value={editData.jenisTinggal || ''}
+   872→                      onChange={(e) => handleChange('jenisTinggal', e.target.value)}
+   873→                    />
+   874→                  </div>
+   875→                  <div className="space-y-2">
+   876→                    <Label htmlFor="edit-alatTransportasi">Alat Transportasi</Label>
+   877→                    <Input
+   878→                      id="edit-alatTransportasi"
+   879→                      value={editData.alatTransportasi || ''}
+   880→                      onChange={(e) => handleChange('alatTransportasi', e.target.value)}
+   881→                    />
+   882→                  </div>
+   883→                  <div className="space-y-2">
+   884→                    <Label htmlFor="edit-telepon">Telepon</Label>
+   885→                    <Input
+   886→                      id="edit-telepon"
+   887→                      value={editData.telepon || ''}
+   888→                      onChange={(e) => handleChange('telepon', e.target.value)}
+   889→                    />
+   890→                  </div>
+   891→                  <div className="space-y-2">
+   892→                    <Label htmlFor="edit-hp">HP</Label>
+   893→                    <Input
+   894→                      id="edit-hp"
+   895→                      value={editData.hp || ''}
+   896→                      onChange={(e) => handleChange('hp', e.target.value)}
+   897→                    />
+   898→                  </div>
+   899→                  <div className="space-y-2">
+   900→                    <Label htmlFor="edit-email">Email</Label>
+   901→                    <Input
+   902→                      id="edit-email"
+   903→                      type="email"
+   904→                      value={editData.email || ''}
+   905→                      onChange={(e) => handleChange('email', e.target.value)}
+   906→                    />
+   907→                  </div>
+   908→                </div>
+   909→              </div>
+   910→
+   911→              {/* Section 3: Data Orang Tua */}
+   912→              <div>
+   913→                <h3 className="text-sm font-bold pb-2 border-b">Data Orang Tua</h3>
+   914→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+   915→                  <div className="space-y-2">
+   916→                    <Label htmlFor="edit-namaAyah">Nama Ayah</Label>
+   917→                    <Input
+   918→                      id="edit-namaAyah"
+   919→                      value={editData.namaAyah || ''}
+   920→                      onChange={(e) => handleChange('namaAyah', e.target.value)}
+   921→                    />
+   922→                  </div>
+   923→                  <div className="space-y-2">
+   924→                    <Label htmlFor="edit-ayahTahunLahir">Ayah Tahun Lahir</Label>
+   925→                    <Input
+   926→                      id="edit-ayahTahunLahir"
+   927→                      value={editData.ayahTahunLahir || ''}
+   928→                      onChange={(e) => handleChange('ayahTahunLahir', e.target.value)}
+   929→                    />
+   930→                  </div>
+   931→                  <div className="space-y-2">
+   932→                    <Label htmlFor="edit-ayahJenjangPendidikan">Ayah Jenjang Pendidikan</Label>
+   933→                    <Input
+   934→                      id="edit-ayahJenjangPendidikan"
+   935→                      value={editData.ayahJenjangPendidikan || ''}
+   936→                      onChange={(e) => handleChange('ayahJenjangPendidikan', e.target.value)}
+   937→                    />
+   938→                  </div>
+   939→                  <div className="space-y-2">
+   940→                    <Label htmlFor="edit-ayahPekerjaan">Ayah Pekerjaan</Label>
+   941→                    <Input
+   942→                      id="edit-ayahPekerjaan"
+   943→                      value={editData.ayahPekerjaan || ''}
+   944→                      onChange={(e) => handleChange('ayahPekerjaan', e.target.value)}
+   945→                    />
+   946→                  </div>
+   947→                  <div className="space-y-2">
+   948→                    <Label htmlFor="edit-namaIbu">Nama Ibu</Label>
+   949→                    <Input
+   950→                      id="edit-namaIbu"
+   951→                      value={editData.namaIbu || ''}
+   952→                      onChange={(e) => handleChange('namaIbu', e.target.value)}
+   953→                    />
+   954→                  </div>
+   955→                  <div className="space-y-2">
+   956→                    <Label htmlFor="edit-ibuTahunLahir">Ibu Tahun Lahir</Label>
+   957→                    <Input
+   958→                      id="edit-ibuTahunLahir"
+   959→                      value={editData.ibuTahunLahir || ''}
+   960→                      onChange={(e) => handleChange('ibuTahunLahir', e.target.value)}
+   961→                    />
+   962→                  </div>
+   963→                  <div className="space-y-2">
+   964→                    <Label htmlFor="edit-ibuJenjangPendidikan">Ibu Jenjang Pendidikan</Label>
+   965→                    <Input
+   966→                      id="edit-ibuJenjangPendidikan"
+   967→                      value={editData.ibuJenjangPendidikan || ''}
+   968→                      onChange={(e) => handleChange('ibuJenjangPendidikan', e.target.value)}
+   969→                    />
+   970→                  </div>
+   971→                  <div className="space-y-2">
+   972→                    <Label htmlFor="edit-ibuPekerjaan">Ibu Pekerjaan</Label>
+   973→                    <Input
+   974→                      id="edit-ibuPekerjaan"
+   975→                      value={editData.ibuPekerjaan || ''}
+   976→                      onChange={(e) => handleChange('ibuPekerjaan', e.target.value)}
+   977→                    />
+   978→                  </div>
+   979→                  <div className="space-y-2">
+   980→                    <Label htmlFor="edit-namaWali">Nama Wali</Label>
+   981→                    <Input
+   982→                      id="edit-namaWali"
+   983→                      value={editData.namaWali || ''}
+   984→                      onChange={(e) => handleChange('namaWali', e.target.value)}
+   985→                    />
+   986→                  </div>
+   987→                  <div className="space-y-2">
+   988→                    <Label htmlFor="edit-waliTahunLahir">Wali Tahun Lahir</Label>
+   989→                    <Input
+   990→                      id="edit-waliTahunLahir"
+   991→                      value={editData.waliTahunLahir || ''}
+   992→                      onChange={(e) => handleChange('waliTahunLahir', e.target.value)}
+   993→                    />
+   994→                  </div>
+   995→                  <div className="space-y-2">
+   996→                    <Label htmlFor="edit-waliJenjangPendidikan">Wali Jenjang Pendidikan</Label>
+   997→                    <Input
+   998→                      id="edit-waliJenjangPendidikan"
+   999→                      value={editData.waliJenjangPendidikan || ''}
+  1000→                      onChange={(e) => handleChange('waliJenjangPendidikan', e.target.value)}
+  1001→                    />
+  1002→                  </div>
+  1003→                  <div className="space-y-2">
+  1004→                    <Label htmlFor="edit-waliPekerjaan">Wali Pekerjaan</Label>
+  1005→                    <Input
+  1006→                      id="edit-waliPekerjaan"
+  1007→                      value={editData.waliPekerjaan || ''}
+  1008→                      onChange={(e) => handleChange('waliPekerjaan', e.target.value)}
+  1009→                    />
+  1010→                  </div>
+  1011→                </div>
+  1012→              </div>
+  1013→
+  1014→              {/* Section 4: Data Sekolah */}
+  1015→              <div>
+  1016→                <h3 className="text-sm font-bold pb-2 border-b">Data Sekolah</h3>
+  1017→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+  1018→                  <div className="space-y-2">
+  1019→                    <Label htmlFor="edit-rombel">Rombel</Label>
+  1020→                    <Select value={editData.rombel || ''} onValueChange={(v) => handleChange('rombel', v)}>
+  1021→                      <SelectTrigger id="edit-rombel">
+  1022→                        <SelectValue placeholder="Pilih Rombel" />
+  1023→                      </SelectTrigger>
+  1024→                      <SelectContent>
+  1025→                        {ROMBEL_OPTIONS.map((r) => (
+  1026→                          <SelectItem key={r} value={r}>
+  1027→                            {r}
+  1028→                          </SelectItem>
+  1029→                        ))}
+  1030→                      </SelectContent>
+  1031→                    </Select>
+  1032→                  </div>
+  1033→                  <div className="space-y-2">
+  1034→                    <Label htmlFor="edit-kebutuhanKhusus">Kebutuhan Khusus</Label>
+  1035→                    <Input
+  1036→                      id="edit-kebutuhanKhusus"
+  1037→                      value={editData.kebutuhanKhusus || ''}
+  1038→                      onChange={(e) => handleChange('kebutuhanKhusus', e.target.value)}
+  1039→                    />
+  1040→                  </div>
+  1041→                  <div className="space-y-2">
+  1042→                    <Label htmlFor="edit-sekolahAsal">Sekolah Asal</Label>
+  1043→                    <Input
+  1044→                      id="edit-sekolahAsal"
+  1045→                      value={editData.sekolahAsal || ''}
+  1046→                      onChange={(e) => handleChange('sekolahAsal', e.target.value)}
+  1047→                    />
+  1048→                  </div>
+  1049→                  <div className="space-y-2">
+  1050→                    <Label htmlFor="edit-status">Status</Label>
+  1051→                    <Select value={editData.status || ''} onValueChange={(v) => handleChange('status', v)}>
+  1052→                      <SelectTrigger id="edit-status">
+  1053→                        <SelectValue placeholder="Pilih Status" />
+  1054→                      </SelectTrigger>
+  1055→                      <SelectContent>
+  1056→                        <SelectItem value="Aktif">Aktif</SelectItem>
+  1057→                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+  1058→                      </SelectContent>
+  1059→                    </Select>
+  1060→                  </div>
+  1061→                </div>
+  1062→              </div>
+  1063→            </div>
+  1064→          </ScrollArea>
+  1065→
+  1066→          <DialogFooter>
+  1067→            <Button
+  1068→              variant="outline"
+  1069→              onClick={() => setEditTarget(null)}
+  1070→              disabled={editMutation.isPending}
+  1071→            >
+  1072→              Batal
+  1073→            </Button>
+  1074→            <Button
+  1075→              onClick={() => editMutation.mutate()}
+  1076→              disabled={editMutation.isPending || !editData.nama?.trim()}
+  1077→            >
+  1078→              {editMutation.isPending ? (
+  1079→                <>
+  1080→                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+  1081→                  Menyimpan...
+  1082→                </>
+  1083→              ) : (
+  1084→                'Simpan Perubahan'
+  1085→              )}
+  1086→            </Button>
+  1087→          </DialogFooter>
+  1088→        </DialogContent>
+  1089→      </Dialog>
+  1090→
+  1091→      {/* Kartu Pelajar Dialog */}
+  1092→      <KartuPelajarDialog
+  1093→        open={!!kartuSiswa}
+  1094→        onClose={() => setKartuSiswa(null)}
+  1095→        siswa={kartuSiswa}
+  1096→      />
+  1097→    </div>
+  1098→  );
+  1099→}
