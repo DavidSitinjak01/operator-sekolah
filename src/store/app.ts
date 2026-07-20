@@ -18,7 +18,7 @@ export const useAppStore = create<AppState>((set) => ({
   setActivePage: (page) => set({ activePage: page, sidebarOpen: false }),
   sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  tahunPelajaran: '2025/2026',
+  tahunPelajaran: '',
   setTahunPelajaran: (tp) => set({ tahunPelajaran: tp }),
   semester: 'Ganjil',
   setSemester: (s) => set({ semester: s }),

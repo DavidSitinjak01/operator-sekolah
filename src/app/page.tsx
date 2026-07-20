@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
 import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield } from "lucide-react";
@@ -227,6 +227,13 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
   const options = tpList.map((tp: { tahunPelajaran: string }) => tp.tahunPelajaran);
   const isValid = options.includes(tahunPelajaran);
 
+  // Auto-sync store when the current tahunPelajaran is not in the API list
+  useEffect(() => {
+    if (!isValid && options.length > 0) {
+      setTahunPelajaran(options[0]);
+    }
+  }, [isValid, options, setTahunPelajaran]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-3">
@@ -433,6 +440,8 @@ export default function Home() {
 }
 
 function DashboardShell({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void }) {
+  const { tahunPelajaran, semester } = useAppStore();
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50">
         <div className="flex flex-1">
@@ -457,7 +466,7 @@ function DashboardShell({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean;
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                  {useAppStore.getState().tahunPelajaran} — {useAppStore.getState().semester}
+                  {tahunPelajaran} — {semester}
                 </span>
               </div>
             </header>

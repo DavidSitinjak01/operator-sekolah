@@ -159,8 +159,8 @@ const INITIAL_FORM: FormData = {
   tanggalKeluar: '',
   alasan: '',
   noSurat: '',
-  tahunPelajaran: '2025/2026',
-  semester: 'Ganjil',
+  tahunPelajaran: '',
+  semester: '',
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -301,8 +301,8 @@ export default function MutasiKeluarPage() {
     setEditingId(null)
     setForm({
       ...INITIAL_FORM,
-      tahunPelajaran: useAppStore.getState().tahunPelajaran,
-      semester: useAppStore.getState().semester,
+      tahunPelajaran,
+      semester,
     })
     setSelectedSiswa(null)
     setSiswaSearch('')

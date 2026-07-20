@@ -110,8 +110,8 @@ const INITIAL_FORM: FormState = {
   tanggalMasuk: '',
   alasan: '',
   noSurat: '',
-  tahunPelajaran: '2025/2026',
-  semester: 'Ganjil',
+  tahunPelajaran: '',
+  semester: '',
 };
 
 const PAGE_SIZE = 10;
@@ -240,8 +240,8 @@ export default function MutasiMasukPage() {
   const openAddDialog = () => {
     setForm({
       ...INITIAL_FORM,
-      tahunPelajaran: useAppStore.getState().tahunPelajaran,
-      semester: useAppStore.getState().semester,
+      tahunPelajaran,
+      semester,
     });
     setIsEditing(false);
     setDialogOpen(true);
