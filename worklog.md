@@ -403,3 +403,29 @@ Stage Summary:
 - Root cause: Select component showing fallback value without updating Zustand store
 - Fix ensures store is always the single source of truth for tahun pelajaran
 - Pushed to GitHub: https://github.com/DavidSitinjak01/operator-sekolah.git (main)
+---
+Task ID: 3
+Agent: Main Agent
+Task: Create Kartu Pelajar feature, move action buttons to left, push to GitHub
+
+Work Log:
+- Created KartuPelajar.tsx component with detailed student ID card design:
+  - Green header with school identity (SMA Negeri 1 Gido, NPSN, Akreditasi A)
+  - Student photo placeholder (3x4 size)
+  - Full personal data (Nama, NIS/NIPD, NISN, NIK, TTL, JK, Agama, Kelas/Jurusan, Rombel)
+  - Alamat section with RT/RW, Dusun, Kelurahan, Kecamatan
+  - Data Orang Tua/Wali section (Ayah, Ibu, Wali)
+  - Berlaku mulai/sampai validity period
+  - Kepala Sekolah signature area with NIP
+  - QR code bar at bottom with NISN
+  - Print functionality via new window
+- Integrated KartuPelajar button in SiswaPage action column
+- Moved Aksi column (Kartu Pelajar, Edit, Hapus) from rightmost to leftmost position (after No)
+- Removed stale kartu-pelajar nav item from sidebar, store type, and page router
+- Pushed to GitHub: Vercel will auto-deploy
+
+Stage Summary:
+- New file: src/components/KartuPelajar.tsx
+- Modified: src/components/pages/SiswaPage.tsx, src/app/page.tsx, src/store/app.ts
+- Action buttons now at left side of table for easier access
+- Kartu Pelajar accessible via CreditCard icon button per student row
