@@ -41,6 +41,7 @@ interface PengaturanData {
   npsn: string;
   alamat: string;
   kabupaten: string;
+  kecamatan: string;
   provinsi: string;
   kodePos: string;
   kepalaSekolah: string;
@@ -343,7 +344,7 @@ export default function PengaturanPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="kabupaten">Kabupaten/Kota</Label>
                   <Input
@@ -351,6 +352,18 @@ export default function PengaturanPage() {
                     placeholder="Contoh: Kabupaten Nias"
                     value={form.kabupaten !== undefined ? form.kabupaten : (currentForm.kabupaten || '')}
                     onChange={(e) => updateField('kabupaten', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kecamatan" className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                    Kecamatan
+                  </Label>
+                  <Input
+                    id="kecamatan"
+                    placeholder="Contoh: Gido"
+                    value={form.kecamatan !== undefined ? form.kecamatan : (currentForm.kecamatan || '')}
+                    onChange={(e) => updateField('kecamatan', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">

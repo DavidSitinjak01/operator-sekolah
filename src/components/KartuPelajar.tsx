@@ -38,6 +38,7 @@ interface PengaturanSekolah {
   npsn: string;
   alamat: string;
   kabupaten: string;
+  kecamatan: string;
   provinsi: string;
   kodePos: string;
   kepalaSekolah: string;
@@ -193,7 +194,7 @@ function KartuPelajarCard({ siswa, sekolah }: { siswa: KartuPelajarSiswa; sekola
       {/* ─── Signature Section ─── */}
       <div style={{ padding: "4px 14px 6px", display: "flex", justifyContent: "flex-end" }}>
         <div style={{ textAlign: "center", width: "150px" }}>
-          <p style={{ fontSize: "8px", color: "#6b7280" }}>Gido, Juli 2025</p>
+          <p style={{ fontSize: "8px", color: "#6b7280" }}>{sekolah.kecamatan || "Gido"}, Juli 2025</p>
           <p style={{ fontSize: "8px", color: "#6b7280" }}>Kepala Sekolah</p>
           <div style={{ height: "40px", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <p style={{ fontSize: "7px", color: "#9ca3af", fontStyle: "italic" }}>(Tanda Tangan & Stempel)</p>
