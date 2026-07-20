@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type Page = 'dashboard' | 'siswa' | 'mutasi-masuk' | 'mutasi-keluar' | 'guru' | 'pengaturan';
+type Page = 'dashboard' | 'siswa' | 'mutasi-masuk' | 'mutasi-keluar' | 'guru' | 'pengaturan' | 'manajemen-user';
 
 interface AppState {
   activePage: Page;

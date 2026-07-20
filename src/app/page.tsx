@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
 import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
 import GuruPage from "@/components/pages/GuruPage";
 import PengaturanPage from "@/components/pages/PengaturanPage";
+import ManajemenUserPage from "@/components/pages/ManajemenUserPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ const navItems = [
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
   { key: "pengaturan" as const, label: "Pengaturan", icon: Settings },
+  { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOnly: true },
 ];
 
 // ─── TP Manage Dialog ────────────────────────────────────────────────────────
@@ -335,11 +337,17 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item, idx) => {
+          {navItems
+            .filter((item) => {
+              if ('adminOnly' in item && item.adminOnly) {
+                return ((session?.user as { role?: string })?.role || '') === 'admin';
+              }
+              return true;
+            })
+            .map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.key;
-            // Add separator before "Pengaturan" (last item)
-            const showSeparator = item.key === 'pengaturan';
+            const showSeparator = item.key === 'pengaturan' || item.key === 'manajemen-user';
             return (
               <div key={item.key}>
                 {showSeparator && <div className="my-2 border-t border-border" />}
@@ -427,6 +435,8 @@ function PageContent() {
       return <GuruPage />;
     case "pengaturan":
       return <PengaturanPage />;
+    case "manajemen-user":
+      return <ManajemenUserPage />;
     default:
       return <DashboardPage />;
   }
