@@ -202,3 +202,10 @@ model MutasiKeluar {
   @@index([siswaId])
   @@unique([siswaId, tahunPelajaran, semester])
 }
+
+model Pengaturan {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String   @default("")
+  updatedAt       DateTime @updatedAt
+}
