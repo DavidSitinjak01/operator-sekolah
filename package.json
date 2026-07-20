@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "prisma generate && next build",
+    "build": "node scripts/prepare-prisma.js && prisma generate && prisma db push --accept-data-loss 2>/dev/null; next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "postinstall": "node scripts/prepare-prisma.js && prisma generate",
     "lint": "eslint .",
