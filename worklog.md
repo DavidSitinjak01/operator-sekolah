@@ -381,3 +381,25 @@ Stage Summary:
 - New images: public/images/student-studying.png, public/images/pattern-edu.png
 - Login page verified working on both desktop and mobile viewports
 - No console errors detected
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix tahun pelajaran mismatch between sidebar and dashboard + push to GitHub
+
+Work Log:
+- Analyzed Vercel app screenshot using VLM — identified sidebar showed "2026/2027" but dashboard showed "2025/2026"
+- Root cause: TahunPelajaranSelector displayed options[0] visually when store value was invalid, but never updated the store via setTahunPelajaran()
+- Fixed TahunPelajaranSelector: added useEffect to auto-sync store when current value is not in API list
+- Fixed DashboardShell: changed useAppStore.getState() (non-reactive) to useAppStore() hook (reactive) for mobile top bar
+- Removed hardcoded '2025/2026' from store default (changed to empty string)
+- Removed hardcoded tahun pelajaran from MutasiMasukPage and MutasiKeluarPage INITIAL_FORM
+- Replaced useAppStore.getState() with reactive hook values in openAddDialog handlers
+- Verified fix with Agent Browser: sidebar and dashboard now show identical tahun pelajaran
+- Pushed 3 commits to GitHub (login redesign + tahun pelajaran sync fix)
+- Vercel auto-deploy will pick up changes from GitHub push
+
+Stage Summary:
+- Files modified: src/app/page.tsx, src/store/app.ts, src/components/pages/MutasiMasukPage.tsx, src/components/pages/MutasiKeluarPage.tsx
+- Root cause: Select component showing fallback value without updating Zustand store
+- Fix ensures store is always the single source of truth for tahun pelajaran
+- Pushed to GitHub: https://github.com/DavidSitinjak01/operator-sekolah.git (main)
