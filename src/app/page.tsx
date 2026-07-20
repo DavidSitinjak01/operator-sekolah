@@ -62,8 +62,8 @@ const navItems = [
   { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
-  { key: "pengaturan" as const, label: "Pengaturan", icon: Settings },
-  { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOnly: true },
+  { key: "pengaturan" as const, label: "Pengaturan", icon: Settings, adminOrOperator: true },
+  { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOrOperator: true },
 ];
 
 // ─── TP Manage Dialog ────────────────────────────────────────────────────────
@@ -339,8 +339,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems
             .filter((item) => {
-              if ('adminOnly' in item && item.adminOnly) {
-                return ((session?.user as { role?: string })?.role || '') === 'admin';
+              if ('adminOrOperator' in item && item.adminOrOperator) {
+                const role = (session?.user as { role?: string })?.role || '';
+                return role === 'admin' || role === 'operator';
               }
               return true;
             })
