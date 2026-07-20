@@ -423,7 +423,9 @@ export default function SiswaPage() {
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     {/* 1. No — Always visible */}
                     <TableHead className="w-12 text-center whitespace-nowrap">No</TableHead>
-                    {/* 2. Nama — Always visible */}
+                    {/* 2. Aksi — Always visible */}
+                    <TableHead className="w-[120px] text-center whitespace-nowrap">Aksi</TableHead>
+                    {/* 3. Nama — Always visible */}
                     <TableHead className="min-w-[180px] whitespace-nowrap">Nama</TableHead>
                     {/* 3. NIPD — sm+ */}
                     <TableHead className="hidden sm:table-cell min-w-[100px] whitespace-nowrap">NIPD</TableHead>
@@ -499,8 +501,6 @@ export default function SiswaPage() {
                     <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Kebutuhan Khusus</TableHead>
                     {/* 39. Sekolah Asal — md+ */}
                     <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Sekolah Asal</TableHead>
-                    {/* 40. Aksi — Always visible */}
-                    <TableHead className="w-[120px] text-center whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -515,7 +515,69 @@ export default function SiswaPage() {
                       <TableRow key={siswa.id}>
                         {/* 1. No */}
                         <TableCell className="text-center font-medium whitespace-nowrap">{siswa.no}</TableCell>
-                        {/* 2. Nama */}
+                        {/* 2. Aksi */}
+                        <TableCell className="text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-emerald-100 hover:text-emerald-700"
+                              onClick={() => setKartuSiswa(siswa)}
+                              aria-label={`Kartu Pelajar ${siswa.nama}`}
+                              title="Kartu Pelajar"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handleEditClick(siswa)}
+                              aria-label={`Edit ${siswa.nama}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog
+                              open={deleteId === siswa.id}
+                              onOpenChange={(open) => {
+                                if (!open) setDeleteId(null);
+                                else setDeleteId(siswa.id);
+                              }}
+                            >
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Hapus {siswa.nama}</span>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus Data Siswa</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin menghapus data siswa{' '}
+                                    <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan
+                                    ini tidak dapat dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDelete}
+                                    disabled={deleteMutation.isPending}
+                                    className="bg-destructive text-white hover:bg-destructive/90"
+                                  >
+                                    {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                        {/* 3. Nama */}
                         <TableCell className="font-medium whitespace-nowrap">{siswa.nama}</TableCell>
                         {/* 3. NIPD — sm+ */}
                         <TableCell className="hidden sm:table-cell whitespace-nowrap">{siswa.nipd || '-'}</TableCell>
@@ -591,68 +653,6 @@ export default function SiswaPage() {
                         <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.kebutuhanKhusus || '-'}</TableCell>
                         {/* 39. Sekolah Asal — md+ */}
                         <TableCell className="hidden md:table-cell whitespace-nowrap">{siswa.sekolahAsal || '-'}</TableCell>
-                        {/* 40. Aksi */}
-                        <TableCell className="text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-emerald-100 hover:text-emerald-700"
-                              onClick={() => setKartuSiswa(siswa)}
-                              aria-label={`Kartu Pelajar ${siswa.nama}`}
-                              title="Kartu Pelajar"
-                            >
-                              <CreditCard className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                              onClick={() => handleEditClick(siswa)}
-                              aria-label={`Edit ${siswa.nama}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog
-                              open={deleteId === siswa.id}
-                              onOpenChange={(open) => {
-                                if (!open) setDeleteId(null);
-                                else setDeleteId(siswa.id);
-                              }}
-                            >
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Hapus {siswa.nama}</span>
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Data Siswa</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Apakah Anda yakin ingin menghapus data siswa{' '}
-                                    <span className="font-semibold">{deleteTarget?.nama}</span>? Tindakan
-                                    ini tidak dapat dibatalkan.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={handleDelete}
-                                    disabled={deleteMutation.isPending}
-                                    className="bg-destructive text-white hover:bg-destructive/90"
-                                  >
-                                    {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
