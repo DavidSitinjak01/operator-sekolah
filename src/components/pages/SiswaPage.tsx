@@ -511,7 +511,7 @@ export default function SiswaPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    siswaList.map((siswa) => (
+                    siswaList.map((siswa, index) => (
                       <TableRow key={siswa.id}>
                         {/* 1. No */}
                         <TableCell className="text-center font-medium whitespace-nowrap">{(page - 1) * limit + index + 1}</TableCell>
