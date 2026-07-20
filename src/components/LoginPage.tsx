@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { School, Loader2, Eye, EyeOff, LogIn, BookOpen, GraduationCap, Sparkles } from "lucide-react";
@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 
+interface SekolahInfo {
+  logoSekolah: string;
+  namaSekolah: string;
+  alamat: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -22,6 +28,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sekolah, setSekolah] = useState<SekolahInfo | null>(null);
+
+  useEffect(() => {
+    fetch("/api/pengaturan")
+      .then((r) => r.json())
+      .then((data) => setSekolah(data))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +93,6 @@ export default function LoginPage() {
           LEFT SIDE — Illustration & Branding (hidden on mobile, visible lg+)
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative flex-col items-center justify-center p-8 xl:p-12">
-        {/* Subtle pattern overlay */}
         <div
           className="absolute inset-0 opacity-[0.03] pointer-events-none"
           style={{
@@ -92,9 +105,7 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col items-center max-w-lg">
           {/* Student illustration */}
           <div className="relative">
-            {/* Glow behind image */}
             <div className="absolute -inset-4 bg-gradient-to-br from-emerald-300/30 via-teal-200/20 to-emerald-400/20 rounded-3xl blur-2xl" />
-
             <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-emerald-900/10 border border-white/60">
               <Image
                 src="/images/student-studying.png"
@@ -157,16 +168,29 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Logo icon */}
-            <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
-              <School className="w-7 h-7 text-white" />
-            </div>
+            {/* Logo — show uploaded logo or fallback icon */}
+            {sekolah?.logoSekolah ? (
+              <div className="mx-auto flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg border border-emerald-100 overflow-hidden">
+                <img
+                  src={sekolah.logoSekolah}
+                  alt="Logo Sekolah"
+                  className="w-full h-full object-contain p-1.5"
+                />
+              </div>
+            ) : (
+              <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
+                <School className="w-7 h-7 text-white" />
+              </div>
+            )}
+
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900 tracking-tight">
-                Operator Sekolah
+                {sekolah?.namaSekolah || "Operator Sekolah"}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1.5">
-                Masuk ke Sistem Informasi Sekolah
+                {sekolah?.alamat
+                  ? `Masuk ke Sistem Informasi — ${sekolah.alamat}`
+                  : "Masuk ke Sistem Informasi Sekolah"}
               </p>
             </div>
           </CardHeader>
@@ -271,7 +295,7 @@ export default function LoginPage() {
                 Hubungi administrator jika Anda lupa akun
               </p>
               <p className="text-center text-muted-foreground/50 text-[10px] mt-1.5">
-                &copy; {new Date().getFullYear()} Operator Sekolah &mdash; Sistem Informasi Manajemen Sekolah
+                &copy; {new Date().getFullYear()} {sekolah?.namaSekolah || "Operator Sekolah"} &mdash; Sistem Informasi Manajemen Sekolah
               </p>
             </div>
           </CardContent>

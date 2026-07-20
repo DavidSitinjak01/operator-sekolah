@@ -514,7 +514,7 @@ export default function SiswaPage() {
                     siswaList.map((siswa) => (
                       <TableRow key={siswa.id}>
                         {/* 1. No */}
-                        <TableCell className="text-center font-medium whitespace-nowrap">{siswa.no}</TableCell>
+                        <TableCell className="text-center font-medium whitespace-nowrap">{(page - 1) * limit + index + 1}</TableCell>
                         {/* 2. Aksi */}
                         <TableCell className="text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
