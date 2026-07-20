@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Printer, School, CreditCard } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +25,14 @@ export interface KartuPelajarSiswa {
   tahunPelajaran: string;
 }
 
-interface SchoolSettings {
+interface KartuPelajarDialogProps {
+  open: boolean;
+  onClose: () => void;
+  siswa: KartuPelajarSiswa | null;
+}
+
+interface PengaturanSekolah {
+  logoSekolah: string;
   namaSekolah: string;
   npsn: string;
   alamat: string;
@@ -34,38 +42,30 @@ interface SchoolSettings {
   kepalaSekolah: string;
   nipKepsek: string;
   akreditasi: string;
-  logoSekolah: string;
 }
 
-interface KartuPelajarDialogProps {
-  open: boolean;
-  onClose: () => void;
-  siswa: KartuPelajarSiswa | null;
+// ── Cache & Fetch ────────────────────────────────────────────────────────────
+
+let settingsCache: PengaturanSekolah | null = null;
+let settingsCacheTime = 0;
+const CACHE_TTL = 30_000; // 30s
+
+async function fetchSettings(): Promise<PengaturanSekolah> {
+  const now = Date.now();
+  if (settingsCache && now - settingsCacheTime < CACHE_TTL) {
+    return settingsCache;
+  }
+  const res = await fetch("/api/pengaturan");
+  if (!res.ok) throw new Error("Gagal memuat pengaturan");
+  settingsCache = await res.json();
+  settingsCacheTime = now;
+  return settingsCache!;
 }
 
-// ── Settings cache (module-level so it persists across dialog opens) ──────────
-
-let cachedSettings: SchoolSettings | null = null;
-let settingsPromise: Promise<SchoolSettings> | null = null;
-
-async function fetchSettings(): Promise<SchoolSettings> {
-  if (cachedSettings) return cachedSettings;
-  if (settingsPromise) return settingsPromise;
-
-  settingsPromise = fetch('/api/pengaturan')
-    .then((res) => res.json())
-    .then((data) => {
-      cachedSettings = data;
-      return data;
-    });
-
-  return settingsPromise;
-}
-
-// Invalidate settings cache (call after saving settings)
+/** Call this when settings are updated so the cache is cleared */
 export function invalidateSettingsCache() {
-  cachedSettings = null;
-  settingsPromise = null;
+  settingsCache = null;
+  settingsCacheTime = 0;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,34 +106,33 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── Kartu Pelajar Card (Printable) ──────────────────────────────────────────
 
-function KartuPelajarCard({ siswa, settings }: { siswa: KartuPelajarSiswa; settings: SchoolSettings }) {
+function KartuPelajarCard({ siswa, sekolah }: { siswa: KartuPelajarSiswa; sekolah: PengaturanSekolah }) {
+  const fullAlamat = [sekolah.alamat, sekolah.kabupaten, sekolah.provinsi, sekolah.kodePos]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <div className="kartu-pelajar-card bg-white border border-gray-300 shadow-lg mx-auto" style={{ width: "340px" }}>
       {/* ─── OUTER BORDER ─── */}
       <div className="border-2 border-emerald-700 m-[6px] p-0">
         {/* ─── HEADER: School Identity ─── */}
         <div className="bg-emerald-700 px-4 py-2.5 text-center">
-          {settings.logoSekolah && (
-            <div className="flex justify-center mb-1">
-              <img
-                src={settings.logoSekolah}
-                alt="Logo"
-                className="h-[36px] w-auto object-contain"
-              />
+          {sekolah.logoSekolah && (
+            <div className="flex justify-center mb-1.5">
+              <img src={sekolah.logoSekolah} alt="Logo" className="h-[40px] w-auto object-contain" />
             </div>
           )}
-          <h1 className="text-[16px] font-bold text-white tracking-wide leading-tight">{settings.namaSekolah || "-"}</h1>
+          <h1 className="text-[16px] font-bold text-white tracking-wide leading-tight">{sekolah.namaSekolah || "—"}</h1>
           <div className="flex items-center justify-center gap-3 mt-1 text-[9px] text-emerald-200">
-            <span>NPSN: {settings.npsn || "-"}</span>
-            <span>|</span>
-            <span>Akreditasi: <strong className="text-white">{settings.akreditasi || "-"}</strong></span>
+            <span>NPSN: {sekolah.npsn || "—"}</span>
+            {sekolah.akreditasi && (
+              <>
+                <span>|</span>
+                <span>Akreditasi: <strong className="text-white">{sekolah.akreditasi}</strong></span>
+              </>
+            )}
           </div>
-          <p className="text-[8px] text-emerald-200 mt-0.5">{settings.alamat || ""}</p>
-          {(settings.kabupaten || settings.provinsi || settings.kodePos) && (
-            <p className="text-[8px] text-emerald-200">
-              {[settings.kabupaten, settings.provinsi, settings.kodePos].filter(Boolean).join(", ")}
-            </p>
-          )}
+          <p className="text-[8px] text-emerald-200 mt-0.5">{fullAlamat}</p>
         </div>
 
         {/* ─── TITLE: Kartu Pelajar ─── */}
@@ -169,15 +168,15 @@ function KartuPelajarCard({ siswa, settings }: { siswa: KartuPelajarSiswa; setti
                 <p className="text-[8px] text-gray-400 italic">(Tanda Tangan & Stempel)</p>
               </div>
               <div className="border-b border-gray-800 w-[130px] mx-auto" />
-              <p className="text-[9px] font-bold text-gray-800 mt-0.5 leading-tight">{settings.kepalaSekolah || "-"}</p>
-              <p className="text-[7px] text-gray-500">NIP. {settings.nipKepsek || "-"}</p>
+              <p className="text-[9px] font-bold text-gray-800 mt-0.5 leading-tight">{sekolah.kepalaSekolah || "—"}</p>
+              <p className="text-[7px] text-gray-500">NIP. {sekolah.nipKepsek || "—"}</p>
             </div>
           </div>
         </div>
 
         {/* ─── BOTTOM BAR ─── */}
         <div className="bg-emerald-700 px-4 py-1.5 text-center">
-          <p className="text-[7px] text-emerald-200">{settings.namaSekolah || "-"} — {settings.alamat || ""}</p>
+          <p className="text-[7px] text-emerald-200">{sekolah.namaSekolah || "—"} — {sekolah.alamat || "—"}</p>
         </div>
       </div>
     </div>
@@ -188,25 +187,12 @@ function KartuPelajarCard({ siswa, settings }: { siswa: KartuPelajarSiswa; setti
 
 export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelajarDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [settings, setSettings] = useState<SchoolSettings | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch settings when dialog opens
-  useEffect(() => {
-    if (!open || !siswa) return;
-
-    // If cached, use immediately
-    if (cachedSettings) {
-      setSettings(cachedSettings);
-      return;
-    }
-
-    setLoading(true);
-    fetchSettings().then((s) => {
-      setSettings(s);
-      setLoading(false);
-    });
-  }, [open, siswa]);
+  const { data: sekolah, isLoading } = useQuery<PengaturanSekolah>({
+    queryKey: ["pengaturan"],
+    queryFn: fetchSettings,
+    enabled: open && !!siswa,
+  });
 
   const handlePrint = () => {
     const printContent = cardRef.current;
@@ -274,7 +260,7 @@ export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelaja
               size="sm"
               className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs"
               onClick={handlePrint}
-              disabled={!settings}
+              disabled={isLoading}
             >
               <Printer className="w-3.5 h-3.5" />
               Cetak
@@ -284,15 +270,15 @@ export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelaja
 
         {/* Card Preview */}
         <div className="p-4 overflow-y-auto max-h-[calc(95vh-120px)] flex justify-center">
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">Memuat pengaturan sekolah...</p>
+              <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : settings ? (
+          ) : (
             <div ref={cardRef}>
-              <KartuPelajarCard siswa={siswa} settings={settings} />
+              <KartuPelajarCard siswa={siswa} sekolah={sekolah!} />
             </div>
-          ) : null}
+          )}
         </div>
       </DialogContent>
     </Dialog>
