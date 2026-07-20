@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Pencil, Loader2 } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, Users, FileSpreadsheet, Pencil, Loader2, CreditCard } from 'lucide-react';
 import { useAppStore } from '@/store/app';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,6 +48,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ImportExcelDialog from '@/components/ImportExcelDialog';
 import ExportButton from '@/components/ExportButton';
+import KartuPelajarDialog from '@/components/KartuPelajar';
 import { SISWA_COLUMNS, flattenSiswaRow } from '@/lib/export-utils';
 
 interface Siswa {
@@ -177,6 +178,7 @@ export default function SiswaPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [kartuSiswa, setKartuSiswa] = useState<Siswa | null>(null);
   const [editTarget, setEditTarget] = useState<Siswa | null>(null);
   const [editData, setEditData] = useState<Record<string, string>>({});
 
@@ -498,7 +500,7 @@ export default function SiswaPage() {
                     {/* 39. Sekolah Asal — md+ */}
                     <TableHead className="hidden md:table-cell min-w-[140px] whitespace-nowrap">Sekolah Asal</TableHead>
                     {/* 40. Aksi — Always visible */}
-                    <TableHead className="w-[88px] text-center whitespace-nowrap">Aksi</TableHead>
+                    <TableHead className="w-[120px] text-center whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -592,6 +594,16 @@ export default function SiswaPage() {
                         {/* 40. Aksi */}
                         <TableCell className="text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-emerald-100 hover:text-emerald-700"
+                              onClick={() => setKartuSiswa(siswa)}
+                              aria-label={`Kartu Pelajar ${siswa.nama}`}
+                              title="Kartu Pelajar"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1075,6 +1087,13 @@ export default function SiswaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Kartu Pelajar Dialog */}
+      <KartuPelajarDialog
+        open={!!kartuSiswa}
+        onClose={() => setKartuSiswa(null)}
+        siswa={kartuSiswa}
+      />
     </div>
   );
 }

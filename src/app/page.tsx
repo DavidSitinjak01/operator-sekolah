@@ -42,7 +42,6 @@ import SiswaPage from "@/components/pages/SiswaPage";
 import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
 import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
 import GuruPage from "@/components/pages/GuruPage";
-import KartuPelajarPage from "@/components/pages/KartuPelajarPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
