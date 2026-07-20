@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, IdCard } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ import SiswaPage from "@/components/pages/SiswaPage";
 import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
 import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
 import GuruPage from "@/components/pages/GuruPage";
+import KartuPelajarPage from "@/components/pages/KartuPelajarPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,7 @@ const navItems = [
   { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
+  { key: "kartu-pelajar" as const, label: "Kartu Pelajar", icon: IdCard },
 ];
 
 // ─── TP Manage Dialog ────────────────────────────────────────────────────────
@@ -419,6 +421,8 @@ function PageContent() {
       return <MutasiKeluarPage />;
     case "guru":
       return <GuruPage />;
+    case "kartu-pelajar":
+      return <KartuPelajarPage />;
     default:
       return <DashboardPage />;
   }
