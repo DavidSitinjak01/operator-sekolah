@@ -42,6 +42,7 @@ import SiswaPage from "@/components/pages/SiswaPage";
 import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
 import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
 import GuruPage from "@/components/pages/GuruPage";
+import PengaturanPage from "@/components/pages/PengaturanPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,7 @@ const navItems = [
   { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
+  { key: "pengaturan" as const, label: "Pengaturan", icon: Settings },
 ];
 
 // ─── TP Manage Dialog ────────────────────────────────────────────────────────
@@ -333,31 +335,35 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems.map((item, idx) => {
             const Icon = item.icon;
             const isActive = activePage === item.key;
+            // Add separator before "Pengaturan" (last item)
+            const showSeparator = item.key === 'pengaturan';
             return (
-              <button
-                key={item.key}
-                onClick={() => {
-                  setActivePage(item.key);
-                  onClose();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon
+              <div key={item.key}>
+                {showSeparator && <div className="my-2 border-t border-border" />}
+                <button
+                  onClick={() => {
+                    setActivePage(item.key);
+                    onClose();
+                  }}
                   className={cn(
-                    "w-5 h-5 flex-shrink-0",
-                    isActive ? "text-emerald-600" : "text-muted-foreground"
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
-                />
-                {item.label}
-              </button>
+                >
+                  <Icon
+                    className={cn(
+                      "w-5 h-5 flex-shrink-0",
+                      isActive ? "text-emerald-600" : "text-muted-foreground"
+                    )}
+                  />
+                  {item.label}
+                </button>
+              </div>
             );
           })}
         </nav>
@@ -419,6 +425,8 @@ function PageContent() {
       return <MutasiKeluarPage />;
     case "guru":
       return <GuruPage />;
+    case "pengaturan":
+      return <PengaturanPage />;
     default:
       return <DashboardPage />;
   }

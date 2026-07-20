@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { Printer, X, School, CreditCard } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { Printer, School, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,25 +24,49 @@ export interface KartuPelajarSiswa {
   tahunPelajaran: string;
 }
 
+interface SchoolSettings {
+  namaSekolah: string;
+  npsn: string;
+  alamat: string;
+  kabupaten: string;
+  provinsi: string;
+  kodePos: string;
+  kepalaSekolah: string;
+  nipKepsek: string;
+  akreditasi: string;
+  logoSekolah: string;
+}
+
 interface KartuPelajarDialogProps {
   open: boolean;
   onClose: () => void;
   siswa: KartuPelajarSiswa | null;
 }
 
-// ── School Config ────────────────────────────────────────────────────────────
+// ── Settings cache (module-level so it persists across dialog opens) ──────────
 
-const SEKOLAH = {
-  nama: "SMA NEGERI 1 GIDO",
-  npsn: "10200955",
-  alamat: "Jl. Pelajar No. 1, Desa Bawodesolo, Kec. Gido",
-  kabupaten: "Kabupaten Nias",
-  provinsi: "Provinsi Sumatera Utara",
-  kodePos: "22862",
-  kepalaSekolah: "Drs. YAFETI HIA, M.Pd",
-  nipKepsek: "196805151993031007",
-  akreditasi: "A",
-};
+let cachedSettings: SchoolSettings | null = null;
+let settingsPromise: Promise<SchoolSettings> | null = null;
+
+async function fetchSettings(): Promise<SchoolSettings> {
+  if (cachedSettings) return cachedSettings;
+  if (settingsPromise) return settingsPromise;
+
+  settingsPromise = fetch('/api/pengaturan')
+    .then((res) => res.json())
+    .then((data) => {
+      cachedSettings = data;
+      return data;
+    });
+
+  return settingsPromise;
+}
+
+// Invalidate settings cache (call after saving settings)
+export function invalidateSettingsCache() {
+  cachedSettings = null;
+  settingsPromise = null;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,22 +106,34 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── Kartu Pelajar Card (Printable) ──────────────────────────────────────────
 
-function KartuPelajarCard({ siswa }: { siswa: KartuPelajarSiswa }) {
+function KartuPelajarCard({ siswa, settings }: { siswa: KartuPelajarSiswa; settings: SchoolSettings }) {
   return (
     <div className="kartu-pelajar-card bg-white border border-gray-300 shadow-lg mx-auto" style={{ width: "340px" }}>
       {/* ─── OUTER BORDER ─── */}
       <div className="border-2 border-emerald-700 m-[6px] p-0">
         {/* ─── HEADER: School Identity ─── */}
         <div className="bg-emerald-700 px-4 py-2.5 text-center">
-          <p className="text-[10px] text-emerald-100 tracking-wide uppercase">Yayasan Pendidikan Daerah</p>
-          <h1 className="text-[16px] font-bold text-white tracking-wide leading-tight mt-0.5">{SEKOLAH.nama}</h1>
+          {settings.logoSekolah && (
+            <div className="flex justify-center mb-1">
+              <img
+                src={settings.logoSekolah}
+                alt="Logo"
+                className="h-[36px] w-auto object-contain"
+              />
+            </div>
+          )}
+          <h1 className="text-[16px] font-bold text-white tracking-wide leading-tight">{settings.namaSekolah || "-"}</h1>
           <div className="flex items-center justify-center gap-3 mt-1 text-[9px] text-emerald-200">
-            <span>NPSN: {SEKOLAH.npsn}</span>
+            <span>NPSN: {settings.npsn || "-"}</span>
             <span>|</span>
-            <span>Akreditasi: <strong className="text-white">{SEKOLAH.akreditasi}</strong></span>
+            <span>Akreditasi: <strong className="text-white">{settings.akreditasi || "-"}</strong></span>
           </div>
-          <p className="text-[8px] text-emerald-200 mt-0.5">{SEKOLAH.alamat}</p>
-          <p className="text-[8px] text-emerald-200">{SEKOLAH.kabupaten}, {SEKOLAH.provinsi} {SEKOLAH.kodePos}</p>
+          <p className="text-[8px] text-emerald-200 mt-0.5">{settings.alamat || ""}</p>
+          {(settings.kabupaten || settings.provinsi || settings.kodePos) && (
+            <p className="text-[8px] text-emerald-200">
+              {[settings.kabupaten, settings.provinsi, settings.kodePos].filter(Boolean).join(", ")}
+            </p>
+          )}
         </div>
 
         {/* ─── TITLE: Kartu Pelajar ─── */}
@@ -133,15 +169,15 @@ function KartuPelajarCard({ siswa }: { siswa: KartuPelajarSiswa }) {
                 <p className="text-[8px] text-gray-400 italic">(Tanda Tangan & Stempel)</p>
               </div>
               <div className="border-b border-gray-800 w-[130px] mx-auto" />
-              <p className="text-[9px] font-bold text-gray-800 mt-0.5 leading-tight">{SEKOLAH.kepalaSekolah}</p>
-              <p className="text-[7px] text-gray-500">NIP. {SEKOLAH.nipKepsek}</p>
+              <p className="text-[9px] font-bold text-gray-800 mt-0.5 leading-tight">{settings.kepalaSekolah || "-"}</p>
+              <p className="text-[7px] text-gray-500">NIP. {settings.nipKepsek || "-"}</p>
             </div>
           </div>
         </div>
 
         {/* ─── BOTTOM BAR ─── */}
         <div className="bg-emerald-700 px-4 py-1.5 text-center">
-          <p className="text-[7px] text-emerald-200">{SEKOLAH.nama} — {SEKOLAH.alamat}</p>
+          <p className="text-[7px] text-emerald-200">{settings.namaSekolah || "-"} — {settings.alamat || ""}</p>
         </div>
       </div>
     </div>
@@ -152,6 +188,25 @@ function KartuPelajarCard({ siswa }: { siswa: KartuPelajarSiswa }) {
 
 export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelajarDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [settings, setSettings] = useState<SchoolSettings | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch settings when dialog opens
+  useEffect(() => {
+    if (!open || !siswa) return;
+
+    // If cached, use immediately
+    if (cachedSettings) {
+      setSettings(cachedSettings);
+      return;
+    }
+
+    setLoading(true);
+    fetchSettings().then((s) => {
+      setSettings(s);
+      setLoading(false);
+    });
+  }, [open, siswa]);
 
   const handlePrint = () => {
     const printContent = cardRef.current;
@@ -219,6 +274,7 @@ export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelaja
               size="sm"
               className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs"
               onClick={handlePrint}
+              disabled={!settings}
             >
               <Printer className="w-3.5 h-3.5" />
               Cetak
@@ -228,9 +284,15 @@ export default function KartuPelajarDialog({ open, onClose, siswa }: KartuPelaja
 
         {/* Card Preview */}
         <div className="p-4 overflow-y-auto max-h-[calc(95vh-120px)] flex justify-center">
-          <div ref={cardRef}>
-            <KartuPelajarCard siswa={siswa} />
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">Memuat pengaturan sekolah...</p>
+            </div>
+          ) : settings ? (
+            <div ref={cardRef}>
+              <KartuPelajarCard siswa={siswa} settings={settings} />
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
