@@ -26,28 +26,6 @@ export async function GET(request: NextRequest) {
 
     const data = await db.siswa.findMany({
       where,
-      select: {
-        id: true,
-        no: true,
-        nama: true,
-        nipd: true,
-        nisn: true,
-        nik: true,
-        jenisKelamin: true,
-        tempatLahir: true,
-        tanggalLahir: true,
-        agama: true,
-        alamat: true,
-        kelurahan: true,
-        kecamatan: true,
-        kodePos: true,
-        hp: true,
-        namaAyah: true,
-        namaIbu: true,
-        namaWali: true,
-        rombel: true,
-        sekolahAsal: true,
-      },
       orderBy: [{ rombel: 'asc' }, { no: 'asc' }],
       take: 100,
     });

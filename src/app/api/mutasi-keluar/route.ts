@@ -31,14 +31,7 @@ export async function GET(request: NextRequest) {
       db.mutasiKeluar.findMany({
         where,
         include: {
-          siswa: {
-            select: {
-              id: true, no: true, nama: true, nipd: true, nisn: true, nik: true,
-              jenisKelamin: true, tempatLahir: true, tanggalLahir: true,
-              agama: true, alamat: true, hp: true,
-              namaAyah: true, namaIbu: true, rombel: true, sekolahAsal: true,
-            },
-          },
+          siswa: true,
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,

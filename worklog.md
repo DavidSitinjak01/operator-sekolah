@@ -404,3 +404,24 @@ Stage Summary:
 - UI: Admin/operator see interactive checkbox to toggle status
 - UI: Other users see read-only Badge (Sudah/Belum) - cannot edit
 - Status also shown in Mutasi Keluar detail dialog
+---
+Task ID: 4
+Agent: full-stack-developer
+Task: Update MutasiKeluarPage to show ALL siswa data fully synchronized
+
+Work Log:
+- Updated SiswaData interface with all 65 fields from Siswa Prisma model
+- Changed SiswaOption to be a type alias of SiswaData (identical interface)
+- Added lucide-react imports: User, MapPin, Users, BookOpen for section icons
+- Expanded Detail Dialog with 4 categorized sections (Data Pribadi, Alamat & Kontak, Data Orang Tua/Wali, Data Pendidikan & Lainnya) plus Informasi Mutasi section, each with emerald-colored section headers and Separators
+- Expanded Preview in Add/Edit form dialog with same 4-section categorized layout
+- Updated Export flattenRow to extract all siswa fields from nested siswa object with JK formatting helper
+- Updated MUTASI_KELUAR_COLUMNS in export-utils.ts from 10 to 66 columns (all siswa fields + mutasi fields)
+- Changed export orientation from portrait to landscape for readability with many columns
+- Verified: zero lint errors in src/, successful compilation in dev server
+
+Stage Summary:
+- MutasiKeluarPage now displays ALL student data from the Siswa model
+- Data is fully synchronized via Prisma relation (siswaId) with include: { siswa: true }
+- Detail dialog and form preview show 4 organized sections: Data Pribadi, Alamat & Kontak, Data Orang Tua/Wali, Data Pendidikan & Lainnya
+- Export (Excel/PDF) includes all 60+ fields in landscape orientation

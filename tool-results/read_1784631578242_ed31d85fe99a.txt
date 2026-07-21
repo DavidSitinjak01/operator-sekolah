@@ -1,0 +1,921 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useEffect } from 'react'
+     4→     4→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+     5→     5→import { useSession } from 'next-auth/react'
+     6→     6→import {
+     7→     7→  UserMinus,
+     8→     8→  Pencil,
+     9→     9→  Trash2,
+    10→    10→  Search,
+    11→    11→  Loader2,
+    12→    12→  ChevronLeft,
+    13→    13→  ChevronRight,
+    14→    14→  ChevronsLeft,
+    15→    15→  ChevronsRight,
+    16→    16→  Eye,
+    17→    17→  ChevronDown,
+    18→    18→  GraduationCap,
+    19→    19→  FileText,
+    20→    20→  CheckCircle2,
+    21→    21→  XCircle,
+    22→    22→  Clock,
+    23→    23→} from 'lucide-react'
+    24→    24→
+    25→    25→import { Button } from '@/components/ui/button'
+    26→    26→import { Input } from '@/components/ui/input'
+    27→    27→import { Label } from '@/components/ui/label'
+    28→    28→import { Textarea } from '@/components/ui/textarea'
+    29→    29→import { Badge } from '@/components/ui/badge'
+    30→    30→import {
+    31→    31→  Select,
+    32→    32→  SelectContent,
+    33→    33→  SelectItem,
+    34→    34→  SelectTrigger,
+    35→    35→  SelectValue,
+    36→    36→} from '@/components/ui/select'
+    37→    37→import {
+    38→    38→  Command,
+    39→    39→  CommandEmpty,
+    40→    40→  CommandGroup,
+    41→    41→  CommandInput,
+    42→    42→  CommandItem,
+    43→    43→  CommandList,
+    44→    44→} from '@/components/ui/command'
+    45→    45→import {
+    46→    46→  Popover,
+    47→    47→  PopoverContent,
+    48→    48→  PopoverTrigger,
+    49→    49→} from '@/components/ui/popover'
+    50→    50→import {
+    51→    51→  Dialog,
+    52→    52→  DialogContent,
+    53→    53→  DialogHeader,
+    54→    54→  DialogTitle,
+    55→    55→  DialogDescription,
+    56→    56→  DialogFooter,
+    57→    57→} from '@/components/ui/dialog'
+    58→    58→import {
+    59→    59→  AlertDialog,
+    60→    60→  AlertDialogContent,
+    61→    61→  AlertDialogHeader,
+    62→    62→  AlertDialogTitle,
+    63→    63→  AlertDialogDescription,
+    64→    64→  AlertDialogFooter,
+    65→    65→  AlertDialogCancel,
+    66→    66→  AlertDialogAction,
+    67→    67→} from '@/components/ui/alert-dialog'
+    68→    68→import {
+    69→    69→  Table,
+    70→    70→  TableHeader,
+    71→    71→  TableBody,
+    72→    72→  TableHead,
+    73→    73→  TableRow,
+    74→    74→  TableCell,
+    75→    75→} from '@/components/ui/table'
+    76→    76→import ExportButton from '@/components/ExportButton'
+    77→    77→import { MUTASI_KELUAR_COLUMNS } from '@/lib/export-utils'
+    78→    78→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    79→    79→import { Separator } from '@/components/ui/separator'
+    80→    80→import { Skeleton } from '@/components/ui/skeleton'
+    81→    81→import { ScrollArea } from '@/components/ui/scroll-area'
+    82→    82→import { Checkbox } from '@/components/ui/checkbox'
+    83→    83→import { useToast } from '@/hooks/use-toast'
+    84→    84→import { useAppStore } from '@/store/app'
+    85→    85→
+    86→    86→// ── Types ────────────────────────────────────────────────────────────────────
+    87→    87→
+    88→    88→interface SiswaData {
+    89→    89→  id: string
+    90→    90→  no: string
+    91→    91→  nama: string
+    92→    92→  nipd: string
+    93→    93→  nisn: string
+    94→    94→  nik: string
+    95→    95→  jenisKelamin: string
+    96→    96→  tempatLahir: string
+    97→    97→  tanggalLahir: string
+    98→    98→  agama: string
+    99→    99→  alamat: string
+   100→   100→  hp: string
+   101→   101→  namaAyah: string
+   102→   102→  namaIbu: string
+   103→   103→  rombel: string
+   104→   104→  sekolahAsal: string
+   105→   105→}
+   106→   106→
+   107→   107→interface SiswaOption {
+   108→   108→  id: string
+   109→   109→  no: string
+   110→   110→  nama: string
+   111→   111→  nipd: string
+   112→   112→  nisn: string
+   113→   113→  nik: string
+   114→   114→  jenisKelamin: string
+   115→   115→  tempatLahir: string
+   116→   116→  tanggalLahir: string
+   117→   117→  agama: string
+   118→   118→  alamat: string
+   119→   119→  hp: string
+   120→   120→  namaAyah: string
+   121→   121→  namaIbu: string
+   122→   122→  rombel: string
+   123→   123→  sekolahAsal: string
+   124→   124→}
+   125→   125→
+   126→   126→interface MutasiKeluarRecord {
+   127→   127→  id: string
+   128→   128→  siswaId: string
+   129→   129→  tujuanSekolah: string
+   130→   130→  tanggalKeluar: string
+   131→   131→  alasan: string
+   132→   132→  noSurat: string
+   133→   133→  statusDapodik: boolean
+   134→   134→  tahunPelajaran: string
+   135→   135→  semester: string
+   136→   136→  createdAt: string
+   137→   137→  updatedAt: string
+   138→   138→  siswa: SiswaData | null
+   139→   139→}
+   140→   140→
+   141→   141→interface PaginatedResponse {
+   142→   142→  data: MutasiKeluarRecord[]
+   143→   143→  total: number
+   144→   144→  page: number
+   145→   145→  limit: number
+   146→   146→  totalPages: number
+   147→   147→}
+   148→   148→
+   149→   149→// Form only stores mutasi-specific fields + siswaId
+   150→   150→interface FormData {
+   151→   151→  siswaId: string
+   152→   152→  tujuanSekolah: string
+   153→   153→  tanggalKeluar: string
+   154→   154→  alasan: string
+   155→   155→  noSurat: string
+   156→   156→  tahunPelajaran: string
+   157→   157→  semester: string
+   158→   158→}
+   159→   159→
+   160→   160→const INITIAL_FORM: FormData = {
+   161→   161→  siswaId: '',
+   162→   162→  tujuanSekolah: '',
+   163→   163→  tanggalKeluar: '',
+   164→   164→  alasan: '',
+   165→   165→  noSurat: '',
+   166→   166→  tahunPelajaran: '',
+   167→   167→  semester: '',
+   168→   168→}
+   169→   169→
+   170→   170→// ── Component ────────────────────────────────────────────────────────────────
+   171→   171→
+   172→   172→export default function MutasiKeluarPage() {
+   173→   173→  const { toast } = useToast()
+   174→   174→  const queryClient = useQueryClient()
+   175→   175→  const { tahunPelajaran, semester } = useAppStore()
+   176→   176→  const { data: session } = useSession()
+   177→   177→  const currentUserRole = (session?.user as { role?: string })?.role || ''
+   178→   178→  const canToggleDapodik = currentUserRole === 'admin' || currentUserRole === 'operator'
+   179→   179→
+   180→   180→  // ── State ─────────────────────────────────────────────────────────────────
+   181→   181→  const [search, setSearch] = useState('')
+   182→   182→  const [page, setPage] = useState(1)
+   183→   183→  const [pageSize, setPageSize] = useState(10)
+   184→   184→  const [debouncedSearch, setDebouncedSearch] = useState('')
+   185→   185→
+   186→   186→  // Dialog state
+   187→   187→  const [formOpen, setFormOpen] = useState(false)
+   188→   188→  const [editingId, setEditingId] = useState<string | null>(null)
+   189→   189→  const [form, setForm] = useState<FormData>(INITIAL_FORM)
+   190→   190→  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+   191→   191→  const [selectedSiswa, setSelectedSiswa] = useState<SiswaOption | null>(null)
+   192→   192→  const [siswaPopoverOpen, setSiswaPopoverOpen] = useState(false)
+   193→   193→  const [siswaSearch, setSiswaSearch] = useState('')
+   194→   194→
+   195→   195→  // Detail dialog state
+   196→   196→  const [detailOpen, setDetailOpen] = useState(false)
+   197→   197→  const [detailItem, setDetailItem] = useState<MutasiKeluarRecord | null>(null)
+   198→   198→
+   199→   199→  // Delete dialog state
+   200→   200→  const [deleteOpen, setDeleteOpen] = useState(false)
+   201→   201→  const [deletingItem, setDeletingItem] = useState<MutasiKeluarRecord | null>(null)
+   202→   202→
+   203→   203→  // ── Debounced search ──────────────────────────────────────────────────────
+   204→   204→  useEffect(() => {
+   205→   205→    const timer = setTimeout(() => {
+   206→   206→      setDebouncedSearch(search);
+   207→   207→    }, 300);
+   208→   208→    return () => clearTimeout(timer);
+   209→   209→  }, [search]);
+   210→   210→
+   211→   211→  // ── API: Fetch Siswa List (for combobox) ─────────────────────────────────
+   212→   212→  const { data: siswaList = [], isLoading: siswaLoading } = useQuery<SiswaOption[]>({
+   213→   213→    queryKey: ['siswa-list', siswaSearch, tahunPelajaran, semester],
+   214→   214→    queryFn: async () => {
+   215→   215→      const params = new URLSearchParams({ tahunPelajaran, semester })
+   216→   216→      if (siswaSearch) params.set('search', siswaSearch)
+   217→   217→      const res = await fetch(`/api/siswa/list?${params}`)
+   218→   218→      if (!res.ok) throw new Error('Gagal memuat data siswa')
+   219→   219→      return res.json()
+   220→   220→    },
+   221→   221→  })
+   222→   222→
+   223→   223→  // ── API: Fetch Mutasi Keluar ─────────────────────────────────────────────
+   224→   224→  const limit = pageSize === 9999 ? 9999 : pageSize
+   225→   225→  const { data, isLoading, isError } = useQuery<PaginatedResponse>({
+   226→   226→    queryKey: ['mutasi-keluar', debouncedSearch, page, limit, tahunPelajaran, semester],
+   227→   227→    queryFn: async () => {
+   228→   228→      const params = new URLSearchParams();
+   229→   229→      if (debouncedSearch) params.set('search', debouncedSearch);
+   230→   230→      params.set('page', String(page));
+   231→   231→      params.set('limit', String(limit));
+   232→   232→      params.set('tahunPelajaran', tahunPelajaran);
+   233→   233→      params.set('semester', semester);
+   234→   234→      const res = await fetch(`/api/mutasi-keluar?${params}`)
+   235→   235→      if (!res.ok) throw new Error('Gagal memuat data mutasi keluar')
+   236→   236→      return res.json()
+   237→   237→    },
+   238→   238→  })
+   239→   239→
+   240→   240→  // ── API: Create / Update ─────────────────────────────────────────────────
+   241→   241→  const saveMutation = useMutation({
+   242→   242→    mutationFn: async (payload: FormData & { id?: string }) => {
+   243→   243→      const isEdit = !!payload.id
+   244→   244→      const { id, ...body } = payload
+   245→   245→      const res = await fetch('/api/mutasi-keluar', {
+   246→   246→        method: isEdit ? 'PUT' : 'POST',
+   247→   247→        headers: { 'Content-Type': 'application/json' },
+   248→   248→        body: JSON.stringify(isEdit ? { id, ...body } : body),
+   249→   249→      })
+   250→   250→      if (!res.ok) {
+   251→   251→        const err = await res.json().catch(() => ({}))
+   252→   252→        throw new Error(err.error || 'Gagal menyimpan data')
+   253→   253→      }
+   254→   254→      return res.json()
+   255→   255→    },
+   256→   256→    onSuccess: () => {
+   257→   257→      queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+   258→   258→      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+   259→   259→      queryClient.invalidateQueries({ queryKey: ['siswa'] })
+   260→   260→      queryClient.invalidateQueries({ queryKey: ['siswa-list'] })
+   261→   261→      toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil disimpan' })
+   262→   262→      closeFormDialog()
+   263→   263→    },
+   264→   264→    onError: (err) => {
+   265→   265→      toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
+   266→   266→    },
+   267→   267→  })
+   268→   268→
+   269→   269→  // ── API: Toggle status Dapodik ──────────────────────────────────────────
+   270→   270→  const toggleDapodikMutation = useMutation({
+   271→   271→    mutationFn: async ({ id, statusDapodik }: { id: string; statusDapodik: boolean }) => {
+   272→   272→      const res = await fetch('/api/mutasi-dapodik', {
+   273→   273→        method: 'PATCH',
+   274→   274→        headers: { 'Content-Type': 'application/json' },
+   275→   275→        body: JSON.stringify({ type: 'keluar', id, statusDapodik }),
+   276→   276→      })
+   277→   277→      if (!res.ok) {
+   278→   278→        const err = await res.json().catch(() => ({}))
+   279→   279→        throw new Error(err.error || 'Gagal mengubah status Dapodik')
+   280→   280→      }
+   281→   281→      return res.json()
+   282→   282→    },
+   283→   283→    onSuccess: () => {
+   284→   284→      queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+   285→   285→      toast({ title: 'Berhasil', description: 'Status Dapodik diperbarui' })
+   286→   286→    },
+   287→   287→    onError: (err) => {
+   288→   288→      toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
+   289→   289→    },
+   290→   290→  })
+   291→   291→
+   292→   292→  // ── API: Delete ───────────────────────────────────────────────────────────
+   293→   293→  const deleteMutation = useMutation({
+   294→   294→    mutationFn: async (id: string) => {
+   295→   295→      const res = await fetch(`/api/mutasi-keluar?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+   296→   296→      if (!res.ok) {
+   297→   297→        const err = await res.json().catch(() => ({}))
+   298→   298→        throw new Error(err.error || 'Gagal menghapus data')
+   299→   299→      }
+   300→   300→      return res.json()
+   301→   301→    },
+   302→   302→    onSuccess: () => {
+   303→   303→      queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+   304→   304→      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+   305→   305→      queryClient.invalidateQueries({ queryKey: ['siswa'] })
+   306→   306→      queryClient.invalidateQueries({ queryKey: ['siswa-list'] })
+   307→   307→      toast({ title: 'Berhasil', description: 'Data mutasi keluar dihapus. Status siswa dikembalikan ke Aktif.' })
+   308→   308→      setDeleteOpen(false)
+   309→   309→      setDeletingItem(null)
+   310→   310→    },
+   311→   311→    onError: (err) => {
+   312→   312→      toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
+   313→   313→    },
+   314→   314→  })
+   315→   315→
+   316→   316→  // ── Siswa Selection ───────────────────────────────────────────────────────
+   317→   317→  const handleSelectSiswa = (siswa: SiswaOption) => {
+   318→   318→    setSelectedSiswa(siswa)
+   319→   319→    setForm((f) => ({ ...f, siswaId: siswa.id }))
+   320→   320→    setSiswaPopoverOpen(false)
+   321→   321→  }
+   322→   322→
+   323→   323→  const handleClearSiswa = () => {
+   324→   324→    setSelectedSiswa(null)
+   325→   325→    setSiswaSearch('')
+   326→   326→    setForm((f) => ({ ...f, siswaId: '' }))
+   327→   327→  }
+   328→   328→
+   329→   329→  // ── Form helpers ──────────────────────────────────────────────────────────
+   330→   330→  const openAddDialog = () => {
+   331→   331→    setEditingId(null)
+   332→   332→    setForm({
+   333→   333→      ...INITIAL_FORM,
+   334→   334→      tahunPelajaran,
+   335→   335→      semester,
+   336→   336→    })
+   337→   337→    setSelectedSiswa(null)
+   338→   338→    setSiswaSearch('')
+   339→   339→    setFormErrors({})
+   340→   340→    setFormOpen(true)
+   341→   341→  }
+   342→   342→
+   343→   343→  const openEditDialog = (item: MutasiKeluarRecord) => {
+   344→   344→    setEditingId(item.id)
+   345→   345→    setForm({
+   346→   346→      siswaId: item.siswaId,
+   347→   347→      tujuanSekolah: item.tujuanSekolah,
+   348→   348→      tanggalKeluar: item.tanggalKeluar,
+   349→   349→      alasan: item.alasan,
+   350→   350→      noSurat: item.noSurat,
+   351→   351→      tahunPelajaran: item.tahunPelajaran,
+   352→   352→      semester: item.semester,
+   353→   353→    })
+   354→   354→    setSelectedSiswa(item.siswa ? { ...item.siswa, no: item.siswa.no } : null)
+   355→   355→    setSiswaSearch('')
+   356→   356→    setFormErrors({})
+   357→   357→    setFormOpen(true)
+   358→   358→  }
+   359→   359→
+   360→   360→  const closeFormDialog = () => {
+   361→   361→    setFormOpen(false)
+   362→   362→    setEditingId(null)
+   363→   363→    setForm(INITIAL_FORM)
+   364→   364→    setSelectedSiswa(null)
+   365→   365→    setSiswaSearch('')
+   366→   366→    setFormErrors({})
+   367→   367→  }
+   368→   368→
+   369→   369→  const validate = (): boolean => {
+   370→   370→    const errors: Partial<Record<keyof FormData, string>> = {}
+   371→   371→    if (!form.siswaId) errors.siswaId = 'Siswa wajib dipilih'
+   372→   372→    if (!form.tujuanSekolah.trim()) errors.tujuanSekolah = 'Tujuan sekolah wajib diisi'
+   373→   373→    if (!form.tanggalKeluar) errors.tanggalKeluar = 'Tanggal keluar wajib diisi'
+   374→   374→    if (!form.alasan.trim()) errors.alasan = 'Alasan mutasi wajib diisi'
+   375→   375→    if (!form.noSurat.trim()) errors.noSurat = 'No. surat mutasi wajib diisi'
+   376→   376→    setFormErrors(errors)
+   377→   377→    return Object.keys(errors).length === 0
+   378→   378→  }
+   379→   379→
+   380→   380→  const handleSubmit = () => {
+   381→   381→    if (!validate()) return
+   382→   382→    saveMutation.mutate(editingId ? { id: editingId, ...form } : form)
+   383→   383→  }
+   384→   384→
+   385→   385→  const confirmDelete = (item: MutasiKeluarRecord) => {
+   386→   386→    setDeletingItem(item)
+   387→   387→    setDeleteOpen(true)
+   388→   388→  }
+   389→   389→
+   390→   390→  const handleDelete = () => {
+   391→   391→    if (deletingItem) deleteMutation.mutate(deletingItem.id)
+   392→   392→  }
+   393→   393→
+   394→   394→  const openDetail = (item: MutasiKeluarRecord) => {
+   395→   395→    setDetailItem(item)
+   396→   396→    setDetailOpen(true)
+   397→   397→  }
+   398→   398→
+   399→   399→  // ── Helpers ───────────────────────────────────────────────────────────────
+   400→   400→  const formatDate = (dateStr: string) => {
+   401→   401→    if (!dateStr) return '-'
+   402→   402→    const d = new Date(dateStr)
+   403→   403→    if (isNaN(d.getTime())) return dateStr
+   404→   404→    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+   405→   405→  }
+   406→   406→
+   407→   407→  const startIndex = (page - 1) * limit
+   408→   408→
+   409→   409→  const handlePageSizeChange = (val: string) => {
+   410→   410→    setPageSize(val === 'all' ? 9999 : parseInt(val))
+   411→   411→    setPage(1)
+   412→   412→  }
+   413→   413→
+   414→   414→  // ── Render ────────────────────────────────────────────────────────────────
+   415→   415→  return (
+   416→   416→    <section className="space-y-6">
+   417→   417→      {/* Header */}
+   418→   418→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   419→   419→        <div>
+   420→   420→          <h1 className="text-2xl font-bold tracking-tight">Mutasi Keluar</h1>
+   421→   421→          <p className="text-muted-foreground text-sm">
+   422→   422→            Kelola data siswa yang mutasi keluar &mdash; data siswa langsung terhubung tanpa duplikasi
+   423→   423→          </p>
+   424→   424→        </div>
+   425→   425→        <div className="flex items-center gap-2 shrink-0">
+   426→   426→          <ExportButton
+   427→   427→            title="Laporan Mutasi Keluar"
+   428→   428→            subtitle={`Tahun Pelajaran ${tahunPelajaran} — Semester ${semester}`}
+   429→   429→            columns={MUTASI_KELUAR_COLUMNS}
+   430→   430→            apiUrl="/api/mutasi-keluar"
+   431→   431→            filename={`Mutasi-Keluar-${tahunPelajaran}-${semester}`}
+   432→   432→            orientation="portrait"
+   433→   433→            flattenRow={(row, idx) => {
+   434→   434→              const r = row as Record<string, unknown>
+   435→   435→              const siswa = (r.siswa || {}) as Record<string, unknown>
+   436→   436→              return {
+   437→   437→                no: String(idx + 1),
+   438→   438→                nama: String(siswa.nama || '-'),
+   439→   439→                nipd: String(siswa.nipd || '-'),
+   440→   440→                nisn: String(siswa.nisn || '-'),
+   441→   441→                jenisKelamin: String(siswa.jenisKelamin || '-'),
+   442→   442→                rombel: String(siswa.rombel || '-'),
+   443→   443→                tujuanSekolah: String(r.tujuanSekolah || ''),
+   444→   444→                tanggalKeluar: String(r.tanggalKeluar || ''),
+   445→   445→                alasan: String(r.alasan || ''),
+   446→   446→                noSurat: String(r.noSurat || ''),
+   447→   447→              }
+   448→   448→            }}
+   449→   449→          />
+   450→   450→          <Button onClick={openAddDialog}>
+   451→   451→            <UserMinus className="mr-2 size-4" />
+   452→   452→            Tambah Mutasi Keluar
+   453→   453→          </Button>
+   454→   454→        </div>
+   455→   455→      </div>
+   456→   456→
+   457→   457→      {/* Search & Page Size */}
+   458→   458→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   459→   459→        <div className="relative max-w-sm flex-1">
+   460→   460→          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+   461→   461→          <Input
+   462→   462→            placeholder="Cari nama, NIPD, NISN siswa..."
+   463→   463→            value={search}
+   464→   464→            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+   465→   465→            className="pl-9"
+   466→   466→          />
+   467→   467→        </div>
+   468→   468→        <div className="flex items-center gap-2">
+   469→   469→          <span className="text-xs text-muted-foreground whitespace-nowrap">Tampilkan:</span>
+   470→   470→          <Select value={pageSize === 9999 ? 'all' : String(pageSize)} onValueChange={handlePageSizeChange}>
+   471→   471→            <SelectTrigger className="w-[90px] h-9 text-sm">
+   472→   472→              <SelectValue />
+   473→   473→            </SelectTrigger>
+   474→   474→            <SelectContent>
+   475→   475→              <SelectItem value="10">10</SelectItem>
+   476→   476→              <SelectItem value="25">25</SelectItem>
+   477→   477→              <SelectItem value="50">50</SelectItem>
+   478→   478→              <SelectItem value="100">100</SelectItem>
+   479→   479→              <SelectItem value="all">Semua</SelectItem>
+   480→   480→            </SelectContent>
+   481→   481→          </Select>
+   482→   482→        </div>
+   483→   483→      </div>
+   484→   484→
+   485→   485→      {/* Table Card */}
+   486→   486→      <Card>
+   487→   487→        <CardHeader className="pb-0">
+   488→   488→          <div className="flex items-center justify-between">
+   489→   489→            <CardTitle className="text-base">Daftar Mutasi Keluar</CardTitle>
+   490→   490→            {data && data.total > 0 && (
+   491→   491→              <Badge variant="secondary" className="text-xs">{data.total} data</Badge>
+   492→   492→            )}
+   493→   493→          </div>
+   494→   494→        </CardHeader>
+   495→   495→        <CardContent className="pt-4">
+   496→   496→          {isLoading && <TableSkeleton />}
+   497→   497→
+   498→   498→          {isError && !isLoading && (
+   499→   499→            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+   500→   500→              <p className="text-muted-foreground text-sm">Gagal memuat data. Silakan coba lagi.</p>
+   501→   501→              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })}>Coba Lagi</Button>
+   502→   502→            </div>
+   503→   503→          )}
+   504→   504→
+   505→   505→          {!isLoading && !isError && data?.data.length === 0 && (
+   506→   506→            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+   507→   507→              <UserMinus className="text-muted-foreground size-10" />
+   508→   508→              <p className="text-muted-foreground text-sm">
+   509→   509→                {debouncedSearch ? 'Tidak ada data yang cocok.' : 'Belum ada data mutasi keluar.'}
+   510→   510→              </p>
+   511→   511→            </div>
+   512→   512→          )}
+   513→   513→
+   514→   514→          {!isLoading && !isError && data && data.data.length > 0 && (
+   515→   515→            <>
+   516→   516→              <div className="max-h-[500px] overflow-y-auto">
+   517→   517→                <Table>
+   518→   518→                  <TableHeader>
+   519→   519→                    <TableRow>
+   520→   520→                      <TableHead className="w-12 text-center">No</TableHead>
+   521→   521→                      <TableHead className="min-w-[180px]">Nama</TableHead>
+   522→   522→                      <TableHead className="hidden sm:table-cell">NIPD</TableHead>
+   523→   523→                      <TableHead className="hidden md:table-cell">NISN</TableHead>
+   524→   524→                      <TableHead className="hidden md:table-cell">L/P</TableHead>
+   525→   525→                      <TableHead className="hidden lg:table-cell">Rombel</TableHead>
+   526→   526→                      <TableHead className="hidden xl:table-cell">Tujuan Sekolah</TableHead>
+   527→   527→                      <TableHead className="hidden lg:table-cell">Tgl Keluar</TableHead>
+   528→   528→                      <TableHead className="text-center">Status Dapodik</TableHead>
+   529→   529→                      <TableHead className="text-center">Aksi</TableHead>
+   530→   530→                    </TableRow>
+   531→   531→                  </TableHeader>
+   532→   532→                  <TableBody>
+   533→   533→                    {data.data.map((item, idx) => (
+   534→   534→                      <TableRow key={item.id}>
+   535→   535→                        <TableCell className="text-center">{startIndex + idx + 1}</TableCell>
+   536→   536→                        <TableCell>
+   537→   537→                          <span className="font-medium">{item.siswa?.nama || '-'}</span>
+   538→   538→                        </TableCell>
+   539→   539→                        <TableCell className="hidden sm:table-cell">{item.siswa?.nipd || '-'}</TableCell>
+   540→   540→                        <TableCell className="hidden md:table-cell">{item.siswa?.nisn || '-'}</TableCell>
+   541→   541→                        <TableCell className="hidden md:table-cell">{item.siswa?.jenisKelamin || '-'}</TableCell>
+   542→   542→                        <TableCell className="hidden lg:table-cell">{item.siswa?.rombel || '-'}</TableCell>
+   543→   543→                        <TableCell className="hidden xl:table-cell">{item.tujuanSekolah}</TableCell>
+   544→   544→                        <TableCell className="hidden lg:table-cell">{formatDate(item.tanggalKeluar)}</TableCell>
+   545→   545→                        <TableCell>
+   546→   546→                          <div className="flex items-center justify-center">
+   547→   547→                            {canToggleDapodik ? (
+   548→   548→                              <label className="flex items-center gap-2 cursor-pointer select-none">
+   549→   549→                                <Checkbox
+   550→   550→                                  checked={item.statusDapodik}
+   551→   551→                                  onCheckedChange={(checked) =>
+   552→   552→                                    toggleDapodikMutation.mutate({
+   553→   553→                                      id: item.id,
+   554→   554→                                      statusDapodik: checked === true,
+   555→   555→                                    })
+   556→   556→                                  }
+   557→   557→                                  disabled={toggleDapodikMutation.isPending}
+   558→   558→                                />
+   559→   559→                                <span className="text-xs text-muted-foreground">
+   560→   560→                                  {item.statusDapodik ? 'Sudah' : 'Belum'}
+   561→   561→                                </span>
+   562→   562→                              </label>
+   563→   563→                            ) : (
+   564→   564→                              item.statusDapodik ? (
+   565→   565→                                <Badge variant="default" className="bg-emerald-600 text-white gap-1">
+   566→   566→                                  <CheckCircle2 className="size-3" /> Sudah
+   567→   567→                                </Badge>
+   568→   568→                              ) : (
+   569→   569→                                <Badge variant="secondary" className="gap-1">
+   570→   570→                                  <Clock className="size-3" /> Belum
+   571→   571→                                </Badge>
+   572→   572→                              )
+   573→   573→                            )}
+   574→   574→                          </div>
+   575→   575→                        </TableCell>
+   576→   576→                        <TableCell>
+   577→   577→                          <div className="flex items-center justify-center gap-1">
+   578→   578→                            <Button variant="ghost" size="icon" className="size-8" onClick={() => openDetail(item)} aria-label="Detail"><Eye className="size-4" /></Button>
+   579→   579→                            <Button variant="ghost" size="icon" className="size-8" onClick={() => openEditDialog(item)} aria-label="Edit"><Pencil className="size-4" /></Button>
+   580→   580→                            <Button variant="ghost" size="icon" className="size-8 text-destructive hover:text-destructive" onClick={() => confirmDelete(item)} aria-label="Hapus"><Trash2 className="size-4" /></Button>
+   581→   581→                          </div>
+   582→   582→                        </TableCell>
+   583→   583→                      </TableRow>
+   584→   584→                    ))}
+   585→   585→                  </TableBody>
+   586→   586→                </Table>
+   587→   587→              </div>
+   588→   588→
+   589→   589→              {pageSize !== 9999 && data.totalPages > 1 && (
+   590→   590→                <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+   591→   591→                  <p className="text-muted-foreground text-xs">
+   592→   592→                    Halaman {data.page} dari {data.totalPages} &middot; Total {data.total} data
+   593→   593→                  </p>
+   594→   594→                  <div className="flex items-center gap-1">
+   595→   595→                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage(1)}><ChevronsLeft className="size-4" /></Button>
+   596→   596→                    <Button variant="outline" size="icon" className="size-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="size-4" /></Button>
+   597→   597→                    {generatePageNumbers(page, data.totalPages).map((p, i) =>
+   598→   598→                      p === '...' ? (
+   599→   599→                        <span key={`e-${i}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">...</span>
+   600→   600→                      ) : (
+   601→   601→                        <Button key={p} variant={page === p ? 'default' : 'outline'} size="icon" className="size-8" onClick={() => setPage(p as number)}>{p}</Button>
+   602→   602→                      ),
+   603→   603→                    )}
+   604→   604→                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}><ChevronRight className="size-4" /></Button>
+   605→   605→                    <Button variant="outline" size="icon" className="size-8" disabled={page >= data.totalPages} onClick={() => setPage(data.totalPages)}><ChevronsRight className="size-4" /></Button>
+   606→   606→                  </div>
+   607→   607→                </div>
+   608→   608→              )}
+   609→   609→            </>
+   610→   610→          )}
+   611→   611→        </CardContent>
+   612→   612→      </Card>
+   613→   613→
+   614→   614→      {/* ═══ Add / Edit Dialog ═══ */}
+   615→   615→      <Dialog open={formOpen} onOpenChange={(open) => !open && closeFormDialog()}>
+   616→   616→        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+   617→   617→          <DialogHeader>
+   618→   618→            <DialogTitle>{editingId ? 'Edit Mutasi Keluar' : 'Tambah Mutasi Keluar'}</DialogTitle>
+   619→   619→            <DialogDescription>
+   620→   620→              {editingId
+   621→   621→                ? 'Ubah informasi mutasi keluar siswa.'
+   622→   622→                : 'Pilih siswa dari database, lalu lengkapi informasi mutasi.'}
+   623→   623→            </DialogDescription>
+   624→   624→          </DialogHeader>
+   625→   625→
+   626→   626→          <div className="grid gap-5 py-2">
+   627→   627→            {/* ─── Siswa Selection ─── */}
+   628→   628→            <div className="grid gap-2">
+   629→   629→              <Label className="text-sm font-semibold">
+   630→   630→                Pilih Siswa <span className="text-destructive">*</span>
+   631→   631→              </Label>
+   632→   632→              {!editingId && (
+   633→   633→                <p className="text-xs text-muted-foreground">
+   634→   634→                  Cari dan pilih siswa aktif dari database. Data siswa akan langsung terhubung tanpa duplikasi.
+   635→   635→                </p>
+   636→   636→              )}
+   637→   637→              <Popover open={siswaPopoverOpen && !editingId} onOpenChange={editingId ? undefined : setSiswaPopoverOpen}>
+   638→   638→                <PopoverTrigger asChild>
+   639→   639→                  <Button
+   640→   640→                    variant="outline"
+   641→   641→                    role="combobox"
+   642→   642→                    aria-expanded={siswaPopoverOpen}
+   643→   643→                    className="w-full justify-between font-normal h-auto py-2.5"
+   644→   644→                    disabled={!!editingId}
+   645→   645→                  >
+   646→   646→                    {selectedSiswa ? (
+   647→   647→                      <div className="flex items-center gap-2 truncate">
+   648→   648→                        <span className="font-medium">{selectedSiswa.nama}</span>
+   649→   649→                        <span className="text-muted-foreground text-xs">
+   650→   650→                          ({selectedSiswa.rombel}{selectedSiswa.nipd ? ` - ${selectedSiswa.nipd}` : ''})
+   651→   651→                        </span>
+   652→   652→                      </div>
+   653→   653→                    ) : (
+   654→   654→                      <span className="text-muted-foreground">Cari nama, NIPD, atau NISN siswa...</span>
+   655→   655→                    )}
+   656→   656→                    <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
+   657→   657→                  </Button>
+   658→   658→                </PopoverTrigger>
+   659→   659→                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+   660→   660→                  <Command shouldFilter={false}>
+   661→   661→                    <CommandInput
+   662→   662→                      placeholder="Ketik untuk mencari siswa..."
+   663→   663→                      value={siswaSearch}
+   664→   664→                      onValueChange={setSiswaSearch}
+   665→   665→                    />
+   666→   666→                    <CommandList>
+   667→   667→                      <CommandEmpty>
+   668→   668→                        {siswaLoading ? (
+   669→   669→                          <div className="flex items-center justify-center gap-2 py-6">
+   670→   670→                            <Loader2 className="size-4 animate-spin" />
+   671→   671→                            <span className="text-sm text-muted-foreground">Mencari...</span>
+   672→   672→                          </div>
+   673→   673→                        ) : 'Siswa tidak ditemukan.'}
+   674→   674→                      </CommandEmpty>
+   675→   675→                      <CommandGroup className="max-h-[300px] overflow-y-auto">
+   676→   676→                        {siswaList.map((siswa) => (
+   677→   677→                          <CommandItem
+   678→   678→                            key={siswa.id}
+   679→   679→                            value={siswa.id}
+   680→   680→                            onSelect={() => handleSelectSiswa(siswa)}
+   681→   681→                            className="flex flex-col items-start gap-0.5 py-2.5"
+   682→   682→                          >
+   683→   683→                            <div className="flex items-center gap-2 w-full">
+   684→   684→                              <span className="font-medium text-sm">{siswa.nama}</span>
+   685→   685→                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+   686→   686→                                {siswa.jenisKelamin === 'L' ? 'L' : siswa.jenisKelamin === 'P' ? 'P' : '-'}
+   687→   687→                              </Badge>
+   688→   688→                            </div>
+   689→   689→                            <div className="text-xs text-muted-foreground flex gap-3">
+   690→   690→                              <span>{siswa.rombel}</span>
+   691→   691→                              {siswa.nipd && <span>NIPD: {siswa.nipd}</span>}
+   692→   692→                              {siswa.nisn && <span>NISN: {siswa.nisn}</span>}
+   693→   693→                            </div>
+   694→   694→                          </CommandItem>
+   695→   695→                        ))}
+   696→   696→                      </CommandGroup>
+   697→   697→                    </CommandList>
+   698→   698→                  </Command>
+   699→   699→                </PopoverContent>
+   700→   700→              </Popover>
+   701→   701→              {!editingId && selectedSiswa && (
+   702→   702→                <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive w-fit" onClick={handleClearSiswa}>
+   703→   703→                  <XCircle className="size-3.5 mr-1" /> Hapus Pilihan Siswa
+   704→   704→                </Button>
+   705→   705→              )}
+   706→   706→              {formErrors.siswaId && <p className="text-destructive text-xs">{formErrors.siswaId}</p>}
+   707→   707→            </div>
+   708→   708→
+   709→   709→            {/* ─── Preview Data Siswa ─── */}
+   710→   710→            {selectedSiswa && (
+   711→   711→              <>
+   712→   712→                <Separator />
+   713→   713→                <div className="space-y-3">
+   714→   714→                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+   715→   715→                    <GraduationCap className="size-4" />
+   716→   716→                    Data Siswa (dari database, tanpa duplikasi)
+   717→   717→                  </Label>
+   718→   718→                  <div className="rounded-lg border bg-muted/30 p-3">
+   719→   719→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+   720→   720→                      <InfoField label="Nama" value={selectedSiswa.nama} />
+   721→   721→                      <InfoField label="NIPD" value={selectedSiswa.nipd} />
+   722→   722→                      <InfoField label="NISN" value={selectedSiswa.nisn} />
+   723→   723→                      <InfoField label="NIK" value={selectedSiswa.nik} />
+   724→   724→                      <InfoField label="Jenis Kelamin" value={selectedSiswa.jenisKelamin === 'L' ? 'Laki-laki' : selectedSiswa.jenisKelamin === 'P' ? 'Perempuan' : selectedSiswa.jenisKelamin} />
+   725→   725→                      <InfoField label="Agama" value={selectedSiswa.agama} />
+   726→   726→                      <InfoField label="Tempat, Tgl Lahir" value={[selectedSiswa.tempatLahir, formatDate(selectedSiswa.tanggalLahir)].filter(Boolean).join(', ')} />
+   727→   727→                      <InfoField label="No. HP" value={selectedSiswa.hp} />
+   728→   728→                      <div className="sm:col-span-2"><InfoField label="Alamat" value={selectedSiswa.alamat} /></div>
+   729→   729→                      <InfoField label="Nama Ayah" value={selectedSiswa.namaAyah} />
+   730→   730→                      <InfoField label="Nama Ibu" value={selectedSiswa.namaIbu} />
+   731→   731→                      <InfoField label="Rombel" value={selectedSiswa.rombel} />
+   732→   732→                      <InfoField label="Sekolah Asal" value={selectedSiswa.sekolahAsal} />
+   733→   733→                    </div>
+   734→   734→                  </div>
+   735→   735→                </div>
+   736→   736→              </>
+   737→   737→            )}
+   738→   738→
+   739→   739→            <Separator />
+   740→   740→
+   741→   741→            {/* ─── Informasi Mutasi (hanya data spesifik mutasi) ─── */}
+   742→   742→            <div className="space-y-3">
+   743→   743→              <Label className="text-sm font-semibold flex items-center gap-1.5">
+   744→   744→                <FileText className="size-4" />
+   745→   745→                Informasi Mutasi
+   746→   746→              </Label>
+   747→   747→
+   748→   748→              <div className="grid gap-2">
+   749→   749→                <Label htmlFor="tujuanSekolah">Tujuan Sekolah <span className="text-destructive">*</span></Label>
+   750→   750→                <Input id="tujuanSekolah" placeholder="Masukkan tujuan sekolah" value={form.tujuanSekolah} onChange={(e) => setForm((f) => ({ ...f, tujuanSekolah: e.target.value }))} aria-invalid={!!formErrors.tujuanSekolah} />
+   751→   751→                {formErrors.tujuanSekolah && <p className="text-destructive text-xs">{formErrors.tujuanSekolah}</p>}
+   752→   752→              </div>
+   753→   753→
+   754→   754→              <div className="grid gap-2">
+   755→   755→                <Label htmlFor="tanggalKeluar">Tanggal Keluar <span className="text-destructive">*</span></Label>
+   756→   756→                <Input id="tanggalKeluar" type="date" value={form.tanggalKeluar} onChange={(e) => setForm((f) => ({ ...f, tanggalKeluar: e.target.value }))} aria-invalid={!!formErrors.tanggalKeluar} />
+   757→   757→                {formErrors.tanggalKeluar && <p className="text-destructive text-xs">{formErrors.tanggalKeluar}</p>}
+   758→   758→              </div>
+   759→   759→
+   760→   760→              <div className="grid gap-2">
+   761→   761→                <Label htmlFor="alasan">Alasan Mutasi <span className="text-destructive">*</span></Label>
+   762→   762→                <Textarea id="alasan" placeholder="Masukkan alasan mutasi" rows={3} value={form.alasan} onChange={(e) => setForm((f) => ({ ...f, alasan: e.target.value }))} aria-invalid={!!formErrors.alasan} />
+   763→   763→                {formErrors.alasan && <p className="text-destructive text-xs">{formErrors.alasan}</p>}
+   764→   764→              </div>
+   765→   765→
+   766→   766→              <div className="grid gap-2">
+   767→   767→                <Label htmlFor="noSurat">No. Surat Mutasi <span className="text-destructive">*</span></Label>
+   768→   768→                <Input id="noSurat" placeholder="Masukkan nomor surat mutasi" value={form.noSurat} onChange={(e) => setForm((f) => ({ ...f, noSurat: e.target.value }))} aria-invalid={!!formErrors.noSurat} />
+   769→   769→                {formErrors.noSurat && <p className="text-destructive text-xs">{formErrors.noSurat}</p>}
+   770→   770→              </div>
+   771→   771→            </div>
+   772→   772→          </div>
+   773→   773→
+   774→   774→          <DialogFooter>
+   775→   775→            <Button variant="outline" onClick={closeFormDialog} disabled={saveMutation.isPending}>Batal</Button>
+   776→   776→            <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
+   777→   777→              {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+   778→   778→              {editingId ? 'Simpan Perubahan' : 'Tambah Data'}
+   779→   779→            </Button>
+   780→   780→          </DialogFooter>
+   781→   781→        </DialogContent>
+   782→   782→      </Dialog>
+   783→   783→
+   784→   784→      {/* ═══ Detail Dialog ═══ */}
+   785→   785→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   786→   786→        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+   787→   787→          <DialogHeader>
+   788→   788→            <DialogTitle>Detail Mutasi Keluar</DialogTitle>
+   789→   789→            <DialogDescription>Data lengkap siswa yang mutasi keluar.</DialogDescription>
+   790→   790→          </DialogHeader>
+   791→   791→          {detailItem?.siswa && (
+   792→   792→            <ScrollArea className="max-h-[70vh]">
+   793→   793→              <div className="grid gap-6 pb-4">
+   794→   794→                <div className="space-y-3">
+   795→   795→                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+   796→   796→                    <GraduationCap className="size-4" /> Data Siswa
+   797→   797→                  </h3>
+   798→   798→                  <div className="rounded-lg border bg-muted/30 p-3">
+   799→   799→                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+   800→   800→                      <InfoField label="Nama" value={detailItem.siswa.nama} />
+   801→   801→                      <InfoField label="NIPD" value={detailItem.siswa.nipd || '-'} />
+   802→   802→                      <InfoField label="NISN" value={detailItem.siswa.nisn || '-'} />
+   803→   803→                      <InfoField label="NIK" value={detailItem.siswa.nik || '-'} />
+   804→   804→                      <InfoField label="Jenis Kelamin" value={detailItem.siswa.jenisKelamin === 'L' ? 'Laki-laki' : detailItem.siswa.jenisKelamin === 'P' ? 'Perempuan' : detailItem.siswa.jenisKelamin || '-'} />
+   805→   805→                      <InfoField label="Agama" value={detailItem.siswa.agama || '-'} />
+   806→   806→                      <InfoField label="Tempat, Tgl Lahir" value={[detailItem.siswa.tempatLahir, formatDate(detailItem.siswa.tanggalLahir)].filter(Boolean).join(', ') || '-'} />
+   807→   807→                      <InfoField label="No. HP" value={detailItem.siswa.hp || '-'} />
+   808→   808→                      <div className="sm:col-span-2"><InfoField label="Alamat" value={detailItem.siswa.alamat || '-'} /></div>
+   809→   809→                      <InfoField label="Nama Ayah" value={detailItem.siswa.namaAyah || '-'} />
+   810→   810→                      <InfoField label="Nama Ibu" value={detailItem.siswa.namaIbu || '-'} />
+   811→   811→                      <InfoField label="Rombel" value={detailItem.siswa.rombel || '-'} />
+   812→   812→                      <InfoField label="Sekolah Asal" value={detailItem.siswa.sekolahAsal || '-'} />
+   813→   813→                    </div>
+   814→   814→                  </div>
+   815→   815→                </div>
+   816→   816→
+   817→   817→                <Separator />
+   818→   818→
+   819→   819→                <div className="space-y-3">
+   820→   820→                  <h3 className="text-sm font-semibold flex items-center gap-1.5">
+   821→   821→                    <FileText className="size-4" /> Informasi Mutasi
+   822→   822→                  </h3>
+   823→   823→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+   824→   824→                    <InfoField label="Tanggal Keluar" value={formatDate(detailItem.tanggalKeluar)} />
+   825→   825→                    <div className="sm:col-span-2"><InfoField label="Tujuan Sekolah" value={detailItem.tujuanSekolah || '-'} /></div>
+   826→   826→                    <div className="sm:col-span-2"><InfoField label="Alasan Mutasi" value={detailItem.alasan || '-'} /></div>
+   827→   827→                    <InfoField label="No. Surat Mutasi" value={detailItem.noSurat || '-'} />
+   828→   828→                    <InfoField label="Status Dapodik" value={detailItem.statusDapodik ? 'Sudah Masuk Dapodik' : 'Belum Masuk Dapodik'} />
+   829→   829→                  </div>
+   830→   830→                </div>
+   831→   831→              </div>
+   832→   832→            </ScrollArea>
+   833→   833→          )}
+   834→   834→          <DialogFooter>
+   835→   835→            <Button variant="outline" onClick={() => setDetailOpen(false)}>Tutup</Button>
+   836→   836→            {detailItem && (
+   837→   837→              <Button onClick={() => { setDetailOpen(false); openEditDialog(detailItem) }}>
+   838→   838→                <Pencil className="mr-2 size-4" /> Edit
+   839→   839→              </Button>
+   840→   840→            )}
+   841→   841→          </DialogFooter>
+   842→   842→        </DialogContent>
+   843→   843→      </Dialog>
+   844→   844→
+   845→   845→      {/* ═══ Delete Confirmation ═══ */}
+   846→   846→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+   847→   847→        <AlertDialogContent>
+   848→   848→          <AlertDialogHeader>
+   849→   849→            <AlertDialogTitle>Hapus Data Mutasi Keluar?</AlertDialogTitle>
+   850→   850→            <AlertDialogDescription>
+   851→   851→              Apakah Anda yakin ingin menghapus data mutasi keluar atas nama{' '}
+   852→   852→              <span className="font-semibold">{deletingItem?.siswa?.nama}</span>?
+   853→   853→              <span className="block mt-2 text-amber-600">
+   854→   854→                Status siswa akan dikembalikan ke &quot;Aktif&quot; secara otomatis.
+   855→   855→              </span>
+   856→   856→            </AlertDialogDescription>
+   857→   857→          </AlertDialogHeader>
+   858→   858→          <AlertDialogFooter>
+   859→   859→            <AlertDialogCancel disabled={deleteMutation.isPending}>Batal</AlertDialogCancel>
+   860→   860→            <AlertDialogAction onClick={handleDelete} disabled={deleteMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+   861→   861→              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+   862→   862→              Hapus
+   863→   863→            </AlertDialogAction>
+   864→   864→          </AlertDialogFooter>
+   865→   865→        </AlertDialogContent>
+   866→   866→      </AlertDialog>
+   867→   867→    </section>
+   868→   868→  )
+   869→   869→}
+   870→   870→
+   871→   871→// ── Info Field ────────────────────────────────────────────────────────────────
+   872→   872→
+   873→   873→function InfoField({ label, value }: { label: string; value: string }) {
+   874→   874→  return (
+   875→   875→    <div className="space-y-0.5">
+   876→   876→      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+   877→   877→      <p className="text-sm">{value || '-'}</p>
+   878→   878→    </div>
+   879→   879→  )
+   880→   880→}
+   881→   881→
+   882→   882→// ── Skeleton ─────────────────────────────────────────────────────────────────
+   883→   883→
+   884→   884→function TableSkeleton() {
+   885→   885→  return (
+   886→   886→    <div className="space-y-3">
+   887→   887→      {Array.from({ length: 5 }).map((_, i) => (
+   888→   888→        <div key={i} className="flex items-center gap-4">
+   889→   889→          <Skeleton className="h-4 w-8" />
+   890→   890→          <Skeleton className="h-4 w-36" />
+   891→   891→          <Skeleton className="hidden h-4 w-20 sm:block" />
+   892→   892→          <Skeleton className="hidden h-4 w-28 md:block" />
+   893→   893→          <Skeleton className="hidden h-4 w-8 md:block" />
+   894→   894→          <Skeleton className="hidden h-4 w-24 lg:block" />
+   895→   895→          <Skeleton className="hidden h-4 w-32 xl:block" />
+   896→   896→          <Skeleton className="hidden h-4 w-28 lg:block" />
+   897→   897→          <div className="ml-auto flex gap-1">
+   898→   898→            <Skeleton className="size-8 rounded-md" />
+   899→   899→            <Skeleton className="size-8 rounded-md" />
+   900→   900→            <Skeleton className="size-8 rounded-md" />
+   901→   901→          </div>
+   902→   902→        </div>
+   903→   903→      ))}
+   904→   904→    </div>
+   905→   905→  )
+   906→   906→}
+   907→   907→
+   908→   908→// ── Pagination helper ────────────────────────────────────────────────────────
+   909→   909→
+   910→   910→function generatePageNumbers(current: number, total: number): (number | '...')[] {
+   911→   911→  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
+   912→   912→  const pages: (number | '...')[] = []
+   913→   913→  if (current <= 3) {
+   914→   914→    pages.push(1, 2, 3, 4, '...', total)
+   915→   915→  } else if (current >= total - 2) {
+   916→   916→    pages.push(1, '...', total - 3, total - 2, total - 1, total)
+   917→   917→  } else {
+   918→   918→    pages.push(1, '...', current - 1, current, current + 1, '...', total)
+   919→   919→  }
+   920→   920→  return pages
+   921→   921→}

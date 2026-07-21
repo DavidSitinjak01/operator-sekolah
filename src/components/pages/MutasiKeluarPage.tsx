@@ -20,6 +20,10 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  User,
+  MapPin,
+  Users,
+  BookOpen,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -91,37 +95,74 @@ interface SiswaData {
   nama: string
   nipd: string
   nisn: string
-  nik: string
   jenisKelamin: string
   tempatLahir: string
   tanggalLahir: string
+  nik: string
   agama: string
   alamat: string
+  rt: string
+  rw: string
+  dusun: string
+  kelurahan: string
+  kecamatan: string
+  kodePos: string
+  jenisTinggal: string
+  alatTransportasi: string
+  telepon: string
   hp: string
+  email: string
+  skhun: string
+  penerimaKPS: string
+  noKPS: string
   namaAyah: string
+  ayahTahunLahir: string
+  ayahJenjangPendidikan: string
+  ayahPekerjaan: string
+  ayahPenghasilan: string
+  ayahNik: string
   namaIbu: string
+  ibuTahunLahir: string
+  ibuJenjangPendidikan: string
+  ibuPekerjaan: string
+  ibuPenghasilan: string
+  ibuNik: string
+  namaWali: string
+  waliTahunLahir: string
+  waliJenjangPendidikan: string
+  waliPekerjaan: string
+  waliPenghasilan: string
+  waliNik: string
   rombel: string
+  noPesertaUN: string
+  noSeriIjazah: string
+  penerimaKIP: string
+  nomorKIP: string
+  namaKIP: string
+  nomorKKS: string
+  noRegAktaLahir: string
+  bank: string
+  nomorRekeningBank: string
+  rekeningAtasNama: string
+  layakPIP: string
+  alasanLayakPIP: string
+  kebutuhanKhusus: string
   sekolahAsal: string
+  anakKeBerapa: string
+  lintang: string
+  bujur: string
+  noKK: string
+  beratBadan: string
+  tinggiBadan: string
+  lingkarKepala: string
+  jmlSaudaraKandung: string
+  jarakRumahKeSekolah: string
+  status: string
+  tahunPelajaran: string
+  semester: string
 }
 
-interface SiswaOption {
-  id: string
-  no: string
-  nama: string
-  nipd: string
-  nisn: string
-  nik: string
-  jenisKelamin: string
-  tempatLahir: string
-  tanggalLahir: string
-  agama: string
-  alamat: string
-  hp: string
-  namaAyah: string
-  namaIbu: string
-  rombel: string
-  sekolahAsal: string
-}
+type SiswaOption = SiswaData
 
 interface MutasiKeluarRecord {
   id: string
@@ -429,17 +470,78 @@ export default function MutasiKeluarPage() {
             columns={MUTASI_KELUAR_COLUMNS}
             apiUrl="/api/mutasi-keluar"
             filename={`Mutasi-Keluar-${tahunPelajaran}-${semester}`}
-            orientation="portrait"
+            orientation="landscape"
             flattenRow={(row, idx) => {
               const r = row as Record<string, unknown>
-              const siswa = (r.siswa || {}) as Record<string, unknown>
+              const s = (r.siswa || {}) as Record<string, unknown>
+              const sv = (k: string) => String(s[k] || '-')
+              const jk = (val: unknown) => val === 'L' ? 'Laki-laki' : val === 'P' ? 'Perempuan' : String(val || '-')
               return {
                 no: String(idx + 1),
-                nama: String(siswa.nama || '-'),
-                nipd: String(siswa.nipd || '-'),
-                nisn: String(siswa.nisn || '-'),
-                jenisKelamin: String(siswa.jenisKelamin || '-'),
-                rombel: String(siswa.rombel || '-'),
+                nama: sv('nama'),
+                nipd: sv('nipd'),
+                nisn: sv('nisn'),
+                nik: sv('nik'),
+                jenisKelamin: jk(s.jenisKelamin),
+                tempatLahir: sv('tempatLahir'),
+                tanggalLahir: sv('tanggalLahir'),
+                agama: sv('agama'),
+                kebutuhanKhusus: sv('kebutuhanKhusus'),
+                noKK: sv('noKK'),
+                noRegAktaLahir: sv('noRegAktaLahir'),
+                anakKeBerapa: sv('anakKeBerapa'),
+                jmlSaudaraKandung: sv('jmlSaudaraKandung'),
+                alamat: sv('alamat'),
+                rt: sv('rt'),
+                rw: sv('rw'),
+                dusun: sv('dusun'),
+                kelurahan: sv('kelurahan'),
+                kecamatan: sv('kecamatan'),
+                kodePos: sv('kodePos'),
+                jenisTinggal: sv('jenisTinggal'),
+                alatTransportasi: sv('alatTransportasi'),
+                jarakRumahKeSekolah: sv('jarakRumahKeSekolah'),
+                telepon: sv('telepon'),
+                hp: sv('hp'),
+                email: sv('email'),
+                namaAyah: sv('namaAyah'),
+                ayahTahunLahir: sv('ayahTahunLahir'),
+                ayahJenjangPendidikan: sv('ayahJenjangPendidikan'),
+                ayahPekerjaan: sv('ayahPekerjaan'),
+                ayahPenghasilan: sv('ayahPenghasilan'),
+                ayahNik: sv('ayahNik'),
+                namaIbu: sv('namaIbu'),
+                ibuTahunLahir: sv('ibuTahunLahir'),
+                ibuJenjangPendidikan: sv('ibuJenjangPendidikan'),
+                ibuPekerjaan: sv('ibuPekerjaan'),
+                ibuPenghasilan: sv('ibuPenghasilan'),
+                ibuNik: sv('ibuNik'),
+                namaWali: sv('namaWali'),
+                waliTahunLahir: sv('waliTahunLahir'),
+                waliJenjangPendidikan: sv('waliJenjangPendidikan'),
+                waliPekerjaan: sv('waliPekerjaan'),
+                waliPenghasilan: sv('waliPenghasilan'),
+                waliNik: sv('waliNik'),
+                rombel: sv('rombel'),
+                sekolahAsal: sv('sekolahAsal'),
+                status: sv('status'),
+                skhun: sv('skhun'),
+                noPesertaUN: sv('noPesertaUN'),
+                noSeriIjazah: sv('noSeriIjazah'),
+                penerimaKPS: sv('penerimaKPS'),
+                noKPS: sv('noKPS'),
+                penerimaKIP: sv('penerimaKIP'),
+                nomorKIP: sv('nomorKIP'),
+                namaKIP: sv('namaKIP'),
+                nomorKKS: sv('nomorKKS'),
+                layakPIP: sv('layakPIP'),
+                alasanLayakPIP: sv('alasanLayakPIP'),
+                bank: sv('bank'),
+                nomorRekeningBank: sv('nomorRekeningBank'),
+                rekeningAtasNama: sv('rekeningAtasNama'),
+                beratBadan: sv('beratBadan'),
+                tinggiBadan: sv('tinggiBadan'),
+                lingkarKepala: sv('lingkarKepala'),
                 tujuanSekolah: String(r.tujuanSekolah || ''),
                 tanggalKeluar: String(r.tanggalKeluar || ''),
                 alasan: String(r.alasan || ''),
@@ -710,26 +812,121 @@ export default function MutasiKeluarPage() {
             {selectedSiswa && (
               <>
                 <Separator />
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <Label className="text-sm font-semibold flex items-center gap-1.5">
                     <GraduationCap className="size-4" />
                     Data Siswa (dari database, tanpa duplikasi)
                   </Label>
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      <InfoField label="Nama" value={selectedSiswa.nama} />
-                      <InfoField label="NIPD" value={selectedSiswa.nipd} />
-                      <InfoField label="NISN" value={selectedSiswa.nisn} />
-                      <InfoField label="NIK" value={selectedSiswa.nik} />
-                      <InfoField label="Jenis Kelamin" value={selectedSiswa.jenisKelamin === 'L' ? 'Laki-laki' : selectedSiswa.jenisKelamin === 'P' ? 'Perempuan' : selectedSiswa.jenisKelamin} />
-                      <InfoField label="Agama" value={selectedSiswa.agama} />
-                      <InfoField label="Tempat, Tgl Lahir" value={[selectedSiswa.tempatLahir, formatDate(selectedSiswa.tanggalLahir)].filter(Boolean).join(', ')} />
-                      <InfoField label="No. HP" value={selectedSiswa.hp} />
-                      <div className="sm:col-span-2"><InfoField label="Alamat" value={selectedSiswa.alamat} /></div>
-                      <InfoField label="Nama Ayah" value={selectedSiswa.namaAyah} />
-                      <InfoField label="Nama Ibu" value={selectedSiswa.namaIbu} />
-                      <InfoField label="Rombel" value={selectedSiswa.rombel} />
-                      <InfoField label="Sekolah Asal" value={selectedSiswa.sekolahAsal} />
+
+                  {/* Section 1: Data Pribadi */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                      <User className="size-3.5" /> Data Pribadi
+                    </h3>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <InfoField label="Nama" value={selectedSiswa.nama} />
+                        <InfoField label="NIPD" value={selectedSiswa.nipd} />
+                        <InfoField label="NISN" value={selectedSiswa.nisn} />
+                        <InfoField label="NIK" value={selectedSiswa.nik} />
+                        <InfoField label="No. KK" value={selectedSiswa.noKK} />
+                        <InfoField label="No. Reg Akta Lahir" value={selectedSiswa.noRegAktaLahir} />
+                        <InfoField label="Jenis Kelamin" value={selectedSiswa.jenisKelamin === 'L' ? 'Laki-laki' : selectedSiswa.jenisKelamin === 'P' ? 'Perempuan' : selectedSiswa.jenisKelamin} />
+                        <InfoField label="Agama" value={selectedSiswa.agama} />
+                        <InfoField label="Tempat, Tgl Lahir" value={[selectedSiswa.tempatLahir, formatDate(selectedSiswa.tanggalLahir)].filter(Boolean).join(', ')} />
+                        <InfoField label="Kebutuhan Khusus" value={selectedSiswa.kebutuhanKhusus} />
+                        <InfoField label="Anak Ke Berapa" value={selectedSiswa.anakKeBerapa} />
+                        <InfoField label="Jml Saudara Kandung" value={selectedSiswa.jmlSaudaraKandung} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Alamat & Kontak */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                      <MapPin className="size-3.5" /> Alamat & Kontak
+                    </h3>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div className="sm:col-span-2"><InfoField label="Alamat" value={selectedSiswa.alamat} /></div>
+                        <InfoField label="RT" value={selectedSiswa.rt} />
+                        <InfoField label="RW" value={selectedSiswa.rw} />
+                        <InfoField label="Dusun" value={selectedSiswa.dusun} />
+                        <InfoField label="Kelurahan" value={selectedSiswa.kelurahan} />
+                        <InfoField label="Kecamatan" value={selectedSiswa.kecamatan} />
+                        <InfoField label="Kode Pos" value={selectedSiswa.kodePos} />
+                        <InfoField label="Jenis Tinggal" value={selectedSiswa.jenisTinggal} />
+                        <InfoField label="Alat Transportasi" value={selectedSiswa.alatTransportasi} />
+                        <InfoField label="Jarak Rumah ke Sekolah" value={selectedSiswa.jarakRumahKeSekolah} />
+                        <InfoField label="Telepon" value={selectedSiswa.telepon} />
+                        <InfoField label="HP" value={selectedSiswa.hp} />
+                        <div className="sm:col-span-2"><InfoField label="Email" value={selectedSiswa.email} /></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Data Orang Tua / Wali */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                      <Users className="size-3.5" /> Data Orang Tua / Wali
+                    </h3>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Data Ayah</p></div>
+                        <InfoField label="Nama Ayah" value={selectedSiswa.namaAyah} />
+                        <InfoField label="Tahun Lahir" value={selectedSiswa.ayahTahunLahir} />
+                        <InfoField label="Jenjang Pendidikan" value={selectedSiswa.ayahJenjangPendidikan} />
+                        <InfoField label="Pekerjaan" value={selectedSiswa.ayahPekerjaan} />
+                        <InfoField label="Penghasilan" value={selectedSiswa.ayahPenghasilan} />
+                        <InfoField label="NIK Ayah" value={selectedSiswa.ayahNik} />
+                        <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 mt-2">Data Ibu</p></div>
+                        <InfoField label="Nama Ibu" value={selectedSiswa.namaIbu} />
+                        <InfoField label="Tahun Lahir" value={selectedSiswa.ibuTahunLahir} />
+                        <InfoField label="Jenjang Pendidikan" value={selectedSiswa.ibuJenjangPendidikan} />
+                        <InfoField label="Pekerjaan" value={selectedSiswa.ibuPekerjaan} />
+                        <InfoField label="Penghasilan" value={selectedSiswa.ibuPenghasilan} />
+                        <InfoField label="NIK Ibu" value={selectedSiswa.ibuNik} />
+                        <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 mt-2">Data Wali</p></div>
+                        <InfoField label="Nama Wali" value={selectedSiswa.namaWali} />
+                        <InfoField label="Tahun Lahir" value={selectedSiswa.waliTahunLahir} />
+                        <InfoField label="Jenjang Pendidikan" value={selectedSiswa.waliJenjangPendidikan} />
+                        <InfoField label="Pekerjaan" value={selectedSiswa.waliPekerjaan} />
+                        <InfoField label="Penghasilan" value={selectedSiswa.waliPenghasilan} />
+                        <InfoField label="NIK Wali" value={selectedSiswa.waliNik} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Data Pendidikan & Lainnya */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                      <BookOpen className="size-3.5" /> Data Pendidikan & Lainnya
+                    </h3>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <InfoField label="Rombel" value={selectedSiswa.rombel} />
+                        <InfoField label="Sekolah Asal" value={selectedSiswa.sekolahAsal} />
+                        <InfoField label="Status" value={selectedSiswa.status} />
+                        <InfoField label="SKHUN" value={selectedSiswa.skhun} />
+                        <InfoField label="No. Peserta UN" value={selectedSiswa.noPesertaUN} />
+                        <InfoField label="No. Seri Ijazah" value={selectedSiswa.noSeriIjazah} />
+                        <InfoField label="Penerima KPS" value={selectedSiswa.penerimaKPS} />
+                        <InfoField label="No. KPS" value={selectedSiswa.noKPS} />
+                        <InfoField label="Penerima KIP" value={selectedSiswa.penerimaKIP} />
+                        <InfoField label="Nomor KIP" value={selectedSiswa.nomorKIP} />
+                        <InfoField label="Nama KIP" value={selectedSiswa.namaKIP} />
+                        <InfoField label="Nomor KKS" value={selectedSiswa.nomorKKS} />
+                        <InfoField label="Layak PIP" value={selectedSiswa.layakPIP} />
+                        <InfoField label="Alasan Layak PIP" value={selectedSiswa.alasanLayakPIP} />
+                        <InfoField label="Bank" value={selectedSiswa.bank} />
+                        <InfoField label="Nomor Rekening Bank" value={selectedSiswa.nomorRekeningBank} />
+                        <InfoField label="Rekening Atas Nama" value={selectedSiswa.rekeningAtasNama} />
+                        <InfoField label="Berat Badan" value={selectedSiswa.beratBadan} />
+                        <InfoField label="Tinggi Badan" value={selectedSiswa.tinggiBadan} />
+                        <InfoField label="Lingkar Kepala" value={selectedSiswa.lingkarKepala} />
+                        <InfoField label="Lintang" value={selectedSiswa.lintang} />
+                        <InfoField label="Bujur" value={selectedSiswa.bujur} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -791,33 +988,129 @@ export default function MutasiKeluarPage() {
           {detailItem?.siswa && (
             <ScrollArea className="max-h-[70vh]">
               <div className="grid gap-6 pb-4">
+                {/* Section 1: Data Pribadi */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
-                    <GraduationCap className="size-4" /> Data Siswa
+                    <User className="size-4" /> Data Pribadi
                   </h3>
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      <InfoField label="Nama" value={detailItem.siswa.nama} />
+                      <InfoField label="Nama" value={detailItem.siswa.nama || '-'} />
                       <InfoField label="NIPD" value={detailItem.siswa.nipd || '-'} />
                       <InfoField label="NISN" value={detailItem.siswa.nisn || '-'} />
                       <InfoField label="NIK" value={detailItem.siswa.nik || '-'} />
+                      <InfoField label="No. KK" value={detailItem.siswa.noKK || '-'} />
+                      <InfoField label="No. Reg Akta Lahir" value={detailItem.siswa.noRegAktaLahir || '-'} />
                       <InfoField label="Jenis Kelamin" value={detailItem.siswa.jenisKelamin === 'L' ? 'Laki-laki' : detailItem.siswa.jenisKelamin === 'P' ? 'Perempuan' : detailItem.siswa.jenisKelamin || '-'} />
                       <InfoField label="Agama" value={detailItem.siswa.agama || '-'} />
                       <InfoField label="Tempat, Tgl Lahir" value={[detailItem.siswa.tempatLahir, formatDate(detailItem.siswa.tanggalLahir)].filter(Boolean).join(', ') || '-'} />
-                      <InfoField label="No. HP" value={detailItem.siswa.hp || '-'} />
-                      <div className="sm:col-span-2"><InfoField label="Alamat" value={detailItem.siswa.alamat || '-'} /></div>
-                      <InfoField label="Nama Ayah" value={detailItem.siswa.namaAyah || '-'} />
-                      <InfoField label="Nama Ibu" value={detailItem.siswa.namaIbu || '-'} />
-                      <InfoField label="Rombel" value={detailItem.siswa.rombel || '-'} />
-                      <InfoField label="Sekolah Asal" value={detailItem.siswa.sekolahAsal || '-'} />
+                      <InfoField label="Kebutuhan Khusus" value={detailItem.siswa.kebutuhanKhusus || '-'} />
+                      <InfoField label="Anak Ke Berapa" value={detailItem.siswa.anakKeBerapa || '-'} />
+                      <InfoField label="Jml Saudara Kandung" value={detailItem.siswa.jmlSaudaraKandung || '-'} />
                     </div>
                   </div>
                 </div>
 
                 <Separator />
 
+                {/* Section 2: Alamat & Kontak */}
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                    <MapPin className="size-4" /> Alamat & Kontak
+                  </h3>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div className="sm:col-span-2"><InfoField label="Alamat" value={detailItem.siswa.alamat || '-'} /></div>
+                      <InfoField label="RT" value={detailItem.siswa.rt || '-'} />
+                      <InfoField label="RW" value={detailItem.siswa.rw || '-'} />
+                      <InfoField label="Dusun" value={detailItem.siswa.dusun || '-'} />
+                      <InfoField label="Kelurahan" value={detailItem.siswa.kelurahan || '-'} />
+                      <InfoField label="Kecamatan" value={detailItem.siswa.kecamatan || '-'} />
+                      <InfoField label="Kode Pos" value={detailItem.siswa.kodePos || '-'} />
+                      <InfoField label="Jenis Tinggal" value={detailItem.siswa.jenisTinggal || '-'} />
+                      <InfoField label="Alat Transportasi" value={detailItem.siswa.alatTransportasi || '-'} />
+                      <InfoField label="Jarak Rumah ke Sekolah" value={detailItem.siswa.jarakRumahKeSekolah || '-'} />
+                      <InfoField label="Telepon" value={detailItem.siswa.telepon || '-'} />
+                      <InfoField label="HP" value={detailItem.siswa.hp || '-'} />
+                      <div className="sm:col-span-2"><InfoField label="Email" value={detailItem.siswa.email || '-'} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Section 3: Data Orang Tua / Wali */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                    <Users className="size-4" /> Data Orang Tua / Wali
+                  </h3>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Data Ayah</p></div>
+                      <InfoField label="Nama Ayah" value={detailItem.siswa.namaAyah || '-'} />
+                      <InfoField label="Tahun Lahir" value={detailItem.siswa.ayahTahunLahir || '-'} />
+                      <InfoField label="Jenjang Pendidikan" value={detailItem.siswa.ayahJenjangPendidikan || '-'} />
+                      <InfoField label="Pekerjaan" value={detailItem.siswa.ayahPekerjaan || '-'} />
+                      <InfoField label="Penghasilan" value={detailItem.siswa.ayahPenghasilan || '-'} />
+                      <InfoField label="NIK Ayah" value={detailItem.siswa.ayahNik || '-'} />
+                      <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 mt-2">Data Ibu</p></div>
+                      <InfoField label="Nama Ibu" value={detailItem.siswa.namaIbu || '-'} />
+                      <InfoField label="Tahun Lahir" value={detailItem.siswa.ibuTahunLahir || '-'} />
+                      <InfoField label="Jenjang Pendidikan" value={detailItem.siswa.ibuJenjangPendidikan || '-'} />
+                      <InfoField label="Pekerjaan" value={detailItem.siswa.ibuPekerjaan || '-'} />
+                      <InfoField label="Penghasilan" value={detailItem.siswa.ibuPenghasilan || '-'} />
+                      <InfoField label="NIK Ibu" value={detailItem.siswa.ibuNik || '-'} />
+                      <div className="sm:col-span-2"><p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1 mt-2">Data Wali</p></div>
+                      <InfoField label="Nama Wali" value={detailItem.siswa.namaWali || '-'} />
+                      <InfoField label="Tahun Lahir" value={detailItem.siswa.waliTahunLahir || '-'} />
+                      <InfoField label="Jenjang Pendidikan" value={detailItem.siswa.waliJenjangPendidikan || '-'} />
+                      <InfoField label="Pekerjaan" value={detailItem.siswa.waliPekerjaan || '-'} />
+                      <InfoField label="Penghasilan" value={detailItem.siswa.waliPenghasilan || '-'} />
+                      <InfoField label="NIK Wali" value={detailItem.siswa.waliNik || '-'} />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Section 4: Data Pendidikan & Lainnya */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
+                    <BookOpen className="size-4" /> Data Pendidikan & Lainnya
+                  </h3>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <InfoField label="Rombel" value={detailItem.siswa.rombel || '-'} />
+                      <InfoField label="Sekolah Asal" value={detailItem.siswa.sekolahAsal || '-'} />
+                      <InfoField label="Status" value={detailItem.siswa.status || '-'} />
+                      <InfoField label="SKHUN" value={detailItem.siswa.skhun || '-'} />
+                      <InfoField label="No. Peserta UN" value={detailItem.siswa.noPesertaUN || '-'} />
+                      <InfoField label="No. Seri Ijazah" value={detailItem.siswa.noSeriIjazah || '-'} />
+                      <InfoField label="Penerima KPS" value={detailItem.siswa.penerimaKPS || '-'} />
+                      <InfoField label="No. KPS" value={detailItem.siswa.noKPS || '-'} />
+                      <InfoField label="Penerima KIP" value={detailItem.siswa.penerimaKIP || '-'} />
+                      <InfoField label="Nomor KIP" value={detailItem.siswa.nomorKIP || '-'} />
+                      <InfoField label="Nama KIP" value={detailItem.siswa.namaKIP || '-'} />
+                      <InfoField label="Nomor KKS" value={detailItem.siswa.nomorKKS || '-'} />
+                      <InfoField label="Layak PIP" value={detailItem.siswa.layakPIP || '-'} />
+                      <InfoField label="Alasan Layak PIP" value={detailItem.siswa.alasanLayakPIP || '-'} />
+                      <InfoField label="Bank" value={detailItem.siswa.bank || '-'} />
+                      <InfoField label="Nomor Rekening Bank" value={detailItem.siswa.nomorRekeningBank || '-'} />
+                      <InfoField label="Rekening Atas Nama" value={detailItem.siswa.rekeningAtasNama || '-'} />
+                      <InfoField label="Berat Badan" value={detailItem.siswa.beratBadan || '-'} />
+                      <InfoField label="Tinggi Badan" value={detailItem.siswa.tinggiBadan || '-'} />
+                      <InfoField label="Lingkar Kepala" value={detailItem.siswa.lingkarKepala || '-'} />
+                      <InfoField label="Lintang" value={detailItem.siswa.lintang || '-'} />
+                      <InfoField label="Bujur" value={detailItem.siswa.bujur || '-'} />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Informasi Mutasi */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
                     <FileText className="size-4" /> Informasi Mutasi
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
