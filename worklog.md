@@ -381,3 +381,26 @@ Stage Summary:
 - New images: public/images/student-studying.png, public/images/pattern-edu.png
 - Login page verified working on both desktop and mobile viewports
 - No console errors detected
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Tambahkan fitur status Dapodik pada mutasi masuk & keluar
+
+Work Log:
+- Read and analyzed existing Prisma schema, API routes, and page components for MutasiMasuk and MutasiKeluar
+- Added `statusDapodik Boolean @default(false)` to both MutasiMasuk and MutasiKeluar models in prisma/schema.prisma
+- Ran `prisma db push --accept-data-loss` to sync database
+- Created `/api/mutasi-dapodik` PATCH endpoint with role-based access control (only admin/operator)
+- Updated `/api/mutasi-keluar` GET to include `statusDapodik` in flattened response
+- Updated MutasiMasukPage.tsx: added session hook, role detection, toggle mutation, Status Dapodik column with interactive checkbox (admin/operator) or read-only badge (other users)
+- Updated MutasiKeluarPage.tsx: same pattern as above, plus added statusDapodik to detail dialog
+- Committed and pushed to GitHub (with rebase for remote sync)
+- Verified via dev logs that Prisma queries include `statusDapodik` field
+
+Stage Summary:
+- New field: `statusDapodik` (boolean, default false) on MutasiMasuk & MutasiKeluar
+- New API: PATCH /api/mutasi-dapodik - role-gated toggle (admin/operator only)
+- UI: Admin/operator see interactive checkbox to toggle status
+- UI: Other users see read-only Badge (Sudah/Belum) - cannot edit
+- Status also shown in Mutasi Keluar detail dialog
