@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { nama: { contains: search } },
-        { nip: { contains: search } },
-        { nuptk: { contains: search } },
+        { nama: { contains: search, mode: 'insensitive' } },
+        { nip: { contains: search, mode: 'insensitive' } },
+        { nuptk: { contains: search, mode: 'insensitive' } },
       ];
     }
     if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
