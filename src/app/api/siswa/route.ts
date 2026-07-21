@@ -14,10 +14,10 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { nama: { contains: search, mode: 'insensitive' } },
-        { nipd: { contains: search, mode: 'insensitive' } },
-        { nisn: { contains: search, mode: 'insensitive' } },
-        { nik: { contains: search, mode: 'insensitive' } },
+        { nama: { contains: search } },
+        { nipd: { contains: search } },
+        { nisn: { contains: search } },
+        { nik: { contains: search } },
       ];
     }
     if (rombel) where.rombel = rombel;

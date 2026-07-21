@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.siswa = {
         OR: [
-          { nama: { contains: search, mode: 'insensitive' } },
-          { nipd: { contains: search, mode: 'insensitive' } },
-          { nisn: { contains: search, mode: 'insensitive' } },
-          { nik: { contains: search, mode: 'insensitive' } },
+          { nama: { contains: search } },
+          { nipd: { contains: search } },
+          { nisn: { contains: search } },
+          { nik: { contains: search } },
         ],
       };
     }
