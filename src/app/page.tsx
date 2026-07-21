@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -297,6 +297,54 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activePage, setActivePage } = useAppStore();
   const [manageTPOpen, setManageTPOpen] = useState(false);
   const { data: session } = useSession();
+  const { toast } = useToast();
+
+  // Change password state
+  const [cpOpen, setCpOpen] = useState(false);
+  const [cpOld, setCpOld] = useState('');
+  const [cpNew, setCpNew] = useState('');
+  const [cpConfirm, setCpConfirm] = useState('');
+  const [cpErrors, setCpErrors] = useState<Record<string, string>>({});
+  const [cpLoading, setCpLoading] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleChangePassword = async () => {
+    const errors: Record<string, string> = {};
+    if (!cpOld.trim()) errors.oldPassword = 'Password lama wajib diisi';
+    if (!cpNew.trim()) errors.newPassword = 'Password baru wajib diisi';
+    else if (cpNew.length < 6) errors.newPassword = 'Password baru minimal 6 karakter';
+    if (!cpConfirm.trim()) errors.confirmNewPassword = 'Konfirmasi password wajib diisi';
+    else if (cpNew !== cpConfirm) errors.confirmNewPassword = 'Konfirmasi password tidak cocok';
+    if (Object.keys(errors).length > 0) { setCpErrors(errors); return; }
+
+    setCpLoading(true);
+    setCpErrors({});
+    try {
+      const userId = (session?.user as { id?: string })?.id;
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, oldPassword: cpOld, newPassword: cpNew, confirmNewPassword: cpConfirm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const field = data.error?.includes('lama') ? 'oldPassword' : 'newPassword';
+        setCpErrors({ [field]: data.error });
+        return;
+      }
+      toast({ title: 'Berhasil', description: 'Password berhasil diubah' });
+      setCpOpen(false);
+      setCpOld(''); setCpNew(''); setCpConfirm('');
+    } catch {
+      toast({ title: 'Gagal', description: 'Terjadi kesalahan', variant: 'destructive' });
+    } finally {
+      setCpLoading(false);
+    }
+  };
+
+  const closeCp = () => { setCpOpen(false); setCpOld(''); setCpNew(''); setCpConfirm(''); setCpErrors({}); };
 
   return (
     <>
@@ -395,15 +443,26 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              title="Keluar"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setCpOpen(true)}
+                title="Ubah Password"
+              >
+                <KeyRound className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => signOut({ callbackUrl: "/" })}
+                title="Keluar"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <div className="px-4 py-2">
             <p className="text-xs text-muted-foreground text-center">
@@ -414,6 +473,103 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       </aside>
 
       <ManageTPDialog open={manageTPOpen} onClose={() => setManageTPOpen(false)} />
+
+      {/* ═══ Change Password Dialog ═══ */}
+      <Dialog open={cpOpen} onOpenChange={(v) => !v && closeCp()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-emerald-600" />
+              Ubah Password
+            </DialogTitle>
+            <DialogDescription>Masukkan password lama dan password baru Anda.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            {/* Password Lama */}
+            <div className="grid gap-2">
+              <Label htmlFor="cp-old">Password Lama</Label>
+              <div className="relative">
+                <Input
+                  id="cp-old"
+                  type={showOld ? "text" : "password"}
+                  placeholder="Masukkan password lama"
+                  value={cpOld}
+                  onChange={(e) => { setCpOld(e.target.value); setCpErrors((p) => ({ ...p, oldPassword: '' })); }}
+                  className="pr-10"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowOld(!showOld)}
+                  tabIndex={-1}
+                >
+                  {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {cpErrors.oldPassword && <p className="text-destructive text-xs">{cpErrors.oldPassword}</p>}
+            </div>
+
+            {/* Password Baru */}
+            <div className="grid gap-2">
+              <Label htmlFor="cp-new">Password Baru</Label>
+              <div className="relative">
+                <Input
+                  id="cp-new"
+                  type={showNew ? "text" : "password"}
+                  placeholder="Minimal 6 karakter"
+                  value={cpNew}
+                  onChange={(e) => { setCpNew(e.target.value); setCpErrors((p) => ({ ...p, newPassword: '' })); }}
+                  className="pr-10"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowNew(!showNew)}
+                  tabIndex={-1}
+                >
+                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {cpErrors.newPassword && <p className="text-destructive text-xs">{cpErrors.newPassword}</p>}
+            </div>
+
+            {/* Konfirmasi Password */}
+            <div className="grid gap-2">
+              <Label htmlFor="cp-confirm">Konfirmasi Password Baru</Label>
+              <div className="relative">
+                <Input
+                  id="cp-confirm"
+                  type={showConfirm ? "text" : "password"}
+                  placeholder="Ulangi password baru"
+                  value={cpConfirm}
+                  onChange={(e) => { setCpConfirm(e.target.value); setCpErrors((p) => ({ ...p, confirmNewPassword: '' })); }}
+                  className="pr-10"
+                  autoComplete="new-password"
+                  onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {cpErrors.confirmNewPassword && <p className="text-destructive text-xs">{cpErrors.confirmNewPassword}</p>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCp} disabled={cpLoading}>Batal</Button>
+            <Button onClick={handleChangePassword} disabled={cpLoading}>
+              {cpLoading && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+              Ubah Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
