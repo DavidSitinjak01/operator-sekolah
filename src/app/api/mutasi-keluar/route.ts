@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       tanggalKeluar: r.tanggalKeluar,
       alasan: r.alasan,
       noSurat: r.noSurat,
+      statusDapodik: r.statusDapodik,
       tahunPelajaran: r.tahunPelajaran,
       semester: r.semester,
       createdAt: r.createdAt,

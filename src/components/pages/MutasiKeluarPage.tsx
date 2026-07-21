@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
 import {
   UserMinus,
   Pencil,
@@ -18,6 +19,7 @@ import {
   FileText,
   CheckCircle2,
   XCircle,
+  Clock,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -77,6 +79,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { useAppStore } from '@/store/app'
 
@@ -127,6 +130,7 @@ interface MutasiKeluarRecord {
   tanggalKeluar: string
   alasan: string
   noSurat: string
+  statusDapodik: boolean
   tahunPelajaran: string
   semester: string
   createdAt: string
@@ -169,6 +173,9 @@ export default function MutasiKeluarPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { tahunPelajaran, semester } = useAppStore()
+  const { data: session } = useSession()
+  const currentUserRole = (session?.user as { role?: string })?.role || ''
+  const canToggleDapodik = currentUserRole === 'admin' || currentUserRole === 'operator'
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -253,6 +260,29 @@ export default function MutasiKeluarPage() {
       queryClient.invalidateQueries({ queryKey: ['siswa-list'] })
       toast({ title: 'Berhasil', description: 'Data mutasi keluar berhasil disimpan' })
       closeFormDialog()
+    },
+    onError: (err) => {
+      toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
+    },
+  })
+
+  // ── API: Toggle status Dapodik ──────────────────────────────────────────
+  const toggleDapodikMutation = useMutation({
+    mutationFn: async ({ id, statusDapodik }: { id: string; statusDapodik: boolean }) => {
+      const res = await fetch('/api/mutasi-dapodik', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'keluar', id, statusDapodik }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Gagal mengubah status Dapodik')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mutasi-keluar'] })
+      toast({ title: 'Berhasil', description: 'Status Dapodik diperbarui' })
     },
     onError: (err) => {
       toast({ title: 'Gagal', description: err.message, variant: 'destructive' })
@@ -495,6 +525,7 @@ export default function MutasiKeluarPage() {
                       <TableHead className="hidden lg:table-cell">Rombel</TableHead>
                       <TableHead className="hidden xl:table-cell">Tujuan Sekolah</TableHead>
                       <TableHead className="hidden lg:table-cell">Tgl Keluar</TableHead>
+                      <TableHead className="text-center">Status Dapodik</TableHead>
                       <TableHead className="text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -511,6 +542,37 @@ export default function MutasiKeluarPage() {
                         <TableCell className="hidden lg:table-cell">{item.siswa?.rombel || '-'}</TableCell>
                         <TableCell className="hidden xl:table-cell">{item.tujuanSekolah}</TableCell>
                         <TableCell className="hidden lg:table-cell">{formatDate(item.tanggalKeluar)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center">
+                            {canToggleDapodik ? (
+                              <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <Checkbox
+                                  checked={item.statusDapodik}
+                                  onCheckedChange={(checked) =>
+                                    toggleDapodikMutation.mutate({
+                                      id: item.id,
+                                      statusDapodik: checked === true,
+                                    })
+                                  }
+                                  disabled={toggleDapodikMutation.isPending}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {item.statusDapodik ? 'Sudah' : 'Belum'}
+                                </span>
+                              </label>
+                            ) : (
+                              item.statusDapodik ? (
+                                <Badge variant="default" className="bg-emerald-600 text-white gap-1">
+                                  <CheckCircle2 className="size-3" /> Sudah
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="size-3" /> Belum
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="icon" className="size-8" onClick={() => openDetail(item)} aria-label="Detail"><Eye className="size-4" /></Button>
@@ -763,6 +825,7 @@ export default function MutasiKeluarPage() {
                     <div className="sm:col-span-2"><InfoField label="Tujuan Sekolah" value={detailItem.tujuanSekolah || '-'} /></div>
                     <div className="sm:col-span-2"><InfoField label="Alasan Mutasi" value={detailItem.alasan || '-'} /></div>
                     <InfoField label="No. Surat Mutasi" value={detailItem.noSurat || '-'} />
+                    <InfoField label="Status Dapodik" value={detailItem.statusDapodik ? 'Sudah Masuk Dapodik' : 'Belum Masuk Dapodik'} />
                   </div>
                 </div>
               </div>

@@ -170,6 +170,7 @@ model MutasiMasuk {
   tanggalMasuk    String
   alasan          String
   noSurat         String
+  statusDapodik   Boolean  @default(false)
   tahunPelajaran  String   @default("2025/2026")
   semester        String   @default("Ganjil")
   createdAt       DateTime @default(now())
@@ -191,6 +192,7 @@ model MutasiKeluar {
   tanggalKeluar    String
   alasan           String
   noSurat          String
+  statusDapodik    Boolean  @default(false)
   tahunPelajaran   String   @default("2025/2026")
   semester         String   @default("Ganjil")
   createdAt        DateTime @default(now())

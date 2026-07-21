@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import {
   UserPlus,
   Search,
@@ -10,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -61,6 +64,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppStore } from '@/store/app';
 import ExportButton from '@/components/ExportButton';
 import { MUTASI_MASUK_COLUMNS } from '@/lib/export-utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -73,6 +78,7 @@ interface MutasiMasuk {
   tanggalMasuk: string;
   alasan: string;
   noSurat: string;
+  statusDapodik: boolean;
   tahunPelajaran: string;
   semester: string;
 }
@@ -122,6 +128,9 @@ export default function MutasiMasukPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { tahunPelajaran, semester } = useAppStore();
+  const { data: session } = useSession();
+  const currentUserRole = (session?.user as { role?: string })?.role || '';
+  const canToggleDapodik = currentUserRole === 'admin' || currentUserRole === 'operator';
 
   // State: search & pagination
   const [search, setSearch] = useState('');
@@ -200,6 +209,29 @@ export default function MutasiMasukPage() {
         description: error.message || 'Terjadi kesalahan saat menyimpan data.',
         variant: 'destructive',
       });
+    },
+  });
+
+  // ─── Mutation: Toggle status Dapodik ──────────────────────────────────
+  const toggleDapodikMutation = useMutation({
+    mutationFn: async ({ id, statusDapodik }: { id: string; statusDapodik: boolean }) => {
+      const res = await fetch('/api/mutasi-dapodik', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'masuk', id, statusDapodik }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Gagal mengubah status Dapodik');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mutasi-masuk'] });
+      toast({ title: 'Berhasil', description: 'Status Dapodik diperbarui' });
+    },
+    onError: (err) => {
+      toast({ title: 'Gagal', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -424,6 +456,7 @@ export default function MutasiMasukPage() {
                       <TableHead className="hidden lg:table-cell">
                         No. Surat
                       </TableHead>
+                      <TableHead className="text-center">Status Dapodik</TableHead>
                       <TableHead className="text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -446,6 +479,37 @@ export default function MutasiMasukPage() {
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {item.noSurat}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center">
+                            {canToggleDapodik ? (
+                              <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <Checkbox
+                                  checked={item.statusDapodik}
+                                  onCheckedChange={(checked) =>
+                                    toggleDapodikMutation.mutate({
+                                      id: item.id,
+                                      statusDapodik: checked === true,
+                                    })
+                                  }
+                                  disabled={toggleDapodikMutation.isPending}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {item.statusDapodik ? 'Sudah' : 'Belum'}
+                                </span>
+                              </label>
+                            ) : (
+                              item.statusDapodik ? (
+                                <Badge variant="default" className="bg-emerald-600 text-white gap-1">
+                                  <CheckCircle2 className="size-3" /> Sudah
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="size-3" /> Belum
+                                </Badge>
+                              )
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
