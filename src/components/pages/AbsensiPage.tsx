@@ -279,12 +279,12 @@ export default function AbsensiPage() {
     },
   });
 
-  // ─── Fetch rombel list ──────────────────────────────────────────────────
+  // ─── Fetch rombel list (from AbsensiSiswa — INDEPENDEN dari data utama) ─
   const { data: rombelList = [] } = useQuery({
     queryKey: ["absensi-rombel", tahunPelajaran, semester],
     queryFn: async () => {
       const p = new URLSearchParams({ tahunPelajaran, semester });
-      const r = await fetch(`/api/siswa/rombel?${p}`);
+      const r = await fetch(`/api/absensi/rombel?${p}`);
       if (!r.ok) throw new Error("Gagal");
       return r.json();
     },
@@ -300,16 +300,16 @@ export default function AbsensiPage() {
     }
   }, [rombelList.length, selectedRombel]);
 
-  // ─── Fetch siswa by rombel ──────────────────────────────────────────────
+  // ─── Fetch siswa by rombel (from AbsensiSiswa — INDEPENDEN dari data utama) ─
   const { data: siswaList = [], isLoading: isLoadingSiswa } = useQuery({
     queryKey: ["absensi-siswa", tahunPelajaran, semester, selectedRombel],
     queryFn: async () => {
       const p = new URLSearchParams({ tahunPelajaran, semester, rombel: selectedRombel });
-      const r = await fetch(`/api/siswa?${p}&status=Aktif&limit=200`);
+      const r = await fetch(`/api/absensi/siswa?${p}`);
       if (!r.ok) throw new Error("Gagal");
       const d = await r.json();
-      const list: SiswaListItem[] = d.data || d || [];
-      // Sort by numeric no to fix lexicographic ordering ("1","10","2" → 1,2,10)
+      // Already sorted by numeric no on the server side
+      const list: SiswaListItem[] = Array.isArray(d) ? d : [];
       return list.sort((a, b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
     },
     enabled: !!tahunPelajaran && !!selectedRombel,
@@ -515,7 +515,7 @@ export default function AbsensiPage() {
     }
   }, [tahunPelajaran, semester, selectedRombel, bulanStr, toast]);
 
-  // ─── Upload Excel siswa to sync names ────────────────────────────────────
+  // ─── Upload Excel siswa → AbsensiSiswa (INDEPENDEN dari data utama) ─────
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadResult, setUploadResult] = useState<{
     success: boolean;
@@ -547,7 +547,7 @@ export default function AbsensiPage() {
     onSuccess: (data) => {
       setUploadResult(data);
       setUploadDialogOpen(true);
-      toast({ title: "Sinkronisasi selesai", description: data.message });
+      toast({ title: "Upload siswa absensi selesai", description: data.message });
       qc.invalidateQueries({ queryKey: ["absensi-siswa"] });
       qc.invalidateQueries({ queryKey: ["absensi-rombel"] });
     },
@@ -959,14 +959,16 @@ export default function AbsensiPage() {
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            <p>Belum ada siswa di rombel ini</p>
+            <p className="mb-1">Belum ada siswa di rombel ini</p>
+            <p className="text-xs opacity-70">Upload file Excel untuk menambahkan daftar siswa ke absensi</p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             <ClipboardCheck className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            <p>Pilih rombel untuk memulai absensi</p>
+            <p className="mb-1">Belum ada data rombel</p>
+            <p className="text-xs opacity-70">Upload file Excel yang berisi kolom KELAS terlebih dahulu</p>
           </CardContent>
         </Card>
       )}
@@ -1217,9 +1219,9 @@ export default function AbsensiPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCheck className="h-5 w-5 text-blue-600" />
-              Hasil Sinkronisasi Siswa
+              Hasil Upload Siswa Absensi
             </DialogTitle>
-            <DialogDescription>Penyesuaian data siswa dari file Excel</DialogDescription>
+            <DialogDescription>Data siswa absensi diperbarui (tidak mengubah data utama siswa)</DialogDescription>
           </DialogHeader>
           {uploadResult && (
             <div className="space-y-4 py-2">

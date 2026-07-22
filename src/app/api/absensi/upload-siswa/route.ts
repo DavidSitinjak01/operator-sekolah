@@ -7,12 +7,14 @@ import { writeFile, unlink } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 
-// ─── POST: Upload Excel with student data, sync to Siswa by NISN ──────────
+// ─── POST: Upload Excel with student data → save to AbsensiSiswa (INDEPENDEN) ──
 // Expected columns: URUT, NISN, NIM/NIPD, Nama, JK, AGM, KELAS
 // Behavior:
-//   - If NISN matches existing student → UPDATE (nama, jk, agm, no, nipd)
-//   - If NISN not found → CREATE new student
-//   - Grouped by KELAS column
+//   - Parse Excel rows grouped by KELAS
+//   - For each student in the file:
+//     - If NISN+rombel or nama+rombel already exists in AbsensiSiswa → UPDATE
+//     - If not found → CREATE new entry in AbsensiSiswa
+//   - Does NOT touch the main Siswa table at all
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -107,10 +109,10 @@ export async function POST(req: NextRequest) {
         results.total++;
       }
 
-      // For each kelas, match students by NISN and update or create
+      // For each kelas, match students in AbsensiSiswa by NISN/name and update or create
       for (const [kelas, students] of Object.entries(studentsByKelas)) {
-        // Find existing students in this rombel
-        const existing = await db.siswa.findMany({
+        // Find existing entries in AbsensiSiswa for this rombel
+        const existing = await db.absensiSiswa.findMany({
           where: { tahunPelajaran, semester, rombel: kelas },
         });
 
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest) {
               if (student.nisn && student.nisn !== matched.nisn) changes.nisn = student.nisn;
 
               if (Object.keys(changes).length > 0) {
-                await db.siswa.update({
+                await db.absensiSiswa.update({
                   where: { id: matched.id },
                   data: changes,
                 });
@@ -149,8 +151,8 @@ export async function POST(req: NextRequest) {
               }
               results.matched++;
             } else {
-              // Not found → CREATE new student
-              await db.siswa.create({
+              // Not found → CREATE new entry in AbsensiSiswa
+              await db.absensiSiswa.create({
                 data: {
                   no: student.no || String(results.total),
                   nama: student.nama,
@@ -161,7 +163,6 @@ export async function POST(req: NextRequest) {
                   rombel: student.kelas,
                   tahunPelajaran,
                   semester,
-                  status: "Aktif",
                 },
               });
               results.created++;
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest) {
       try { await unlink(tmpPath); } catch {}
     }
   } catch (error) {
-    console.error("[UPLOAD SISWA]", error);
+    console.error("[UPLOAD SISWA ABSENSI]", error);
     return NextResponse.json({ error: "Gagal mengupload file" }, { status: 500 });
   }
 }

@@ -100,8 +100,8 @@ export async function GET(req: NextRequest) {
       hariLiburMap[h.tanggal] = { kategori: h.kategori, label: h.label };
     }
 
-    // ─── Fetch siswa ───────────────────────────────────────────────────────
-    const siswaList = await db.siswa.findMany({
+    // ─── Fetch siswa (from AbsensiSiswa — INDEPENDEN) ──────────────────────────
+    const siswaList = await db.absensiSiswa.findMany({
       where: { tahunPelajaran, semester, rombel },
       orderBy: { no: "asc" },
     });

@@ -297,6 +297,28 @@ model Absensi {
   @@index([siswaId])
 }
 
+// ─── Absensi Siswa (independen dari data utama Siswa) ──────────────────────
+
+model AbsensiSiswa {
+  id              String   @id @default(cuid())
+  no              String
+  nama            String
+  nisn            String   @default("")
+  nipd            String   @default("")
+  jenisKelamin    String   @default("")
+  agama           String   @default("")
+  rombel          String
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([nisn, rombel, tahunPelajaran, semester])
+  @@unique([nama, rombel, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
+}
+
 model HariLibur {
   id              String   @id @default(cuid())
   tanggal         String   // format: YYYY-MM-DD
