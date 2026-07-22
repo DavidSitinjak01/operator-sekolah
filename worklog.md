@@ -425,3 +425,30 @@ Stage Summary:
 - Data is fully synchronized via Prisma relation (siswaId) with include: { siswa: true }
 - Detail dialog and form preview show 4 organized sections: Data Pribadi, Alamat & Kontak, Data Orang Tua/Wali, Data Pendidikan & Lainnya
 - Export (Excel/PDF) includes all 60+ fields in landscape orientation
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Perbaiki fitur pencarian siswa dan guru — mode: 'insensitive' tidak didukung SQLite
+
+Work Log:
+- Investigasi masalah pencarian: user melaporkan cari nama siswa tidak ditemukan
+- Grep semua API routes: temukan 5 file pakai `contains: search` tanpa mode (siswa, siswa/list, guru, mutasi-keluar, mutasi-masuk)
+- Percobaan pertama: tambah `mode: 'insensitive'` ke semua 5 file
+- TES API LANGSUNG: curl ke /api/siswa?search=asri → ERROR: "Unknown argument 'mode'. Did you mean 'lte'?"
+- ROOT CAUSE DITEMUKAN: Prisma SQLite TIDAK mendukung `mode: 'insensitive'` — ini fitur PostgreSQL/MongoDB saja
+- SQLite LIKE sudah case-insensitive secara default, jadi `contains` sudah benar
+- REVERT semua perubahan `mode: 'insensitive'` di 5 file
+- Verifikasi via curl: `search=asri` → menemukan "Asri Kemi Indah Laia" dan "ASRIA HAREFA" (total: 2)
+- Verifikasi via curl: `search=amonius` → menemukan "Amonius Dakhi" (total: 1)
+- Verifikasi via Agent Browser:
+  - Login, pilih Data Siswa, ganti TP ke 2025/2026, ketik "asri" → 2 siswa ditemukan
+  - Pindah ke Data Guru, ketik "amonius" → 1 guru ditemukan
+- Dev log clean: semua API request 200, LIKE query terlihat di log
+
+Stage Summary:
+- MASALAH SEBENARNYA: Session sebelumnya salah mengidentifikasi root cause. `mode: 'insensitive'` BUKAN solusi, tapi justru PENYEBAB ERROR karena SQLite tidak mendukungnya
+- SQLite LIKE operator sudah case-insensitive secara default untuk ASCII characters
+- Setelah revert, pencarian berfungsi sempurna tanpa perubahan tambahan
+- Files reverted (kembali ke semula): siswa/route.ts, siswa/list/route.ts, guru/route.ts, mutasi-keluar/route.ts, mutasi-masuk/route.ts
+- 0 perubahan kode diperlukan — kode asli sudah benar untuk SQLite
