@@ -214,7 +214,8 @@ export default function AbsensiPage() {
   const [selectedCell, setSelectedCell] = useState<{ siswaId: string; siswaNama: string; tanggal: string; currentKode: string } | null>(null);
 
   const handleCellClick = useCallback((siswaId: string, tanggal: string, currentKode: string) => {
-    if (getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2])) === 0) return;
+    const dow = getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2]));
+    if (dow === 0 || dow === 6) return;
     const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
     setSelectedCell({
       siswaId,
@@ -279,8 +280,9 @@ export default function AbsensiPage() {
       for (const siswa of siswaList as SiswaListItem[]) {
         for (let d = 1; d <= daysInMonth; d++) {
           const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          // Skip Sundays (day 0)
-          if (getDayOfWeek(selectedYear, selectedMonth, d) === 0) continue;
+          // Skip Sundays (0) and Saturdays (6)
+          const dowFill = getDayOfWeek(selectedYear, selectedMonth, d);
+          if (dowFill === 0 || dowFill === 6) continue;
           items.push({
             siswaId: siswa.id,
             siswaNama: siswa.nama,
@@ -507,7 +509,7 @@ export default function AbsensiPage() {
                         <th
                           key={day}
                           className={`border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px] ${
-                            isSunday ? "bg-red-50 text-red-400" : isSaturday ? "bg-blue-50 text-blue-400" : "text-slate-500"
+                            (isSunday || isSaturday) ? "bg-red-50 text-red-400" : "text-slate-500"
                           }`}
                         >
                           {day}
@@ -524,7 +526,7 @@ export default function AbsensiPage() {
                         <th
                           key={day}
                           className={`border border-slate-200 px-0.5 py-0 text-[9px] text-center ${
-                            isSunday ? "bg-red-50 text-red-300" : "text-slate-400"
+                            (isSunday || isSaturday) ? "bg-red-50 text-red-300" : "text-slate-400"
                           }`}
                         >
                           {HARI_NAMES[dow]}
@@ -558,19 +560,19 @@ export default function AbsensiPage() {
                           return (
                             <td
                               key={day}
-                              className={`border border-slate-200 text-center cursor-pointer select-none transition-colors print:cursor-default ${
-                                isSunday ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "hover:bg-slate-50"
+                              className={`border border-slate-200 text-center select-none transition-colors print:cursor-default ${
+                                (isSunday || isSaturday) ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
                               }`}
                               style={kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
                               onClick={() => handleCellClick(siswa.id, tanggal, kode)}
                             >
                               <span
                                 className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
-                                  isSunday ? "text-red-300/50" : kodeInfo ? "" : "text-slate-200"
+                                  (isSunday || isSaturday) ? "text-red-300/50" : kodeInfo ? "" : "text-slate-200"
                                 }`}
                                 style={kodeInfo ? { color: kodeInfo.color } : undefined}
                               >
-                                {isSunday ? "×" : kode || ""}
+                                {(isSunday || isSaturday) ? "×" : kode || ""}
                               </span>
                             </td>
                           );
