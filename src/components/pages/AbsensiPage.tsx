@@ -306,7 +306,9 @@ export default function AbsensiPage() {
       const r = await fetch(`/api/siswa?${p}&status=Aktif&limit=200`);
       if (!r.ok) throw new Error("Gagal");
       const d = await r.json();
-      return d.data || d || [];
+      const list: SiswaListItem[] = d.data || d || [];
+      // Sort by numeric no to fix lexicographic ordering ("1","10","2" → 1,2,10)
+      return list.sort((a, b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
     },
     enabled: !!tahunPelajaran && !!selectedRombel,
   });
@@ -719,7 +721,7 @@ export default function AbsensiPage() {
                     return (
                       <tr key={siswa.id} className={rowIdx % 2 === 1 ? "bg-slate-50/30" : ""}>
                         <td className="border border-slate-200 px-2 py-0.5 text-center text-slate-500 sticky left-0 z-10 bg-white print:bg-white print:sticky print:left-0">
-                          {parseInt(siswa.no)}
+                          {rowIdx + 1}
                         </td>
                         <td className="border border-slate-200 px-3 py-0.5 font-medium text-slate-700 sticky left-[50px] z-10 bg-white print:bg-white print:sticky print:left-[50px] text-xs truncate max-w-[200px]">
                           {siswa.nama}
