@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Berikut adalah analisis detail terhadap gambar roster jadwal guru yang Anda berikan. Analisis ini mencakup struktur, informasi sel, format waktu, kode, dan pola pengisian berdasarkan ketiga contoh gambar (Guru BING, PPKn, dan GEO).\n\n### 1) Struktur Tabel (Baris, Kolom, Header)\n\nTabel ini menggunakan format **matriks standar** dengan orientasi horizontal untuk waktu dan vertikal untuk hari.\n\n*   **Header Atas (Kolom):**\n    *   Kolom pertama: Kosong (untuk label hari).\n    *   Kolom 2–11: Mewakili **Jam Pelajaran** ke-1 hingga ke-10.\n    *   Terdapat kolom khusus bernama **\"Istirahat_01\"** (antara jam 4 & 5) dan **\"Istirahat_02\"** (antara jam 7 & 8). Kolom ini secara visual memisahkan sesi pagi, istirahat siang, dan sesi sore.\n*   **Header Samping (Baris):**\n    *   Baris pertama: Header waktu.\n    *   Baris 2–6: Mewakili **Hari** dalam seminggu, disingkat menjadi:\n        *   **Se** = Senin\n        *   **Se** = Selasa\n        *   **Ra** = Rabu\n        *   **Ka** = Kamis\n        *   **Ju** = Jumat\n*   **Total Sel:** 5 baris (hari) × 12 kolom (waktu + istirahat).\n\n### 2) Informasi di Setiap Sel\n\nSetiap sel yang terisi mengandung informasi hierarkis yang terstruktur sebagai berikut:\n\n1.  **Kode Mata Pelajaran (Paling Atas):**\n    *   Ditulis dengan huruf kapital dan font lebih kecil/tebal.\n    *   Contoh: `BING` (Bahasa Inggris), `PPKn`, `GEO` (Geografi).\n2.  **Kelas/Jurusan (Tengah):**\n    *   Menunjukkan tingkatan kelas dan jurusan.\n    *   Format: **[Tingkat] [Jurusan]**\n        *   **X, XI, XII:** Kelas 10, 11, 12.\n        *   **IA / IS:** Kode jurusan (kemungkinan IPA/IPS atau singkatan lokal sekolah).\n3.  **Nama Kelompok/Ruang (Paling Bawah):**\n    *   Nama spesifik kelas atau kelompok belajar.\n    *   Contoh: `Bulusa`, `Toho`, `Lasara`, `Kalabubu`, `Rai`, `Baluse`, `Seubagoa`, `Tutuhao`.\n    *   *Catatan:* Nama-nama ini kemungkinan besar adalah nama **desa/asal siswa** atau nama **rombongan belajar** spesifik di sekolah tersebut (SMA Negeri 1 Telukdalam).\n\n**Sel Kosong:** Menandakan guru tidak mengajar pada jam/hari tersebut (luang).\n\n### 3) Format Penulisan Jam Pelajaran\n\nFormat penulisan waktu sangat presisi dan konsisten di semua gambar:\n\n*   **Format:** `HH:MM - HH:MM` (24 jam).\n*   **Durasi:** Umumnya **45 menit** per pelajaran.\n*   **Jadwal Lengkap per Kolom:**\n\n| Kolom | Keterangan | Waktu |\n| :--- | :--- | :--- |\n| **1** | Jam ke-1 | 07:15 - 08:00 |\n| **2** | Jam ke-2 | 08:00 - 08:45 |\n| **3** | Jam ke-3 | 08:45 - 09:30 |\n| **4** | Jam ke-4 | 09:30 - 10:15 |\n| **Istirahat_01** | Istirahat Pertama | 10:15 - 10:30 |\n| **5** | Jam ke-5 | 10:30 - 11:15 |\n| **6** | Jam ke-6 | 11:15 - 12:00 |\n| **7** | Jam ke-7 | 12:00 - 12:45 |\n| **Istirahat_02** | Istirahat Kedua (Ishoma) | 12:45 - 13:45 *(Durasi 60 menit)* |\n| **8** | Jam ke-8 | 13:45 - 14:30 |\n| **9** | Jam ke-9 | 14:30 - 15:15 |\n| **10** | Jam ke-10 | 15:15 - 16:00 |\n\n### 4) Arti Warna atau Kode\n\nBerdasarkan visualisasi gambar:\n\n*   **Warna:** Tabel sepenuhnya **monokrom (Hitam & Putih)**. Tidak ada kode warna latar belakang yang membedakan jenis pelajaran atau status (misalnya merah untuk ujian, hijau untuk tersedia). Semua teks berwarna hitam.\n*   **Kode Teks:**\n    *   **\"Istirahat\":** Ditulis vertikal pada kolom istirahat, menandakan jeda waktu istirahat guru dan siswa.\n    *   **\"SMA NEGERI 1 TELUKDALAM\":** Identitas institusi di pojok kiri atas.\n    *   **Tanggal:** \"Menghasilkan jadwal:21/07/2026\" menunjukkan tanggal cetak/generasi sistem (aSc Timetables).\n    *   **S.Pd:** Gelar Sarjana Pendidikan pada nama guru.\n\n### 5) Pola Pengisian Jadwal\n\nDari ketiga contoh (Guru Bahasa Inggris, PPKn, Geografi), dapat dianalisis pola beban kerja sebagai berikut:\n\n*   **Pola Blok (Block Teaching):**\n    *   Guru cenderung mengajar **berturut-turut** dalam satu sesi.\n    *   *Contoh (Guru BING):* Pada Selasa pagi, beliau mengajar jam 1, 2, 3, 4 berturut-turut tanpa putus (kecuali berganti kelas). Ini efektif untuk mengurangi perpindahan ruangan.\n*   **Distribusi Hari:**\n    *   Beberapa guru memiliki hari kosong (*off*) tertentu. Misalnya, **Guru GEO** tidak mengajar pada hari **Senin** (pagi/sore kosong), sementara **Guru PPKn** sangat padat di hari **Senin-Rabu** tetapi lebih longgar di Jumat.\n*   **Distribusi Sesi:**\n    *   **Sesi Pagi (Jam 1-4):** Sangat padat digunakan untuk kelas XII dan XI.\n    *   **Sesi Siang (Jam 5-7):** Digunakan untuk kelas XI dan X.\n    *   **Sesi Sore (Jam 8-10):** Lebih sedikit pelajaran, seringkali hanya diisi 1-2 jam (contoh: Guru BING hanya mengajar jam 8 di hari Senin/Rabu/Kamis).\n*   **Beberapa Kelas Paralel:** Terlihat jelas bahwa satu mata pelajaran diajarkan di beberapa kelas paralel dalam satu hari (misal: \"XII IS Lasara\", \"XI IA Rai\", dll.), menunjukkan ini adalah jadwal untuk guru **mapel wajib** yang mengajar di banyak rombongan belajar.\n\n**Kesimpulan:** Roster ini adalah output dari software **aSc Timetables** yang dirancang untuk SMA Negeri 1 Telukdalam, menampilkan alokasi waktu yang ketat dengan pola blok mengajar untuk efisiensi waktu guru.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1784731685,
+  "id": "2026072222474498d3ae71ba954ca6",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026072222474498d3ae71ba954ca6",
+  "usage": {
+    "completion_tokens": 1809,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 15220,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 17029
+  }
+}
