@@ -223,6 +223,7 @@ export default function SiswaPage() {
       if (!res.ok) throw new Error('Gagal memuat data siswa');
       return res.json();
     },
+    placeholderData: (prev) => prev, // keep previous data during pagination
   });
 
   const deleteMutation = useMutation({

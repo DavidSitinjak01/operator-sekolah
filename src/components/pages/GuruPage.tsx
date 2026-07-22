@@ -194,27 +194,19 @@ export default function GuruPage() {
       if (!res.ok) throw new Error('Gagal memuat data guru');
       return res.json();
     },
+    placeholderData: (prev) => prev,
   });
 
-  // ---------- Fetch unique rombel values ----------
+  // ---------- Fetch unique rombel values (lightweight endpoint) ----------
   const { data: rombelOptions } = useQuery<string[]>({
-    queryKey: ['guru-rombel', tahunPelajaran, semester],
+    queryKey: ['rombel', tahunPelajaran, semester],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        tahunPelajaran,
-        semester,
-        page: '1',
-        limit: '9999',
-      });
-      const res = await fetch(`/api/guru?${params}`);
+      const params = new URLSearchParams({ tahunPelajaran, semester });
+      const res = await fetch(`/api/siswa/rombel?${params}`);
       if (!res.ok) return [];
-      const json: GuruResponse = await res.json();
-      const rombelSet = new Set<string>();
-      json.data.forEach((g) => {
-        if (g.tugasTambahan) rombelSet.add(g.tugasTambahan);
-      });
-      return Array.from(rombelSet).sort();
+      return res.json();
     },
+    staleTime: 5 * 60_000, // rombel values rarely change
   });
 
   // ---------- Delete mutation ----------

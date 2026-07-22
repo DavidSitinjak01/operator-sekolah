@@ -48,7 +48,9 @@ import ManajemenUserPage from "@/components/pages/ManajemenUserPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 60_000,           // 1 min — avoid redundant refetches
+      gcTime: 5 * 60_000,         // 5 min — keep cached data in background
+      refetchOnWindowFocus: false, // don't refetch when tab regains focus
       retry: 1,
     },
   },

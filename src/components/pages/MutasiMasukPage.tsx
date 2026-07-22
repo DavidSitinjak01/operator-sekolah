@@ -171,6 +171,7 @@ export default function MutasiMasukPage() {
       }
       return res.json();
     },
+    placeholderData: (prev) => prev,
   });
 
   // ─── Mutation: Create / Update ──────────────────────────────────────────

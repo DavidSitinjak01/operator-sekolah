@@ -249,7 +249,7 @@ export default function MutasiKeluarPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ── API: Fetch Siswa List (for combobox) ─────────────────────────────────
+  // ── API: Fetch Siswa List (for combobox) — only when form dialog is open ──
   const { data: siswaList = [], isLoading: siswaLoading } = useQuery<SiswaOption[]>({
     queryKey: ['siswa-list', siswaSearch, tahunPelajaran, semester],
     queryFn: async () => {
@@ -259,6 +259,8 @@ export default function MutasiKeluarPage() {
       if (!res.ok) throw new Error('Gagal memuat data siswa')
       return res.json()
     },
+    enabled: formOpen, // Don't fetch until dialog is opened
+    staleTime: 2 * 60_000,
   })
 
   // ── API: Fetch Mutasi Keluar ─────────────────────────────────────────────
@@ -276,6 +278,7 @@ export default function MutasiKeluarPage() {
       if (!res.ok) throw new Error('Gagal memuat data mutasi keluar')
       return res.json()
     },
+    placeholderData: (prev) => prev,
   })
 
   // ── API: Create / Update ─────────────────────────────────────────────────

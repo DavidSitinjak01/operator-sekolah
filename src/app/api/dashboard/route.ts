@@ -11,36 +11,45 @@ export async function GET(request: NextRequest) {
     if (tahunPelajaran) whereTP.tahunPelajaran = tahunPelajaran;
     if (semester) whereTP.semester = semester;
 
-    const totalSiswa = await db.siswa.count({ where: whereTP });
-    const totalGuru = await db.guru.count({ where: whereTP });
-    const totalMutasiMasuk = await db.mutasiMasuk.count({ where: whereTP });
-    const totalMutasiKeluar = await db.mutasiKeluar.count({ where: whereTP });
-
-    const siswaPerRombel = await db.siswa.groupBy({
-      by: ['rombel'],
-      where: whereTP,
-      _count: { rombel: true },
-      orderBy: { rombel: 'asc' },
-    });
-
-    const recentMutasiMasuk = await db.mutasiMasuk.findMany({
-      where: whereTP,
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-
-    const recentMutasiKeluar = await db.mutasiKeluar.findMany({
-      where: whereTP,
-      include: { siswa: { select: { nama: true, nipd: true, nisn: true, rombel: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-
-    const siswaGroups = await db.siswa.groupBy({
-      by: ['tahunPelajaran', 'semester'],
-      _count: { id: true },
-      orderBy: [{ tahunPelajaran: 'asc' }, { semester: 'asc' }],
-    });
+    // Run all queries in parallel for maximum speed
+    const [
+      totalSiswa,
+      totalGuru,
+      totalMutasiMasuk,
+      totalMutasiKeluar,
+      siswaPerRombel,
+      recentMutasiMasuk,
+      recentMutasiKeluar,
+      siswaGroups,
+    ] = await Promise.all([
+      db.siswa.count({ where: whereTP }),
+      db.guru.count({ where: whereTP }),
+      db.mutasiMasuk.count({ where: whereTP }),
+      db.mutasiKeluar.count({ where: whereTP }),
+      db.siswa.groupBy({
+        by: ['rombel'],
+        where: whereTP,
+        _count: { rombel: true },
+        orderBy: { rombel: 'asc' },
+      }),
+      db.mutasiMasuk.findMany({
+        where: whereTP,
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { id: true, nama: true, nis: true, asalSekolah: true, tanggalMasuk: true },
+      }),
+      db.mutasiKeluar.findMany({
+        where: whereTP,
+        include: { siswa: { select: { nama: true, nipd: true, nisn: true, rombel: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      db.siswa.groupBy({
+        by: ['tahunPelajaran', 'semester'],
+        _count: { id: true },
+        orderBy: [{ tahunPelajaran: 'asc' }, { semester: 'asc' }],
+      }),
+    ]);
 
     return NextResponse.json({
       totalSiswa, totalGuru, totalMutasiMasuk, totalMutasiKeluar,
