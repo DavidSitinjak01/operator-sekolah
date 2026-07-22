@@ -477,6 +477,34 @@ export default function AbsensiPage() {
   // ─── Print handler ─────────────────────────────────────────────────────
   const handlePrint = () => window.print();
 
+  // ─── Excel export handler ──────────────────────────────────────────────
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportExcel = useCallback(async () => {
+    if (!tahunPelajaran || !selectedRombel || !bulanStr) return;
+    setIsExporting(true);
+    try {
+      const p = new URLSearchParams({ tahunPelajaran, semester, rombel: selectedRombel, bulan: bulanStr });
+      const r = await fetch(`/api/absensi/export?${p}`);
+      if (!r.ok) throw new Error("Gagal mengekspor");
+      const blob = await r.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = r.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="(.+?)"/);
+      a.download = match ? match[1] : `Absensi_${selectedRombel}_${bulanStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Excel berhasil diunduh" });
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Gagal export", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [tahunPelajaran, semester, selectedRombel, bulanStr, toast]);
+
   const hasChanges = Object.keys(localChanges).length > 0;
 
   if (isLoadingSiswa) return <Skeleton className="h-96 w-full" />;
@@ -495,6 +523,13 @@ export default function AbsensiPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfigOpen(true)}>
             <Settings2 className="h-3.5 w-3.5" /> Kode Absensi
+          </Button>
+          <Button
+            variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+            onClick={handleExportExcel} disabled={isExporting || !selectedRombel}
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Excel
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" /> Cetak
