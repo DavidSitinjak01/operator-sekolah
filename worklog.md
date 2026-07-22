@@ -620,3 +620,22 @@ Stage Summary:
 - Root cause of 500 error: missing IdentitasSekolah Prisma model
 - All API routes now verified working (200 status codes)
 - Code pushed to GitHub: DavidSitinjak01/operator-sekolah
+
+---
+Task ID: fix-upload-siswa-500
+Agent: main
+Task: Fix 500 error on /api/absensi/upload-siswa endpoint
+
+Work Log:
+- Investigated 500 error on /api/absensi/upload-siswa
+- Found root cause: `AbsensiSiswa` model had `@@unique([nisn, rombel, tahunPelajaran, semester])` constraint
+- When multiple students have empty NISN (""), the second student violates this unique constraint → Prisma P2002 error → caught as 500
+- Removed the nisn unique constraint, replaced with a regular index for performance
+- Kept the `@@unique([nama, rombel, tahunPelajaran, semester])` constraint (names should be unique per class)
+- Ran `bun run db:push` to sync schema to database
+- Pushed to GitHub (commit 8c25a09)
+
+Stage Summary:
+- Changed `@@unique([nisn, rombel, tahunPelajaran, semester])` to `@@index([nisn, rombel, tahunPelajaran, semester])` in prisma/schema.prisma
+- Database schema synced successfully
+- Pushed to GitHub: DavidSitinjak01/operator-sekolah
