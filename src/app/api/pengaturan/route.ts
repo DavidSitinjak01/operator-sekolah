@@ -14,6 +14,7 @@ const SETTINGS_KEYS = [
   'kepalaSekolah',
   'nipKepsek',
   'akreditasi',
+  'kode_absensi',
 ] as const;
 
 type SettingKey = (typeof SETTINGS_KEYS)[number];
@@ -30,6 +31,7 @@ const DEFAULTS: Record<SettingKey, string> = {
   kepalaSekolah: 'Drs. YAFETI HIA, M.Pd',
   nipKepsek: '196805151993031007',
   akreditasi: 'A',
+  kode_absensi: '',
 };
 
 export async function GET() {

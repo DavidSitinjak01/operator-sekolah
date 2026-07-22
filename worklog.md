@@ -517,3 +517,28 @@ Stage Summary:
 - TimetableView: kolom istirahat ditampilkan sebagai sel amber dengan label "ISTIRAHAT"
 - RosterPerGuru: baris istirahat ditampilkan sebagai baris amber dengan label "☕ Istirahat"
 - Fix bug: API PUT handler sekarang properly handle isIstirahat saat edit
+---
+Task ID: 2
+Agent: Main Agent
+Task: Buat Lembar Absensi Siswa dengan konfigurasi kode absensi dan akses admin+operator
+
+Work Log:
+- Tambah model `Absensi` di prisma schema: id, siswaId, siswaNama, nisn, rombel, tanggal, kodeAbsensi, tahunPelajaran, semester
+- Push schema ke database (Berhasil)
+- Buat API `/api/absensi`: GET (filter by rombel+bulan), POST (upsert single/bulk), PUT (update kode), DELETE (single or bulk by rombel+bulan)
+- Buat `AbsensiPage.tsx`: spreadsheet-style attendance grid
+- Tambah `kode_absensi` ke SETTINGS_KEYS di `/api/pengaturan/route.ts`
+- Integrasikan ke navigasi: store app.ts (Page type), page.tsx (import, nav item with adminOrOperator, switch case)
+- Akses dibatasi: nav item pakai `adminOrOperator: true`, API route cek role admin/operator
+
+Stage Summary:
+- Menu "Absensi Siswa" muncul setelah Jadwal Pelajaran, sebelum separator Pengaturan
+- Hanya admin dan operator yang bisa melihat dan mengakses
+- Bulan bisa diganti dengan navigasi bulan/tahun
+- Kode absensi default: H (Hadir/hijau), S (Sakit/kuning), I (Izin/biru), A (Alpa/merah)
+- Kode absensi bisa dikonfigurasi via dialog: ubah huruf, label, warna, tambah/hapus kode
+- Tombol "Isi Semua H" untuk mengisi semua siswa hadir sekaligus
+- Klik sel untuk cycle kode absensi, perubahan ditandai kuning, lalu simpan
+- Tabel: kolom = tanggal (1-31), baris = siswa, kolom summary = jumlah per kode
+- Hari Minggu ditandai merah, Sabtu ditandai biru
+- Sticky header + sticky kolom No dan Nama

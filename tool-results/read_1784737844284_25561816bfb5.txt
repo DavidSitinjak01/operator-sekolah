@@ -1,0 +1,711 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import { signOut, useSession } from "next-auth/react";
+     6→import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock } from "lucide-react";
+     7→import { useAppStore } from "@/store/app";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Input } from "@/components/ui/input";
+    10→import { Label } from "@/components/ui/label";
+    11→import {
+    12→  Select,
+    13→  SelectContent,
+    14→  SelectItem,
+    15→  SelectTrigger,
+    16→  SelectValue,
+    17→} from "@/components/ui/select";
+    18→import {
+    19→  Dialog,
+    20→  DialogContent,
+    21→  DialogHeader,
+    22→  DialogTitle,
+    23→  DialogDescription,
+    24→  DialogFooter,
+    25→} from "@/components/ui/dialog";
+    26→import {
+    27→  AlertDialog,
+    28→  AlertDialogAction,
+    29→  AlertDialogCancel,
+    30→  AlertDialogContent,
+    31→  AlertDialogDescription,
+    32→  AlertDialogFooter,
+    33→  AlertDialogHeader,
+    34→  AlertDialogTitle,
+    35→} from "@/components/ui/alert-dialog";
+    36→import { cn } from "@/lib/utils";
+    37→import { Toaster } from "@/components/ui/toaster";
+    38→import { useToast } from "@/hooks/use-toast";
+    39→import AuthGuard from "@/components/AuthGuard";
+    40→import DashboardPage from "@/components/pages/DashboardPage";
+    41→import SiswaPage from "@/components/pages/SiswaPage";
+    42→import MutasiMasukPage from "@/components/pages/MutasiMasukPage";
+    43→import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
+    44→import GuruPage from "@/components/pages/GuruPage";
+    45→import PengaturanPage from "@/components/pages/PengaturanPage";
+    46→import ManajemenUserPage from "@/components/pages/ManajemenUserPage";
+    47→import JadwalPelajaranPage from "@/components/pages/JadwalPelajaranPage";
+    48→
+    49→const queryClient = new QueryClient({
+    50→  defaultOptions: {
+    51→    queries: {
+    52→      staleTime: 60_000,           // 1 min — avoid redundant refetches
+    53→      gcTime: 5 * 60_000,         // 5 min — keep cached data in background
+    54→      refetchOnWindowFocus: false, // don't refetch when tab regains focus
+    55→      retry: 1,
+    56→    },
+    57→  },
+    58→});
+    59→
+    60→const SEMESTER_OPTIONS = ["Ganjil", "Genap"];
+    61→
+    62→const navItems = [
+    63→  { key: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    64→  { key: "siswa" as const, label: "Data Siswa", icon: Users },
+    65→  { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
+    66→  { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
+    67→  { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
+    68→  { key: "jadwal-pelajaran" as const, label: "Jadwal Pelajaran", icon: CalendarClock },
+    69→  { key: "pengaturan" as const, label: "Pengaturan", icon: Settings, adminOrOperator: true },
+    70→  { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOrOperator: true },
+    71→];
+    72→
+    73→// ─── TP Manage Dialog ────────────────────────────────────────────────────────
+    74→
+    75→function ManageTPDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+    76→  const { toast } = useToast();
+    77→  const qc = useQueryClient();
+    78→  const [newTP, setNewTP] = useState("");
+    79→  const [deleteTarget, setDeleteTarget] = useState<{ id: string; tahunPelajaran: string } | null>(null);
+    80→
+    81→  const { data: tpList = [], isLoading } = useQuery({
+    82→    queryKey: ["tahun-pelajaran"],
+    83→    queryFn: async () => {
+    84→      const res = await fetch("/api/tahun-pelajaran");
+    85→      if (!res.ok) throw new Error("Gagal memuat");
+    86→      return res.json();
+    87→    },
+    88→  });
+    89→
+    90→  const addMutation = useMutation({
+    91→    mutationFn: async (tp: string) => {
+    92→      const res = await fetch("/api/tahun-pelajaran", {
+    93→        method: "POST",
+    94→        headers: { "Content-Type": "application/json" },
+    95→        body: JSON.stringify({ tahunPelajaran: tp }),
+    96→      });
+    97→      const data = await res.json();
+    98→      if (!res.ok) throw new Error(data.error || "Gagal menambah");
+    99→      return data;
+   100→    },
+   101→    onSuccess: () => {
+   102→      qc.invalidateQueries({ queryKey: ["tahun-pelajaran"] });
+   103→      toast({ title: "Berhasil", description: "Tahun pelajaran berhasil ditambahkan" });
+   104→      setNewTP("");
+   105→    },
+   106→    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+   107→  });
+   108→
+   109→  const deleteMutation = useMutation({
+   110→    mutationFn: async (id: string) => {
+   111→      const res = await fetch("/api/tahun-pelajaran", {
+   112→        method: "DELETE",
+   113→        headers: { "Content-Type": "application/json" },
+   114→        body: JSON.stringify({ id }),
+   115→      });
+   116→      const data = await res.json();
+   117→      if (!res.ok) throw new Error(data.error || "Gagal menghapus");
+   118→      return data;
+   119→    },
+   120→    onSuccess: () => {
+   121→      qc.invalidateQueries({ queryKey: ["tahun-pelajaran"] });
+   122→      toast({ title: "Berhasil", description: "Tahun pelajaran berhasil dihapus" });
+   123→      setDeleteTarget(null);
+   124→    },
+   125→    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+   126→  });
+   127→
+   128→  const handleAdd = () => {
+   129→    const val = newTP.trim();
+   130→    if (!val) return;
+   131→    // Validate format: YYYY/YYYY+1
+   132→    const match = val.match(/^(\d{4})\/(\d{4})$/);
+   133→    if (!match || parseInt(match[2]) !== parseInt(match[1]) + 1) {
+   134→      toast({ title: "Format Salah", description: 'Gunakan format "YYYY/YYYY+1", contoh: "2026/2027"', variant: "destructive" });
+   135→      return;
+   136→    }
+   137→    addMutation.mutate(val);
+   138→  };
+   139→
+   140→  return (
+   141→    <>
+   142→      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+   143→        <DialogContent className="sm:max-w-md">
+   144→          <DialogHeader>
+   145→            <DialogTitle>Kelola Tahun Pelajaran</DialogTitle>
+   146→            <DialogDescription>Tambah atau hapus tahun pelajaran yang tersedia di sistem.</DialogDescription>
+   147→          </DialogHeader>
+   148→
+   149→          {/* Add new */}
+   150→          <div className="flex gap-2">
+   151→            <Input
+   152→              placeholder="Contoh: 2026/2027"
+   153→              value={newTP}
+   154→              onChange={(e) => setNewTP(e.target.value)}
+   155→              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+   156→              className="flex-1"
+   157→            />
+   158→            <Button onClick={handleAdd} disabled={addMutation.isPending || !newTP.trim()} size="sm">
+   159→              {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+   160→              Tambah
+   161→            </Button>
+   162→          </div>
+   163→
+   164→          {/* List */}
+   165→          <div className="max-h-64 overflow-y-auto space-y-1">
+   166→            {isLoading && (
+   167→              <div className="flex items-center justify-center py-8">
+   168→                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+   169→              </div>
+   170→            )}
+   171→            {!isLoading && tpList.length === 0 && (
+   172→              <p className="text-sm text-muted-foreground text-center py-6">Belum ada data.</p>
+   173→            )}
+   174→            {tpList.map((tp: { id: string; tahunPelajaran: string }) => (
+   175→              <div
+   176→                key={tp.id}
+   177→                className="flex items-center justify-between px-3 py-2 rounded-md border border-border hover:bg-muted/50"
+   178→              >
+   179→                <span className="text-sm font-medium">{tp.tahunPelajaran}</span>
+   180→                <Button
+   181→                  variant="ghost"
+   182→                  size="icon"
+   183→                  className="h-7 w-7 text-destructive hover:text-destructive"
+   184→                  onClick={() => setDeleteTarget(tp)}
+   185→                >
+   186→                  <Trash2 className="w-3.5 h-3.5" />
+   187→                </Button>
+   188→              </div>
+   189→            ))}
+   190→          </div>
+   191→        </DialogContent>
+   192→      </Dialog>
+   193→
+   194→      {/* Delete confirmation */}
+   195→      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+   196→        <AlertDialogContent>
+   197→          <AlertDialogHeader>
+   198→            <AlertDialogTitle>Hapus Tahun Pelajaran?</AlertDialogTitle>
+   199→            <AlertDialogDescription>
+   200→              Yakin ingin menghapus <strong>{deleteTarget?.tahunPelajaran}</strong>? Data siswa, guru, dan mutasi pada tahun pelajaran ini tetap ada di database.
+   201→            </AlertDialogDescription>
+   202→          </AlertDialogHeader>
+   203→          <AlertDialogFooter>
+   204→            <AlertDialogCancel>Batal</AlertDialogCancel>
+   205→            <AlertDialogAction
+   206→              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+   207→              disabled={deleteMutation.isPending}
+   208→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   209→            >
+   210→              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+   211→              Hapus
+   212→            </AlertDialogAction>
+   213→          </AlertDialogFooter>
+   214→        </AlertDialogContent>
+   215→      </AlertDialog>
+   216→    </>
+   217→  );
+   218→}
+   219→
+   220→// ─── Tahun Pelajaran Selector (dynamic) ──────────────────────────────────────
+   221→
+   222→function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
+   223→  const { tahunPelajaran, setTahunPelajaran, semester, setSemester } = useAppStore();
+   224→
+   225→  const { data: tpList = [] } = useQuery({
+   226→    queryKey: ["tahun-pelajaran"],
+   227→    queryFn: async () => {
+   228→      const res = await fetch("/api/tahun-pelajaran");
+   229→      if (!res.ok) return [];
+   230→      return res.json();
+   231→    },
+   232→  });
+   233→
+   234→  // If API data loaded, ensure the current selection is valid
+   235→  const options = tpList.map((tp: { tahunPelajaran: string }) => tp.tahunPelajaran);
+   236→  const isValid = options.includes(tahunPelajaran);
+   237→
+   238→  // Auto-sync store when the current tahunPelajaran is not in the API list
+   239→  useEffect(() => {
+   240→    if (!isValid && options.length > 0) {
+   241→      setTahunPelajaran(options[0]);
+   242→    }
+   243→  }, [isValid, options, setTahunPelajaran]);
+   244→
+   245→  return (
+   246→    <div className="space-y-3">
+   247→      <div className="flex items-center justify-between px-1">
+   248→        <div className="flex items-center gap-2">
+   249→          <CalendarDays className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
+   250→          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+   251→            Tahun Pelajaran
+   252→          </span>
+   253→        </div>
+   254→        <button
+   255→          onClick={onManage}
+   256→          className="p-1 rounded-md hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
+   257→          title="Kelola Tahun Pelajaran"
+   258→        >
+   259→          <Settings className="w-3.5 h-3.5" />
+   260→        </button>
+   261→      </div>
+   262→      <div className="px-1 space-y-2">
+   263→        <div className="space-y-1.5">
+   264→          <Label className="text-[11px] text-white/35 font-medium">Tahun Ajaran</Label>
+   265→          <Select value={isValid ? tahunPelajaran : options[0] || ""} onValueChange={setTahunPelajaran}>
+   266→            <SelectTrigger className="w-full h-9 text-sm bg-white/8 border-white/10 text-white/80 hover:bg-white/12 focus:ring-white/20 data-[placeholder]:text-white/30">
+   267→              <SelectValue placeholder={options.length === 0 ? "Belum ada data" : "Pilih..."} />
+   268→            </SelectTrigger>
+   269→            <SelectContent>
+   270→              {options.map((tp: string) => (
+   271→                <SelectItem key={tp} value={tp} className="text-sm">
+   272→                  {tp}
+   273→                </SelectItem>
+   274→              ))}
+   275→            </SelectContent>
+   276→          </Select>
+   277→        </div>
+   278→        <div className="space-y-1.5">
+   279→          <Label className="text-[11px] text-white/35 font-medium">Semester</Label>
+   280→          <Select value={semester} onValueChange={setSemester}>
+   281→            <SelectTrigger className="w-full h-9 text-sm bg-white/8 border-white/10 text-white/80 hover:bg-white/12 focus:ring-white/20">
+   282→              <SelectValue />
+   283→            </SelectTrigger>
+   284→            <SelectContent>
+   285→              {SEMESTER_OPTIONS.map((s) => (
+   286→                <SelectItem key={s} value={s} className="text-sm">
+   287→                  Semester {s}
+   288→                </SelectItem>
+   289→              ))}
+   290→            </SelectContent>
+   291→          </Select>
+   292→        </div>
+   293→      </div>
+   294→    </div>
+   295→  );
+   296→}
+   297→
+   298→// ─── Sidebar ─────────────────────────────────────────────────────────────────
+   299→
+   300→function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
+   301→  const { activePage, setActivePage } = useAppStore();
+   302→  const [manageTPOpen, setManageTPOpen] = useState(false);
+   303→  const { data: session } = useSession();
+   304→  const { toast } = useToast();
+   305→
+   306→  // Change password state
+   307→  const [cpOpen, setCpOpen] = useState(false);
+   308→  const [cpOld, setCpOld] = useState('');
+   309→  const [cpNew, setCpNew] = useState('');
+   310→  const [cpConfirm, setCpConfirm] = useState('');
+   311→  const [cpErrors, setCpErrors] = useState<Record<string, string>>({});
+   312→  const [cpLoading, setCpLoading] = useState(false);
+   313→  const [showOld, setShowOld] = useState(false);
+   314→  const [showNew, setShowNew] = useState(false);
+   315→  const [showConfirm, setShowConfirm] = useState(false);
+   316→
+   317→  const handleChangePassword = async () => {
+   318→    const errors: Record<string, string> = {};
+   319→    if (!cpOld.trim()) errors.oldPassword = 'Password lama wajib diisi';
+   320→    if (!cpNew.trim()) errors.newPassword = 'Password baru wajib diisi';
+   321→    else if (cpNew.length < 6) errors.newPassword = 'Password baru minimal 6 karakter';
+   322→    if (!cpConfirm.trim()) errors.confirmNewPassword = 'Konfirmasi password wajib diisi';
+   323→    else if (cpNew !== cpConfirm) errors.confirmNewPassword = 'Konfirmasi password tidak cocok';
+   324→    if (Object.keys(errors).length > 0) { setCpErrors(errors); return; }
+   325→
+   326→    setCpLoading(true);
+   327→    setCpErrors({});
+   328→    try {
+   329→      const userId = (session?.user as { id?: string })?.id;
+   330→      const res = await fetch('/api/user/change-password', {
+   331→        method: 'POST',
+   332→        headers: { 'Content-Type': 'application/json' },
+   333→        body: JSON.stringify({ userId, oldPassword: cpOld, newPassword: cpNew, confirmNewPassword: cpConfirm }),
+   334→      });
+   335→      const data = await res.json();
+   336→      if (!res.ok) {
+   337→        const field = data.error?.includes('lama') ? 'oldPassword' : 'newPassword';
+   338→        setCpErrors({ [field]: data.error });
+   339→        return;
+   340→      }
+   341→      toast({ title: 'Berhasil', description: 'Password berhasil diubah' });
+   342→      setCpOpen(false);
+   343→      setCpOld(''); setCpNew(''); setCpConfirm('');
+   344→    } catch {
+   345→      toast({ title: 'Gagal', description: 'Terjadi kesalahan', variant: 'destructive' });
+   346→    } finally {
+   347→      setCpLoading(false);
+   348→    }
+   349→  };
+   350→
+   351→  const closeCp = () => { setCpOpen(false); setCpOld(''); setCpNew(''); setCpConfirm(''); setCpErrors({}); };
+   352→
+   353→  return (
+   354→    <>
+   355→      {open && (
+   356→        <div
+   357→          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+   358→          onClick={onClose}
+   359→        />
+   360→      )}
+   361→
+   362→      <aside
+   363→        className={cn(
+   364→          "fixed top-0 left-0 z-50 h-full w-64 flex flex-col transition-all duration-300 ease-in-out",
+   365→          "[background:linear-gradient(180deg,oklch(0.17_0.04_160)_0%,oklch(0.14_0.05_170)_50%,oklch(0.12_0.04_260)_100%)]",
+   366→          open && !collapsed ? "translate-x-0" : "-translate-x-full",
+   367→          !collapsed && "lg:translate-x-0 lg:static lg:z-auto",
+   368→          collapsed && "lg:-translate-x-full lg:absolute lg:z-auto"
+   369→        )}
+   370→      >
+   371→        {/* Header */}
+   372→        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+   373→          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm text-white shadow-lg shadow-emerald-900/20">
+   374→            <School className="w-5 h-5" />
+   375→          </div>
+   376→          <div className="flex-1 min-w-0">
+   377→            <h1 className="text-sm font-bold text-white leading-tight">Operator Sekolah</h1>
+   378→            <p className="text-[11px] text-white/50 leading-tight">Sistem Informasi</p>
+   379→          </div>
+   380→          <button
+   381→            onClick={onClose}
+   382→            className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+   383→          >
+   384→            <X className="w-4 h-4" />
+   385→          </button>
+   386→          <button
+   387→            onClick={onToggleCollapse}
+   388→            className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+   389→            title="Tutup Sidebar"
+   390→          >
+   391→            <PanelLeftClose className="w-4 h-4" />
+   392→          </button>
+   393→        </div>
+   394→
+   395→        {/* Tahun Pelajaran Selector */}
+   396→        <div className="border-b border-white/10 py-3 px-3">
+   397→          <TahunPelajaranSelector onManage={() => setManageTPOpen(true)} />
+   398→        </div>
+   399→
+   400→        {/* Navigation */}
+   401→        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+   402→          {navItems
+   403→            .filter((item) => {
+   404→              if ('adminOrOperator' in item && item.adminOrOperator) {
+   405→                const role = (session?.user as { role?: string })?.role || '';
+   406→                return role === 'admin' || role === 'operator';
+   407→              }
+   408→              return true;
+   409→            })
+   410→            .map((item) => {
+   411→            const Icon = item.icon;
+   412→            const isActive = activePage === item.key;
+   413→            const showSeparator = item.key === 'pengaturan' || item.key === 'manajemen-user';
+   414→            return (
+   415→              <div key={item.key}>
+   416→                {showSeparator && <div className="my-2.5 border-t border-white/8" />}
+   417→                <button
+   418→                  onClick={() => {
+   419→                    setActivePage(item.key);
+   420→                    onClose();
+   421→                  }}
+   422→                  className={cn(
+   423→                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+   424→                    isActive
+   425→                      ? "bg-white/15 text-white shadow-sm shadow-black/10 backdrop-blur-sm"
+   426→                      : "text-white/55 hover:bg-white/8 hover:text-white/85"
+   427→                  )}
+   428→                >
+   429→                  <Icon
+   430→                    className={cn(
+   431→                      "w-[18px] h-[18px] flex-shrink-0 transition-colors",
+   432→                      isActive ? "text-white" : "text-white/45"
+   433→                    )}
+   434→                  />
+   435→                  <span className="leading-none">{item.label}</span>
+   436→                  {isActive && (
+   437→                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+   438→                  )}
+   439→                </button>
+   440→              </div>
+   441→            );
+   442→          })}
+   443→        </nav>
+   444→
+   445→        {/* User & Footer */}
+   446→        <div className="border-t border-white/10">
+   447→          <div className="px-4 py-3 flex items-center gap-3">
+   448→            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm text-white text-xs font-bold flex-shrink-0 ring-1 ring-white/10">
+   449→              {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
+   450→            </div>
+   451→            <div className="flex-1 min-w-0">
+   452→              <p className="text-sm font-medium text-white truncate leading-tight">
+   453→                {session?.user?.name || "User"}
+   454→              </p>
+   455→              <div className="flex items-center gap-1 mt-0.5">
+   456→                <Shield className="w-3 h-3 text-emerald-400" />
+   457→                <p className="text-[11px] text-white/45 capitalize leading-none">
+   458→                  {(session?.user as { role?: string })?.role || "operator"}
+   459→                </p>
+   460→              </div>
+   461→            </div>
+   462→            <div className="flex items-center gap-0.5 shrink-0">
+   463→              <Button
+   464→                variant="ghost"
+   465→                size="icon"
+   466→                className="h-7 w-7 text-white/40 hover:text-white hover:bg-white/10"
+   467→                onClick={() => setCpOpen(true)}
+   468→                title="Ubah Password"
+   469→              >
+   470→                <KeyRound className="w-3.5 h-3.5" />
+   471→              </Button>
+   472→              <Button
+   473→                variant="ghost"
+   474→                size="icon"
+   475→                className="h-7 w-7 text-white/40 hover:text-rose-300 hover:bg-white/10"
+   476→                onClick={() => signOut({ callbackUrl: "/" })}
+   477→                title="Keluar"
+   478→              >
+   479→                <LogOut className="w-3.5 h-3.5" />
+   480→              </Button>
+   481→            </div>
+   482→          </div>
+   483→        </div>
+   484→      </aside>
+   485→
+   486→      <ManageTPDialog open={manageTPOpen} onClose={() => setManageTPOpen(false)} />
+   487→
+   488→      {/* ═══ Change Password Dialog ═══ */}
+   489→      <Dialog open={cpOpen} onOpenChange={(v) => !v && closeCp()}>
+   490→        <DialogContent className="sm:max-w-md">
+   491→          <DialogHeader>
+   492→            <DialogTitle className="flex items-center gap-2">
+   493→              <KeyRound className="w-5 h-5 text-emerald-600" />
+   494→              Ubah Password
+   495→            </DialogTitle>
+   496→            <DialogDescription>Masukkan password lama dan password baru Anda.</DialogDescription>
+   497→          </DialogHeader>
+   498→          <div className="grid gap-4 py-2">
+   499→            {/* Password Lama */}
+   500→            <div className="grid gap-2">
+   501→              <Label htmlFor="cp-old">Password Lama</Label>
+   502→              <div className="relative">
+   503→                <Input
+   504→                  id="cp-old"
+   505→                  type={showOld ? "text" : "password"}
+   506→                  placeholder="Masukkan password lama"
+   507→                  value={cpOld}
+   508→                  onChange={(e) => { setCpOld(e.target.value); setCpErrors((p) => ({ ...p, oldPassword: '' })); }}
+   509→                  className="pr-10"
+   510→                  autoComplete="current-password"
+   511→                />
+   512→                <button
+   513→                  type="button"
+   514→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   515→                  onClick={() => setShowOld(!showOld)}
+   516→                  tabIndex={-1}
+   517→                >
+   518→                  {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   519→                </button>
+   520→              </div>
+   521→              {cpErrors.oldPassword && <p className="text-destructive text-xs">{cpErrors.oldPassword}</p>}
+   522→            </div>
+   523→
+   524→            {/* Password Baru */}
+   525→            <div className="grid gap-2">
+   526→              <Label htmlFor="cp-new">Password Baru</Label>
+   527→              <div className="relative">
+   528→                <Input
+   529→                  id="cp-new"
+   530→                  type={showNew ? "text" : "password"}
+   531→                  placeholder="Minimal 6 karakter"
+   532→                  value={cpNew}
+   533→                  onChange={(e) => { setCpNew(e.target.value); setCpErrors((p) => ({ ...p, newPassword: '' })); }}
+   534→                  className="pr-10"
+   535→                  autoComplete="new-password"
+   536→                />
+   537→                <button
+   538→                  type="button"
+   539→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   540→                  onClick={() => setShowNew(!showNew)}
+   541→                  tabIndex={-1}
+   542→                >
+   543→                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   544→                </button>
+   545→              </div>
+   546→              {cpErrors.newPassword && <p className="text-destructive text-xs">{cpErrors.newPassword}</p>}
+   547→            </div>
+   548→
+   549→            {/* Konfirmasi Password */}
+   550→            <div className="grid gap-2">
+   551→              <Label htmlFor="cp-confirm">Konfirmasi Password Baru</Label>
+   552→              <div className="relative">
+   553→                <Input
+   554→                  id="cp-confirm"
+   555→                  type={showConfirm ? "text" : "password"}
+   556→                  placeholder="Ulangi password baru"
+   557→                  value={cpConfirm}
+   558→                  onChange={(e) => { setCpConfirm(e.target.value); setCpErrors((p) => ({ ...p, confirmNewPassword: '' })); }}
+   559→                  className="pr-10"
+   560→                  autoComplete="new-password"
+   561→                  onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+   562→                />
+   563→                <button
+   564→                  type="button"
+   565→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   566→                  onClick={() => setShowConfirm(!showConfirm)}
+   567→                  tabIndex={-1}
+   568→                >
+   569→                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   570→                </button>
+   571→              </div>
+   572→              {cpErrors.confirmNewPassword && <p className="text-destructive text-xs">{cpErrors.confirmNewPassword}</p>}
+   573→            </div>
+   574→          </div>
+   575→          <DialogFooter>
+   576→            <Button variant="outline" onClick={closeCp} disabled={cpLoading}>Batal</Button>
+   577→            <Button onClick={handleChangePassword} disabled={cpLoading}>
+   578→              {cpLoading && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+   579→              Ubah Password
+   580→            </Button>
+   581→          </DialogFooter>
+   582→        </DialogContent>
+   583→      </Dialog>
+   584→    </>
+   585→  );
+   586→}
+   587→
+   588→// ─── Page Router ─────────────────────────────────────────────────────────────
+   589→
+   590→function PageContent() {
+   591→  const { activePage } = useAppStore();
+   592→
+   593→  switch (activePage) {
+   594→    case "dashboard":
+   595→      return <DashboardPage />;
+   596→    case "siswa":
+   597→      return <SiswaPage />;
+   598→    case "mutasi-masuk":
+   599→      return <MutasiMasukPage />;
+   600→    case "mutasi-keluar":
+   601→      return <MutasiKeluarPage />;
+   602→    case "guru":
+   603→      return <GuruPage />;
+   604→    case "jadwal-pelajaran":
+   605→      return <JadwalPelajaranPage />;
+   606→    case "pengaturan":
+   607→      return <PengaturanPage />;
+   608→    case "manajemen-user":
+   609→      return <ManajemenUserPage />;
+   610→    default:
+   611→      return <DashboardPage />;
+   612→  }
+   613→}
+   614→
+   615→// ─── Root ────────────────────────────────────────────────────────────────────
+   616→
+   617→export default function Home() {
+   618→  const [sidebarOpen, setSidebarOpen] = useState(false);
+   619→  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+   620→
+   621→  return (
+   622→    <AuthGuard>
+   623→      <QueryClientProvider client={queryClient}>
+   624→        <DashboardShell
+   625→          sidebarOpen={sidebarOpen}
+   626→          setSidebarOpen={setSidebarOpen}
+   627→          sidebarCollapsed={sidebarCollapsed}
+   628→          setSidebarCollapsed={setSidebarCollapsed}
+   629→        />
+   630→        <Toaster />
+   631→      </QueryClientProvider>
+   632→    </AuthGuard>
+   633→  );
+   634→}
+   635→
+   636→function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void; sidebarCollapsed: boolean; setSidebarCollapsed: (collapsed: boolean) => void }) {
+   637→  const { tahunPelajaran, semester } = useAppStore();
+   638→
+   639→  return (
+   640→    <div className="min-h-screen flex flex-col bg-background">
+   641→        <div className="flex flex-1">
+   642→          <Sidebar
+   643→            open={sidebarOpen}
+   644→            onClose={() => setSidebarOpen(false)}
+   645→            collapsed={sidebarCollapsed}
+   646→            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+   647→          />
+   648→
+   649→          <div className="flex-1 flex flex-col min-w-0">
+   650→            {/* Top bar for mobile */}
+   651→            <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 glass-subtle border-b border-border/60 lg:hidden">
+   652→              <Button
+   653→                variant="ghost"
+   654→                size="icon"
+   655→                onClick={() => setSidebarOpen(true)}
+   656→                className="shrink-0 hover:bg-primary/10"
+   657→              >
+   658→                <Menu className="w-5 h-5" />
+   659→              </Button>
+   660→              <div className="flex items-center gap-2.5">
+   661→                <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+   662→                  <School className="w-4 h-4" />
+   663→                </div>
+   664→                <span className="text-sm font-bold text-foreground">Operator Sekolah</span>
+   665→              </div>
+   666→              <div className="ml-auto flex items-center">
+   667→                <span className="text-[11px] font-medium text-muted-foreground bg-primary/8 text-primary px-2.5 py-1 rounded-full border border-primary/12">
+   668→                  {tahunPelajaran} · {semester}
+   669→                </span>
+   670→              </div>
+   671→            </header>
+   672→
+   673→            {/* Expand sidebar button (desktop only, visible when sidebar is collapsed) */}
+   674→            {sidebarCollapsed && (
+   675→              <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 glass-subtle border-b border-border/60">
+   676→                <Button
+   677→                  variant="ghost"
+   678→                  size="sm"
+   679→                  onClick={() => setSidebarCollapsed(false)}
+   680→                  className="text-muted-foreground hover:text-primary hover:bg-primary/8"
+   681→                >
+   682→                  <PanelLeftOpen className="w-4 h-4 mr-2" />
+   683→                  <span className="text-sm font-medium">Menu</span>
+   684→                </Button>
+   685→                <div className="ml-auto flex items-center">
+   686→                  <span className="text-[11px] font-medium text-muted-foreground bg-primary/8 text-primary px-2.5 py-1 rounded-full border border-primary/12">
+   687→                    {tahunPelajaran} · {semester}
+   688→                  </span>
+   689→                </div>
+   690→              </div>
+   691→            )}
+   692→
+   693→            {/* Main content */}
+   694→            <main className="flex-1 p-4 md:p-6 lg:p-8">
+   695→              <PageContent />
+   696→            </main>
+   697→          </div>
+   698→        </div>
+   699→
+   700→        {/* Sticky Footer */}
+   701→        <footer className="mt-auto glass-subtle border-t border-border/60 px-4 py-3">
+   702→          <div className="flex items-center justify-center gap-2">
+   703→            <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+   704→            <p className="text-[11px] text-muted-foreground font-medium">
+   705→              Sistem Informasi Operator Sekolah &mdash; &copy; {new Date().getFullYear()}
+   706→            </p>
+   707→          </div>
+   708→        </footer>
+   709→      </div>
+   710→  );
+   711→}

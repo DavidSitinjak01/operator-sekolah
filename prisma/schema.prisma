@@ -264,6 +264,28 @@ model JadwalKelas {
   @@index([hari])
 }
 
+// ─── Absensi Models ────────────────────────────────────────────────────────
+
+model Absensi {
+  id              String   @id @default(cuid())
+  siswaId         String
+  siswaNama       String   @default("")
+  nisn            String   @default("")
+  rombel          String
+  tanggal         String   // format: YYYY-MM-DD
+  kodeAbsensi     String   @default("H") // H, S, I, A (configurable)
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([siswaId, tanggal, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+  @@index([rombel, tanggal])
+  @@index([tanggal])
+  @@index([siswaId])
+}
+
 model JadwalAkses {
   id              String   @id @default(cuid())
   userId          String
