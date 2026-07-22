@@ -663,3 +663,23 @@ Stage Summary:
 - File: src/components/pages/AbsensiPage.tsx — error display improved
 - GitHub token updated to new token
 - Pushed: DavidSitinjak01/operator-sekolah
+
+---
+Task ID: logo-favicon-login
+Agent: main
+Task: School logo as favicon + display on login page
+
+Work Log:
+- Analyzed current setup: FaviconHandler reads from Pengaturan.logoSekolah, but actual logo stored in IdentitasSekolah.logo
+- Simplified FaviconHandler to always use /icon route (reads from IdentitasSekolah table)
+- Rewrote LoginPage to fetch school identity from /api/identitas-sekolah (public, no auth)
+- Login page now shows: school logo (left side desktop, circle mobile), school name as title, NPSN
+- Graceful fallback when no logo uploaded: default School icon, "Operator Sekolah" title, illustration image
+- Both data URI (Vercel) and file path (local dev) logos supported
+- Loading skeleton while fetching school info
+- Pushed to GitHub (commit 99bb286)
+
+Stage Summary:
+- FaviconHandler.tsx simplified to use /icon route
+- LoginPage.tsx now fetches and displays school logo + nama + NPSN
+- Fallback behavior preserved when no logo is uploaded
