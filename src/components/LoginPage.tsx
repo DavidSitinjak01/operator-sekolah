@@ -19,7 +19,7 @@ import Image from "next/image";
 interface SchoolInfo {
   namaSekolah: string;
   npsn: string;
-  logo: string;
+  logoSekolah: string;
 }
 
 export default function LoginPage() {
@@ -33,14 +33,14 @@ export default function LoginPage() {
   const [loadingSchool, setLoadingSchool] = useState(true);
 
   useEffect(() => {
-    fetch("/api/identitas-sekolah")
+    fetch("/api/pengaturan")
       .then((r) => r.json())
       .then((data) => {
         if (data && !data.error) {
           setSchoolInfo({
             namaSekolah: data.namaSekolah || "Operator Sekolah",
             npsn: data.npsn || "",
-            logo: data.logo || "",
+            logoSekolah: data.logoSekolah || "",
           });
         }
       })
@@ -75,8 +75,8 @@ export default function LoginPage() {
 
   // Resolve logo src: data URI → direct, file path → /icon route
   const getLogoSrc = () => {
-    if (!schoolInfo?.logo) return null;
-    if (schoolInfo.logo.startsWith("data:")) return schoolInfo.logo;
+    if (!schoolInfo?.logoSekolah) return null;
+    if (schoolInfo.logoSekolah.startsWith("data:")) return schoolInfo.logoSekolah;
     // File path from local dev — serve via /icon route
     return "/icon";
   };
