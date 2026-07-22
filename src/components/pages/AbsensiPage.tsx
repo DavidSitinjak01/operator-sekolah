@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
   Download, Trash2, Settings2, Loader2, Users, BookOpenCheck,
-  RotateCcw, X, Check, CalendarOff, Plus, Pencil,
+  RotateCcw, X, Check, CalendarOff, Plus, Pencil, Upload, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/app";
 
@@ -515,6 +516,52 @@ export default function AbsensiPage() {
     }
   }, [tahunPelajaran, semester, selectedRombel, bulanStr, toast]);
 
+  // ─── Upload Excel siswa to sync names ────────────────────────────────────
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploadResult, setUploadResult] = useState<{
+    success: boolean;
+    message: string;
+    total: number;
+    matched: number;
+    updated: number;
+    notFound: string[];
+    errors: string[];
+    kelasList: string[];
+  } | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("tahunPelajaran", tahunPelajaran);
+      fd.append("semester", semester);
+      const r = await fetch("/api/absensi/upload-siswa", {
+        method: "POST",
+        body: fd,
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: (data) => {
+      setUploadResult(data);
+      setUploadDialogOpen(true);
+      toast({ title: "Sinkronisasi selesai", description: data.message });
+      qc.invalidateQueries({ queryKey: ["absensi-siswa"] });
+      qc.invalidateQueries({ queryKey: ["absensi-rombel"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadMutation.mutate(file);
+      e.target.value = "";
+    }
+  };
+
   const hasChanges = Object.keys(localChanges).length > 0;
 
   if (isLoadingSiswa) return <Skeleton className="h-96 w-full" />;
@@ -533,6 +580,14 @@ export default function AbsensiPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfigOpen(true)}>
             <Settings2 className="h-3.5 w-3.5" /> Kode Absensi
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
+          <Button
+            variant="outline" size="sm" className="gap-1.5 text-blue-600 border-blue-300 hover:bg-blue-50"
+            onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}
+          >
+            {uploadMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            Upload Siswa
           </Button>
           <Button
             variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
@@ -1152,6 +1207,79 @@ export default function AbsensiPage() {
               {kodeMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Simpan Konfigurasi
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Upload Siswa Result Dialog ───────────────────────────────────── */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-blue-600" />
+              Hasil Sinkronisasi Siswa
+            </DialogTitle>
+            <DialogDescription>Penyesuaian data siswa dari file Excel</DialogDescription>
+          </DialogHeader>
+          {uploadResult && (
+            <div className="space-y-4 py-2">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <p className="text-2xl font-bold text-blue-700">{uploadResult.total}</p>
+                  <p className="text-[10px] text-blue-600 font-medium">Total Data</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <p className="text-2xl font-bold text-emerald-700">{uploadResult.matched}</p>
+                  <p className="text-[10px] text-emerald-600 font-medium">Cocok (NISN)</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-2xl font-bold text-amber-700">{uploadResult.updated}</p>
+                  <p className="text-[10px] text-amber-600 font-medium">Diperbarui</p>
+                </div>
+              </div>
+
+              {/* Kelas detected */}
+              {uploadResult.kelasList.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-1.5">Kelas Terdeteksi:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {uploadResult.kelasList.map((k) => (
+                      <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Not found list */}
+              {uploadResult.notFound.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-red-600 mb-1.5">
+                    Tidak Ditemukan ({uploadResult.notFound.length})
+                  </p>
+                  <div className="max-h-32 overflow-y-auto rounded-md border border-red-200 bg-red-50/50 p-2 space-y-0.5">
+                    {uploadResult.notFound.map((name, i) => (
+                      <p key={i} className="text-[10px] text-red-700">{name}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Errors */}
+              {uploadResult.errors.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-orange-600 mb-1.5">Error ({uploadResult.errors.length})</p>
+                  <div className="max-h-24 overflow-y-auto rounded-md border border-orange-200 bg-orange-50/50 p-2 space-y-0.5">
+                    {uploadResult.errors.map((err, i) => (
+                      <p key={i} className="text-[10px] text-orange-700">{err}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setUploadDialogOpen(false)}>Tutup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
