@@ -601,3 +601,22 @@ Stage Summary:
 - Smart blocking: holidays block input, special days (asesmen, TKA) remain clickable
 - Weekend color changed from red to brown per kalender specification
 - Code pushed to GitHub: commit c9e6cf0
+---
+Task ID: fix-500-error
+Agent: main
+Task: Fix 500 Internal Server Error from console
+
+Work Log:
+- Investigated the "Failed to load resource: the server responded with a status of 500" error
+- Found root cause: `/api/identitas-sekolah` and `/icon` routes used `db.identitasSekolah` but no `IdentitasSekolah` model existed in Prisma schema
+- Added `IdentitasSekolah` model to `prisma/schema.prisma` with fields: id, namaSekolah, npsn, alamat, logo, fotoSekolah, createdAt, updatedAt
+- Fixed `src/app/api/auth/seed/route.ts`: changed `name: 'Administrator'` to `nama: 'Administrator'` (matching Prisma User model)
+- Pushed schema to database with `bun run db:push`
+- Verified all API endpoints now return 200: /api/identitas-sekolah, /icon, /api/dashboard, /api/pengaturan, /api/siswa
+- Fixed server-keeper.js to add heartbeat interval preventing premature process exit
+- Pushed fix to GitHub (commit 66972e1)
+
+Stage Summary:
+- Root cause of 500 error: missing IdentitasSekolah Prisma model
+- All API routes now verified working (200 status codes)
+- Code pushed to GitHub: DavidSitinjak01/operator-sekolah
