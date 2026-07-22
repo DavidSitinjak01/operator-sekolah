@@ -524,6 +524,7 @@ export default function AbsensiPage() {
     total: number;
     matched: number;
     updated: number;
+    created: number;
     notFound: string[];
     errors: string[];
     kelasList: string[];
@@ -1224,18 +1225,22 @@ export default function AbsensiPage() {
           {uploadResult && (
             <div className="space-y-4 py-2">
               {/* Summary */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
                   <p className="text-2xl font-bold text-blue-700">{uploadResult.total}</p>
                   <p className="text-[10px] text-blue-600 font-medium">Total Data</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                   <p className="text-2xl font-bold text-emerald-700">{uploadResult.matched}</p>
-                  <p className="text-[10px] text-emerald-600 font-medium">Cocok (NISN)</p>
+                  <p className="text-[10px] text-emerald-600 font-medium">Cocok (NISN/Nama)</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
                   <p className="text-2xl font-bold text-amber-700">{uploadResult.updated}</p>
                   <p className="text-[10px] text-amber-600 font-medium">Diperbarui</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-violet-50 border border-violet-200">
+                  <p className="text-2xl font-bold text-violet-700">{uploadResult.created}</p>
+                  <p className="text-[10px] text-violet-600 font-medium">Siswa Baru Ditambahkan</p>
                 </div>
               </div>
 
@@ -1246,20 +1251,6 @@ export default function AbsensiPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {uploadResult.kelasList.map((k) => (
                       <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Not found list */}
-              {uploadResult.notFound.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-red-600 mb-1.5">
-                    Tidak Ditemukan ({uploadResult.notFound.length})
-                  </p>
-                  <div className="max-h-32 overflow-y-auto rounded-md border border-red-200 bg-red-50/50 p-2 space-y-0.5">
-                    {uploadResult.notFound.map((name, i) => (
-                      <p key={i} className="text-[10px] text-red-700">{name}</p>
                     ))}
                   </div>
                 </div>

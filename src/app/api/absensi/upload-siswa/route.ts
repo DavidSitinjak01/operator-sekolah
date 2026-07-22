@@ -9,6 +9,10 @@ import { randomUUID } from "crypto";
 
 // ─── POST: Upload Excel with student data, sync to Siswa by NISN ──────────
 // Expected columns: URUT, NISN, NIM/NIPD, Nama, JK, AGM, KELAS
+// Behavior:
+//   - If NISN matches existing student → UPDATE (nama, jk, agm, no, nipd)
+//   - If NISN not found → CREATE new student
+//   - Grouped by KELAS column
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -76,6 +80,7 @@ export async function POST(req: NextRequest) {
         total: 0,
         matched: 0,
         updated: 0,
+        created: 0,
         notFound: [] as string[],
         errors: [] as string[],
       };
@@ -102,7 +107,7 @@ export async function POST(req: NextRequest) {
         results.total++;
       }
 
-      // For each kelas, match students by NISN and update
+      // For each kelas, match students by NISN and update or create
       for (const [kelas, students] of Object.entries(studentsByKelas)) {
         // Find existing students in this rombel
         const existing = await db.siswa.findMany({
@@ -110,14 +115,20 @@ export async function POST(req: NextRequest) {
         });
 
         const existingByNisn = new Map<string, typeof existing[0]>();
+        const existingByNama = new Map<string, typeof existing[0]>();
         for (const s of existing) {
           if (s.nisn) existingByNisn.set(s.nisn, s);
+          const namaKey = s.nama.toLowerCase().trim();
+          existingByNama.set(namaKey, s);
         }
 
         for (const student of students) {
           try {
-            // Try to match by NISN first
+            // Try to match by NISN first, then by name
             let matched = student.nisn ? existingByNisn.get(student.nisn) : null;
+            if (!matched) {
+              matched = existingByNama.get(student.nama.toLowerCase().trim());
+            }
 
             if (matched) {
               // Check if anything changed
@@ -127,6 +138,7 @@ export async function POST(req: NextRequest) {
               if (student.agm && student.agm !== matched.agama) changes.agama = student.agm;
               if (student.no && student.no !== matched.no) changes.no = student.no;
               if (student.nipd && student.nipd !== matched.nipd) changes.nipd = student.nipd;
+              if (student.nisn && student.nisn !== matched.nisn) changes.nisn = student.nisn;
 
               if (Object.keys(changes).length > 0) {
                 await db.siswa.update({
@@ -137,8 +149,22 @@ export async function POST(req: NextRequest) {
               }
               results.matched++;
             } else {
-              // No match by NISN
-              results.notFound.push(`${student.nama} (${kelas})${student.nisn ? ` [NISN: ${student.nisn}]` : ""}`);
+              // Not found → CREATE new student
+              await db.siswa.create({
+                data: {
+                  no: student.no || String(results.total),
+                  nama: student.nama,
+                  nisn: student.nisn,
+                  nipd: student.nipd,
+                  jenisKelamin: student.jk,
+                  agama: student.agm,
+                  rombel: student.kelas,
+                  tahunPelajaran,
+                  semester,
+                  status: "Aktif",
+                },
+              });
+              results.created++;
             }
           } catch (e) {
             results.errors.push(`${student.nama}: ${e instanceof Error ? e.message : "Error"}`);
@@ -146,9 +172,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const message = [
+        `${results.matched} cocok`,
+        results.updated > 0 ? `${results.updated} diperbarui` : null,
+        results.created > 0 ? `${results.created} siswa baru ditambahkan` : null,
+      ].filter(Boolean).join(", ");
+
       return NextResponse.json({
         success: true,
-        message: `Proses selesai: ${results.matched} cocok, ${results.updated} diperbarui, ${results.notFound.length} tidak ditemukan`,
+        message: message || "Tidak ada perubahan",
         ...results,
         kelasList: Object.keys(studentsByKelas),
       });
