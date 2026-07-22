@@ -108,6 +108,11 @@ export async function GET(req: NextRequest) {
     // Numeric sort
     const sortedSiswa = siswaList.sort((a, b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
 
+    // ─── Student gender counts ────────────────────────────────────────────
+    const jumlahL = sortedSiswa.filter((s) => s.jenisKelamin === "L").length;
+    const jumlahP = sortedSiswa.filter((s) => s.jenisKelamin === "P").length;
+    const jumlahTotal = sortedSiswa.length;
+
     // ─── Fetch absensi data ────────────────────────────────────────────────
     const absensiList = await db.absensi.findMany({
       where: {
@@ -139,7 +144,7 @@ export async function GET(req: NextRequest) {
     aoa.push([]); // blank
 
     aoa.push([`LEMBAR ABSENSI SISWA`]);
-    aoa.push([`Kelas: ${rombel}`]);
+    aoa.push([`Kelas: ${rombel}`, `Jumlah Siswa: ${jumlahTotal} (L: ${jumlahL}, P: ${jumlahP})`]);
     aoa.push([`Tahun Pelajaran: ${tahunPelajaran} — Semester ${semester}`]);
     aoa.push([`Bulan: ${BULAN_NAMES[month - 1]} ${year}`]);
     aoa.push([]); // blank
@@ -234,9 +239,10 @@ export async function GET(req: NextRequest) {
             alignment: { horizontal: "center", vertical: "center" },
           };
         } else if (isSubInfo) {
+          const isRightAligned = R === 4 && C === 1;
           cell.s = {
             font: { bold: true, sz: 11, color: { rgb: TITLE_FG } },
-            alignment: { horizontal: "left", vertical: "center" },
+            alignment: { horizontal: isRightAligned ? "right" : "left", vertical: "center" },
           };
         } else if (isHeader) {
           cell.s = {

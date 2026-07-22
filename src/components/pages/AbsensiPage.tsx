@@ -148,6 +148,7 @@ export default function AbsensiPage() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedRombel, setSelectedRombel] = useState("");
+  const [namaSekolah, setNamaSekolah] = useState("");
   const bulanStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
 
   // ─── Fetch hari libur for selected month ────────────────────────────────
@@ -263,6 +264,7 @@ export default function AbsensiPage() {
       const r = await fetch("/api/pengaturan");
       if (!r.ok) return null;
       const d = await r.json();
+      setNamaSekolah(d.namaSekolah || "");
       return d.kode_absensi || null;
     },
     onSuccess: (val) => {
@@ -474,6 +476,14 @@ export default function AbsensiPage() {
     return summary;
   }, [absensiList, siswaList, localChanges, kodeConfig]);
 
+  // ─── Student gender counts (for print & info) ─────────────────────────
+  const siswaCounts = useMemo(() => {
+    const list = siswaList as SiswaListItem[];
+    const l = list.filter((s) => s.jenisKelamin === "L").length;
+    const p = list.filter((s) => s.jenisKelamin === "P").length;
+    return { l, p, total: l + p };
+  }, [siswaList]);
+
   // ─── Print handler ─────────────────────────────────────────────────────
   const handlePrint = () => window.print();
 
@@ -664,6 +674,25 @@ export default function AbsensiPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ─── Print Header (visible only on print) ──────────────────────────── */}
+      <div className="hidden print:block print:mb-4 print:space-y-2">
+        <h2 className="text-center text-base font-bold">{namaSekolah || "Nama Sekolah"}</h2>
+        <p className="text-center text-xs">Lembar Absensi Siswa</p>
+        <div className="flex justify-between text-[10px] mt-1">
+          <div>
+            <p><span className="font-semibold">Kelas:</span> {selectedRombel}</p>
+            <p><span className="font-semibold">Tahun Pelajaran:</span> {tahunPelajaran} — Semester {semester}</p>
+            <p><span className="font-semibold">Bulan:</span> {BULAN_NAMES[selectedMonth - 1]} {selectedYear}</p>
+          </div>
+          <div className="text-right">
+            <p><span className="font-semibold">Jumlah Siswa:</span> {siswaCounts.total} orang</p>
+            <p><span className="font-semibold">Laki-laki:</span> {siswaCounts.l} orang</p>
+            <p><span className="font-semibold">Perempuan:</span> {siswaCounts.p} orang</p>
+          </div>
+        </div>
+        <hr className="border-t border-black/30 mt-2" />
+      </div>
 
       {/* ─── Attendance Spreadsheet ───────────────────────────────────────── */}
       {selectedRombel && (siswaList as SiswaListItem[]).length > 0 ? (
