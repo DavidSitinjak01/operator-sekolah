@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function FaviconHandler() {
-  const [logoUrl, setLogoUrl] = useState("");
-
   useEffect(() => {
-    fetch("/api/pengaturan")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.logoSekolah) {
-          setLogoUrl(data.logoSekolah);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Update favicon using a link tag
-  useEffect(() => {
-    if (!logoUrl) return;
+    // Always use /icon route which dynamically serves the school logo
+    // from IdentitasSekolah table (works with both local dev and Vercel)
     let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
     if (!link) {
       link = document.createElement("link");
@@ -26,8 +13,9 @@ export default function FaviconHandler() {
       link.type = "image/x-icon";
       document.head.appendChild(link);
     }
-    link.href = logoUrl;
-  }, [logoUrl]);
+    // Use current timestamp to bust cache when logo changes
+    link.href = `/icon?t=${Date.now()}`;
+  }, []);
 
   return null;
 }

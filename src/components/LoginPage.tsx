@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { School, Loader2, Eye, EyeOff, LogIn, BookOpen, GraduationCap, Sparkles } from "lucide-react";
@@ -13,7 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
+
+interface SchoolInfo {
+  namaSekolah: string;
+  npsn: string;
+  logo: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +29,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
+  const [loadingSchool, setLoadingSchool] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/identitas-sekolah")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setSchoolInfo({
+            namaSekolah: data.namaSekolah || "Operator Sekolah",
+            npsn: data.npsn || "",
+            logo: data.logo || "",
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSchool(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +72,17 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Resolve logo src: data URI → direct, file path → /icon route
+  const getLogoSrc = () => {
+    if (!schoolInfo?.logo) return null;
+    if (schoolInfo.logo.startsWith("data:")) return schoolInfo.logo;
+    // File path from local dev — serve via /icon route
+    return "/icon";
+  };
+
+  const hasLogo = !!getLogoSrc();
+  const schoolName = schoolInfo?.namaSekolah || "Operator Sekolah";
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50">
@@ -90,34 +126,60 @@ export default function LoginPage() {
         />
 
         <div className="relative z-10 flex flex-col items-center max-w-lg">
-          {/* Student illustration */}
+          {/* School Logo or Student illustration */}
           <div className="relative">
             {/* Glow behind image */}
             <div className="absolute -inset-4 bg-gradient-to-br from-emerald-300/30 via-teal-200/20 to-emerald-400/20 rounded-3xl blur-2xl" />
 
             <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-emerald-900/10 border border-white/60">
-              <Image
-                src="/images/student-studying.png"
-                alt="Karikatur siswa SMA sedang belajar"
-                width={400}
-                height={534}
-                className="w-auto h-auto max-h-[520px] object-contain"
-                priority
-              />
+              {hasLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={getLogoSrc()!}
+                  alt={`Logo ${schoolName}`}
+                  width={400}
+                  height={400}
+                  className="w-auto h-auto max-h-[520px] object-contain p-8"
+                  priority
+                />
+              ) : (
+                <Image
+                  src="/images/student-studying.png"
+                  alt="Karikatur siswa SMA sedang belajar"
+                  width={400}
+                  height={534}
+                  className="w-auto h-auto max-h-[520px] object-contain"
+                  priority
+                />
+              )}
             </div>
           </div>
 
           {/* Quote / tagline */}
           <div className="mt-8 text-center space-y-3">
             <h2 className="text-2xl xl:text-3xl font-bold text-emerald-900 leading-tight">
-              Kelola Data Sekolah
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
-                Dengan Mudah & Cepat
-              </span>
+              {schoolInfo?.namaSekolah ? (
+                <>
+                  {schoolName}
+                </>
+              ) : (
+                <>
+                  Kelola Data Sekolah
+                  <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                    Dengan Mudah & Cepat
+                  </span>
+                </>
+              )}
             </h2>
             <p className="text-emerald-700/60 text-sm xl:text-base max-w-sm mx-auto leading-relaxed">
-              Sistem informasi lengkap untuk mengelola data siswa, guru, dan mutasi sekolah secara digital.
+              {schoolInfo?.npsn ? (
+                <>
+                  NPSN: {schoolInfo.npsn} &middot; Sistem Informasi Operator Sekolah
+                </>
+              ) : (
+                "Sistem informasi lengkap untuk mengelola data siswa, guru, dan mutasi sekolah secara digital."
+              )}
             </p>
           </div>
 
@@ -142,28 +204,69 @@ export default function LoginPage() {
       <div className="flex-1 lg:w-1/2 xl:w-[45%] flex items-center justify-center p-6 sm:p-8 lg:p-12 relative z-10">
         <Card className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-emerald-900/5 rounded-2xl">
           <CardHeader className="text-center space-y-4 pb-2 pt-8 px-8">
-            {/* Mobile illustration — only visible on small screens */}
+            {/* Mobile: Logo circle — only visible on small screens */}
             <div className="lg:hidden mx-auto w-32 h-32 relative">
-              <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
-              <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg">
-                <Image
-                  src="/images/student-studying.png"
-                  alt="Karikatur siswa SMA"
-                  width={128}
-                  height={128}
-                  className="w-full h-full object-cover"
-                  priority
-                />
-              </div>
+              {hasLogo ? (
+                <>
+                  <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
+                  <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg flex items-center justify-center bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getLogoSrc()!}
+                      alt={`Logo ${schoolName}`}
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-contain p-2"
+                      priority
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
+                  <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg">
+                    <Image
+                      src="/images/student-studying.png"
+                      alt="Karikatur siswa SMA"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                      priority
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Logo icon */}
-            <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
-              <School className="w-7 h-7 text-white" />
-            </div>
+            {/* Desktop: School logo or default icon */}
+            {loadingSchool ? (
+              <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100">
+                <Skeleton className="w-7 h-7 rounded-md" />
+              </div>
+            ) : hasLogo ? (
+              <div className="mx-auto w-16 h-16 rounded-2xl overflow-hidden shadow-lg border border-emerald-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getLogoSrc()!}
+                  alt={`Logo ${schoolName}`}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
+                <School className="w-7 h-7 text-white" />
+              </div>
+            )}
+
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900 tracking-tight">
-                Operator Sekolah
+                {loadingSchool ? (
+                  <Skeleton className="h-7 w-48 mx-auto" />
+                ) : (
+                  schoolName
+                )}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1.5">
                 Masuk ke Sistem Informasi Sekolah
@@ -271,7 +374,7 @@ export default function LoginPage() {
                 Hubungi administrator jika Anda lupa akun
               </p>
               <p className="text-center text-muted-foreground/50 text-[10px] mt-1.5">
-                &copy; {new Date().getFullYear()} Operator Sekolah &mdash; Sistem Informasi Manajemen Sekolah
+                &copy; {new Date().getFullYear()} {schoolName} &mdash; Sistem Informasi Manajemen Sekolah
               </p>
             </div>
           </CardContent>
