@@ -242,26 +242,26 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between px-3">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <CalendarDays className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
             Tahun Pelajaran
           </span>
         </div>
         <button
           onClick={onManage}
-          className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1 rounded-md hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
           title="Kelola Tahun Pelajaran"
         >
           <Settings className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="px-3 space-y-2">
+      <div className="px-1 space-y-2">
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Tahun Ajaran</Label>
+          <Label className="text-[11px] text-white/35 font-medium">Tahun Ajaran</Label>
           <Select value={isValid ? tahunPelajaran : options[0] || ""} onValueChange={setTahunPelajaran}>
-            <SelectTrigger className="w-full h-9 text-sm">
+            <SelectTrigger className="w-full h-9 text-sm bg-white/8 border-white/10 text-white/80 hover:bg-white/12 focus:ring-white/20 data-[placeholder]:text-white/30">
               <SelectValue placeholder={options.length === 0 ? "Belum ada data" : "Pilih..."} />
             </SelectTrigger>
             <SelectContent>
@@ -274,9 +274,9 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Semester</Label>
+          <Label className="text-[11px] text-white/35 font-medium">Semester</Label>
           <Select value={semester} onValueChange={setSemester}>
-            <SelectTrigger className="w-full h-9 text-sm">
+            <SelectTrigger className="w-full h-9 text-sm bg-white/8 border-white/10 text-white/80 hover:bg-white/12 focus:ring-white/20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -359,38 +359,39 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean
 
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-border flex flex-col transition-all duration-300 ease-in-out",
+          "fixed top-0 left-0 z-50 h-full w-64 flex flex-col transition-all duration-300 ease-in-out",
+          "[background:linear-gradient(180deg,oklch(0.17_0.04_160)_0%,oklch(0.14_0.05_170)_50%,oklch(0.12_0.04_260)_100%)]",
           open && !collapsed ? "translate-x-0" : "-translate-x-full",
           !collapsed && "lg:translate-x-0 lg:static lg:z-auto",
           collapsed && "lg:-translate-x-full lg:absolute lg:z-auto"
         )}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm text-white shadow-lg shadow-emerald-900/20">
             <School className="w-5 h-5" />
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-foreground leading-tight">Operator Sekolah</h1>
-            <p className="text-xs text-muted-foreground">Sistem Informasi</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold text-white leading-tight">Operator Sekolah</h1>
+            <p className="text-[11px] text-white/50 leading-tight">Sistem Informasi</p>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto lg:hidden p-1 rounded-md hover:bg-muted"
+            className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
           <button
             onClick={onToggleCollapse}
-            className="hidden lg:flex ml-auto p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-            title={collapsed ? "Buka Sidebar" : "Tutup Sidebar"}
+            className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            title="Tutup Sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tahun Pelajaran Selector */}
-        <div className="border-b border-border py-4">
+        <div className="border-b border-white/10 py-3 px-3">
           <TahunPelajaranSelector onManage={() => setManageTPOpen(true)} />
         </div>
 
@@ -410,26 +411,29 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean
             const showSeparator = item.key === 'pengaturan' || item.key === 'manajemen-user';
             return (
               <div key={item.key}>
-                {showSeparator && <div className="my-2 border-t border-border" />}
+                {showSeparator && <div className="my-2.5 border-t border-white/8" />}
                 <button
                   onClick={() => {
                     setActivePage(item.key);
                     onClose();
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
                     isActive
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-white/15 text-white shadow-sm shadow-black/10 backdrop-blur-sm"
+                      : "text-white/55 hover:bg-white/8 hover:text-white/85"
                   )}
                 >
                   <Icon
                     className={cn(
-                      "w-5 h-5 flex-shrink-0",
-                      isActive ? "text-emerald-600" : "text-muted-foreground"
+                      "w-[18px] h-[18px] flex-shrink-0 transition-colors",
+                      isActive ? "text-white" : "text-white/45"
                     )}
                   />
-                  {item.label}
+                  <span className="leading-none">{item.label}</span>
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                  )}
                 </button>
               </div>
             );
@@ -437,48 +441,42 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean
         </nav>
 
         {/* User & Footer */}
-        <div className="border-t border-border">
-          {/* User info */}
+        <div className="border-t border-white/10">
           <div className="px-4 py-3 flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex-shrink-0">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm text-white text-xs font-bold flex-shrink-0 ring-1 ring-white/10">
               {session?.user?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
+              <p className="text-sm font-medium text-white truncate leading-tight">
                 {session?.user?.name || "User"}
               </p>
-              <div className="flex items-center gap-1">
-                <Shield className="w-3 h-3 text-emerald-500" />
-                <p className="text-xs text-muted-foreground capitalize">
+              <div className="flex items-center gap-1 mt-0.5">
+                <Shield className="w-3 h-3 text-emerald-400" />
+                <p className="text-[11px] text-white/45 capitalize leading-none">
                   {(session?.user as { role?: string })?.role || "operator"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 text-white/40 hover:text-white hover:bg-white/10"
                 onClick={() => setCpOpen(true)}
                 title="Ubah Password"
               >
-                <KeyRound className="w-4 h-4" />
+                <KeyRound className="w-3.5 h-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 text-white/40 hover:text-rose-300 hover:bg-white/10"
                 onClick={() => signOut({ callbackUrl: "/" })}
                 title="Keluar"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </Button>
             </div>
-          </div>
-          <div className="px-4 py-2">
-            <p className="text-xs text-muted-foreground text-center">
-              &copy; {new Date().getFullYear()} Operator Sekolah
-            </p>
           </div>
         </div>
       </aside>
@@ -635,7 +633,7 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
   const { tahunPelajaran, semester } = useAppStore();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50/50">
+    <div className="min-h-screen flex flex-col bg-background">
         <div className="flex flex-1">
           <Sidebar
             open={sidebarOpen}
@@ -646,43 +644,43 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
 
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top bar for mobile */}
-            <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-white border-b border-border lg:hidden">
+            <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 glass-subtle border-b border-border/60 lg:hidden">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen(true)}
-                className="shrink-0"
+                className="shrink-0 hover:bg-primary/10"
               >
                 <Menu className="w-5 h-5" />
               </Button>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-emerald-600 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
                   <School className="w-4 h-4" />
                 </div>
-                <span className="text-sm font-bold">Operator Sekolah</span>
+                <span className="text-sm font-bold text-foreground">Operator Sekolah</span>
               </div>
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                  {tahunPelajaran} — {semester}
+              <div className="ml-auto flex items-center">
+                <span className="text-[11px] font-medium text-muted-foreground bg-primary/8 text-primary px-2.5 py-1 rounded-full border border-primary/12">
+                  {tahunPelajaran} · {semester}
                 </span>
               </div>
             </header>
 
             {/* Expand sidebar button (desktop only, visible when sidebar is collapsed) */}
             {sidebarCollapsed && (
-              <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white border-b border-border">
+              <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 glass-subtle border-b border-border/60">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarCollapsed(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-primary hover:bg-primary/8"
                 >
                   <PanelLeftOpen className="w-4 h-4 mr-2" />
-                  <span className="text-sm">Menu</span>
+                  <span className="text-sm font-medium">Menu</span>
                 </Button>
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                    {tahunPelajaran} — {semester}
+                <div className="ml-auto flex items-center">
+                  <span className="text-[11px] font-medium text-muted-foreground bg-primary/8 text-primary px-2.5 py-1 rounded-full border border-primary/12">
+                    {tahunPelajaran} · {semester}
                   </span>
                 </div>
               </div>
@@ -696,10 +694,13 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
         </div>
 
         {/* Sticky Footer */}
-        <footer className="mt-auto bg-white border-t border-border px-4 py-3 text-center">
-          <p className="text-xs text-muted-foreground">
-            Aplikasi Sistem Informasi Operator Sekolah &mdash; &copy; {new Date().getFullYear()}
-          </p>
+        <footer className="mt-auto glass-subtle border-t border-border/60 px-4 py-3">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+            <p className="text-[11px] text-muted-foreground font-medium">
+              Sistem Informasi Operator Sekolah &mdash; &copy; {new Date().getFullYear()}
+            </p>
+          </div>
         </footer>
       </div>
   );
