@@ -17,7 +17,7 @@ export async function POST() {
       data: {
         username: 'admin',
         password: hashedPassword,
-        name: 'Administrator',
+        nama: 'Administrator',
         role: 'admin',
         active: true,
       },

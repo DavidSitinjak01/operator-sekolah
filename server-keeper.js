@@ -1,5 +1,4 @@
 // server-keeper.js — Keeps Next.js dev server alive, auto-restarts on crash
-// Start with: node /home/z/my-project/server-keeper.js &
 
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
@@ -18,16 +17,6 @@ function log(msg) {
   fs.appendFileSync(LOG_FILE, line);
 }
 
-function checkHealthy() {
-  return new Promise((resolve) => {
-    const req = http.get(`http://127.0.0.1:${PORT}/`, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(5000, () => { req.destroy(); resolve(false); });
-  });
-}
-
 function startServer() {
   return new Promise((resolve, reject) => {
     log('STARTING Next.js dev server...');
@@ -44,22 +33,22 @@ function startServer() {
     });
 
     child.on('exit', (code) => {
-      log(`Server exited (code=${code}). Will restart...`);
-      setTimeout(() => startServer().then(resolve).catch(resolve), 2000);
+      log(`Server exited (code=${code}). Will restart in 3s...`);
+      setTimeout(() => startServer().then(() => {}).catch(() => {}), 3000);
     });
 
     child.on('error', (err) => {
-      log(`Server error: ${err.message}. Will restart...`);
-      setTimeout(() => startServer().then(resolve).catch(resolve), 3000);
+      log(`Server error: ${err.message}. Will restart in 3s...`);
+      setTimeout(() => startServer().then(() => {}).catch(() => {}), 3000);
     });
 
     // Give it time to start
     let attempts = 0;
     const checker = setInterval(() => {
       attempts++;
-      if (attempts > 30) {
+      if (attempts > 60) {
         clearInterval(checker);
-        log('Server failed to start within 30s');
+        log('Server failed to start within 60s');
         reject(new Error('timeout'));
         return;
       }
@@ -77,9 +66,14 @@ function startServer() {
 async function main() {
   log('════════ SERVER KEEPER STARTED ════════');
   await startServer();
+  // Keep the process alive by setting an interval
+  setInterval(() => {
+    // Heartbeat — keep event loop alive
+  }, 60000);
 }
 
 main().catch((err) => {
   log(`Fatal: ${err.message}`);
-  process.exit(1);
+  // Don't exit — keep trying
+  setTimeout(() => main().catch(() => {}), 5000);
 });

@@ -212,6 +212,17 @@ model Pengaturan {
   updatedAt       DateTime @updatedAt
 }
 
+model IdentitasSekolah {
+  id              String   @id @default(cuid())
+  namaSekolah     String   @default("")
+  npsn            String   @default("")
+  alamat          String   @default("")
+  logo            String   @default("")
+  fotoSekolah     String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 // ─── Jadwal Pelajaran Models ──────────────────────────────────────────────────
 
 model Mapel {
