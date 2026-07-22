@@ -639,3 +639,27 @@ Stage Summary:
 - Changed `@@unique([nisn, rombel, tahunPelajaran, semester])` to `@@index([nisn, rombel, tahunPelajaran, semester])` in prisma/schema.prisma
 - Database schema synced successfully
 - Pushed to GitHub: DavidSitinjak01/operator-sekolah
+
+---
+Task ID: fix-upload-siswa-vercel
+Agent: main
+Task: Fix 500 error on /api/absensi/upload-siswa on Vercel
+
+Work Log:
+- Analyzed uploaded Excel file (kelas x.xlsx): 180 rows, headers URUT/NISN/NIM/Nama/JK/AGM/KELAS, 5 kelas (Baluse, Bulusa, Kalabubu, Laeru, Lasara)
+- Found root cause: endpoint used XLSX.readFile(tmpPath) which writes to /tmp then reads from disk — this FAILS on Vercel serverless (restricted filesystem)
+- Rewrote entire upload-siswa endpoint:
+  - Removed all filesystem operations (writeFile, unlink, path)
+  - Changed to XLSX.read(buffer, {type:'array'}) — pure in-memory parsing
+  - Added dynamic import for xlsx module
+  - Added createMany with skipDuplicates for batch insert performance
+  - Fallback to individual creates if createMany fails
+  - Added error detail in response for easier debugging
+- Updated AbsensiPage.tsx to show error detail in toast
+- Pushed to GitHub (commit 1d1779f)
+
+Stage Summary:
+- File: src/app/api/absensi/upload-siswa/route.ts — fully rewritten
+- File: src/components/pages/AbsensiPage.tsx — error display improved
+- GitHub token updated to new token
+- Pushed: DavidSitinjak01/operator-sekolah
