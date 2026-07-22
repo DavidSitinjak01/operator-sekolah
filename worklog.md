@@ -496,3 +496,24 @@ Stage Summary:
 - Files modified: globals.css, page.tsx, DashboardPage.tsx
 - Commit: 74487d8 "style: redesign tampilan aplikasi agar lebih modern dan menarik"
 - Push: 64618a1..74487d8 main -> main
+---
+Task ID: 1
+Agent: Main Agent
+Task: Analisa gambar form Jam Pelajaran dan perbaiki agar bisa menambahkan jam istirahat
+
+Work Log:
+- Analisa screenshot menggunakan VLM: form hanya menampilkan 3 field (Jam ke-, Jam Mulai, Jam Selesai) tanpa opsi istirahat
+- Verifikasi code: schema.prisma sudah punya field `isIstirahat`, API sudah support, form JamManager sudah punya toggle
+- Temukan bug di API PUT handler: `isIstirahat` tidak ter-destrukturisasi dari body → edit selalu reset ke false
+- Fix API PUT handler: tambahkan `isIstirahat` ke destructuring, gunakan `isIstirahat === true` untuk update
+- Update RosterPerGuru: render baris istirahat dengan warna amber (sebelumnya tidak ada handling)
+- Push DB schema (sudah sync)
+- Run lint: hanya error pre-existing dari .js/.cjs files, bukan dari perubahan code
+
+Stage Summary:
+- Form "Tambah Jam Pelajaran" sudah punya toggle switch "Jam Istirahat" (warna amber) di bagian atas form
+- Toggle ON → deskripsi berubah ke "Atur waktu istirahat", field Jam ke- disabled
+- Tabel Jam Pelajaran punya kolom "Tipe" badge: "Istirahat" (amber) atau "Pelajaran" (secondary)
+- TimetableView: kolom istirahat ditampilkan sebagai sel amber dengan label "ISTIRAHAT"
+- RosterPerGuru: baris istirahat ditampilkan sebagai baris amber dengan label "☕ Istirahat"
+- Fix bug: API PUT handler sekarang properly handle isIstirahat saat edit

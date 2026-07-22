@@ -610,12 +610,25 @@ function RosterPerGuru() {
                 </thead>
                 <tbody>
                   {(jamList as JamItem[]).map((jam) => (
-                    <tr key={jam.jamKe}>
-                      <td className="border border-slate-200 px-3 py-1 font-medium text-slate-700 sticky left-0 z-10 bg-white" style={{top:0}}>
-                        <div>Jam ke-{jam.jamKe}</div>
-                        <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+                    <tr key={jam.jamKe} className={jam.isIstirahat ? "bg-amber-50/60" : ""}>
+                      <td className={`border border-slate-200 px-3 py-1 font-medium sticky left-0 z-10 ${jam.isIstirahat ? "bg-amber-100 text-amber-700 font-bold" : "bg-white text-slate-700"}`} style={{top:0}}>
+                        {jam.isIstirahat ? (
+                          <div className="text-[10px] uppercase tracking-wider">☕ Istirahat</div>
+                        ) : (
+                          <>
+                            <div>Jam ke-{jam.jamKe}</div>
+                            <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+                          </>
+                        )}
                       </td>
                       {HARI.map((hari) => {
+                        if (jam.isIstirahat) {
+                          return (
+                            <td key={hari} className="border border-slate-200 bg-amber-50/60 text-center">
+                              <div className="py-1 text-[9px] font-medium text-amber-600/50 uppercase tracking-wider">Istirahat</div>
+                            </td>
+                          );
+                        }
                         const key = `${hari}-${jam.jamKe}`;
                         const j = jadwalMap[key];
                         const color = j ? getMapelColor(j.mapelId, mapelList as MapelItem[]) : null;

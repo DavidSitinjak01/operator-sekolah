@@ -1,0 +1,1030 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useMemo, useCallback, useEffect } from "react";
+     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import {
+     6→  CalendarClock, Plus, Trash2, Pencil, Save, BookOpen, Clock,
+     7→  Users, Eye, Shield, X, Check, Loader2, Printer, GraduationCap,
+     8→  Search, LayoutGrid, List, ChevronDown, School, TableProperties,
+     9→  Settings2, UserCheck, Filter, ZoomIn,
+    10→} from "lucide-react";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    14→import { Badge } from "@/components/ui/badge";
+    15→import { Skeleton } from "@/components/ui/skeleton";
+    16→import {
+    17→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    18→} from "@/components/ui/table";
+    19→import {
+    20→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    21→} from "@/components/ui/select";
+    22→import {
+    23→  AlertDialog, AlertDialogAction, AlertDialogCancel,
+    24→  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    25→  AlertDialogHeader, AlertDialogTitle,
+    26→} from "@/components/ui/alert-dialog";
+    27→import {
+    28→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    29→  DialogDescription, DialogFooter,
+    30→} from "@/components/ui/dialog";
+    31→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    32→import { ScrollArea } from "@/components/ui/scroll-area";
+    33→import { Label } from "@/components/ui/label";
+    34→import { useToast } from "@/hooks/use-toast";
+    35→import { useAppStore } from "@/store/app";
+    36→import { useSession } from "next-auth/react";
+    37→
+    38→// ─── Constants ─────────────────────────────────────────────────────────────────
+    39→const HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    40→
+    41→// aSc Timetables-inspired color palette for mapel
+    42→const MAPEL_PALETTE = [
+    43→  { bg: "#FEF3C7", text: "#92400E", border: "#F59E0B" },  // amber
+    44→  { bg: "#FCE7F3", text: "#9D174D", border: "#EC4899" },  // pink
+    45→  { bg: "#DBEAFE", text: "#1E40AF", border: "#3B82F6" },  // blue
+    46→  { bg: "#D1FAE5", text: "#065F46", border: "#10B981" },  // emerald
+    47→  { bg: "#EDE9FE", text: "#5B21B6", border: "#8B5CF6" },  // violet
+    48→  { bg: "#FFEDD5", text: "#9A3412", border: "#F97316" },  // orange
+    49→  { bg: "#FEE2E2", text: "#991B1B", border: "#EF4444" },  // red
+    50→  { bg: "#CCFBF1", text: "#115E59", border: "#14B8A6" },  // teal
+    51→  { bg: "#FEF9C3", text: "#854D0E", border: "#EAB308" },  // yellow
+    52→  { bg: "#E0E7FF", text: "#3730A3", border: "#6366F1" },  // indigo
+    53→  { bg: "#F3E8FF", text: "#6B21A8", border: "#A855F7" },  // purple
+    54→  { bg: "#DCFCE7", text: "#166534", border: "#22C55E" },  // green
+    55→  { bg: "#CFFAFE", text: "#155E75", border: "#06B6D4" },  // cyan
+    56→  { bg: "#FFE4E6", text: "#9F1239", border: "#F43F5E" },  // rose
+    57→  { bg: "#F0FDF4", text: "#14532D", border: "#4ADE80" },  // lime-green
+    58→  { bg: "#FDF4FF", text: "#86198F", border: "#D946EF" },  // fuchsia
+    59→  { bg: "#FFF7ED", text: "#9A3412", border: "#FB923C" },  // light-orange
+    60→  { bg: "#EFF6FF", text: "#1E3A5F", border: "#2563EB" },  // sky
+    61→  { bg: "#F5F3FF", text: "#4C1D95", border: "#7C3AED" },  // deep-violet
+    62→  { bg: "#ECFDF5", text: "#064E3B", border: "#059669" },  // deep-emerald
+    63→];
+    64→
+    65→function getMapelColor(mapelId: string, mapelList: MapelItem[]): { bg: string; text: string; border: string } {
+    66→  const idx = mapelList.findIndex((m) => m.id === mapelId);
+    67→  if (idx === -1) return { bg: "#F3F4F6", text: "#6B7280", border: "#D1D5DB" };
+    68→  return MAPEL_PALETTE[idx % MAPEL_PALETTE.length];
+    69→}
+    70→
+    71→// ─── Types ─────────────────────────────────────────────────────────────────────
+    72→interface MapelItem {
+    73→  id: string; kode: string; nama: string;
+    74→  tahunPelajaran: string; semester: string;
+    75→}
+    76→
+    77→interface JamItem {
+    78→  id: string; jamKe: number; jamMulai: string; jamSelesai: string;
+    79→  isIstirahat: boolean;
+    80→  tahunPelajaran: string; semester: string;
+    81→}
+    82→
+    83→interface JadwalItem {
+    84→  id: string; hari: string; jamKe: number;
+    85→  mapelId: string; mapelKode: string; mapelNama: string;
+    86→  guruId: string; guruNama: string; rombel: string;
+    87→  tahunPelajaran: string; semester: string;
+    88→}
+    89→
+    90→interface GuruItem { id: string; nama: string; no: string; }
+    91→
+    92→interface AksesItem {
+    93→  id: string; userId: string; rombel: string;
+    94→  tahunPelajaran: string; semester: string; createdAt: string;
+    95→  user: { id: string; username: string; nama: string };
+    96→}
+    97→
+    98→// ═══════════════════════════════════════════════════════════════════════════════
+    99→// TIMETABLE VIEW — aSc Timetables Style Grid
+   100→// ═══════════════════════════════════════════════════════════════════════════════
+   101→interface EditCell {
+   102→  rombel: string; hari: string; jamKe: number;
+   103→  existing?: JadwalItem;
+   104→}
+   105→
+   106→function TimetableView() {
+   107→  const { toast } = useToast();
+   108→  const { tahunPelajaran, semester } = useAppStore();
+   109→  const qc = useQueryClient();
+   110→  const session = useSession();
+   111→  const isAdmin = session.data?.user?.role === "admin";
+   112→
+   113→  // ─── Data Fetching ──────────────────────────────────────────────────────────
+   114→  const { data: mapelList = [] } = useQuery({
+   115→    queryKey: ["jadwal-mapel", tahunPelajaran, semester],
+   116→    queryFn: async () => {
+   117→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   118→      const r = await fetch(`/api/jadwal/mapel?${p}`);
+   119→      if (!r.ok) throw new Error("Gagal");
+   120→      return r.json();
+   121→    },
+   122→    enabled: !!tahunPelajaran,
+   123→  });
+   124→
+   125→  const { data: jamList = [] } = useQuery({
+   126→    queryKey: ["jadwal-jam", tahunPelajaran, semester],
+   127→    queryFn: async () => {
+   128→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   129→      const r = await fetch(`/api/jadwal/jam?${p}`);
+   130→      if (!r.ok) throw new Error("Gagal");
+   131→      return r.json();
+   132→    },
+   133→    enabled: !!tahunPelajaran,
+   134→  });
+   135→
+   136→  const { data: guruList = [] } = useQuery({
+   137→    queryKey: ["jadwal-guru", tahunPelajaran, semester],
+   138→    queryFn: async () => {
+   139→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   140→      const r = await fetch(`/api/guru/list?${p}`);
+   141→      if (!r.ok) throw new Error("Gagal");
+   142→      return r.json();
+   143→    },
+   144→    enabled: !!tahunPelajaran,
+   145→  });
+   146→
+   147→  const { data: rombelList = [] } = useQuery({
+   148→    queryKey: ["jadwal-rombel", tahunPelajaran, semester],
+   149→    queryFn: async () => {
+   150→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   151→      const r = await fetch(`/api/siswa/rombel?${p}`);
+   152→      if (!r.ok) throw new Error("Gagal");
+   153→      return r.json();
+   154→    },
+   155→    enabled: !!tahunPelajaran,
+   156→  });
+   157→
+   158→  // Fetch ALL jadwal for the current TP/semester
+   159→  const { data: allJadwal = [], isLoading } = useQuery({
+   160→    queryKey: ["jadwal-all", tahunPelajaran, semester],
+   161→    queryFn: async () => {
+   162→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   163→      const r = await fetch(`/api/jadwal/kelas?${p}`);
+   164→      if (!r.ok) throw new Error("Gagal");
+   165→      return r.json();
+   166→    },
+   167→    enabled: !!tahunPelajaran,
+   168→  });
+   169→
+   170→  // ─── Build Lookup Maps ──────────────────────────────────────────────────────
+   171→  const jadwalMap = useMemo(() => {
+   172→    const map: Record<string, JadwalItem> = {};
+   173→    for (const j of allJadwal) {
+   174→      map[`${j.rombel}-${j.hari}-${j.jamKe}`] = j;
+   175→    }
+   176→    return map;
+   177→  }, [allJadwal]);
+   178→
+   179→  // ─── Filter State ───────────────────────────────────────────────────────────
+   180→  const [filterRombel, setFilterRombel] = useState("Semua");
+   181→
+   182→  const filteredRombels = useMemo(() => {
+   183→    if (filterRombel === "Semua") return rombelList as string[];
+   184→    return (rombelList as string[]).filter((r) => r === filterRombel);
+   185→  }, [rombelList, filterRombel]);
+   186→
+   187→  // ─── Edit Cell State ────────────────────────────────────────────────────────
+   188→  const [editCell, setEditCell] = useState<EditCell | null>(null);
+   189→  const [editMapelId, setEditMapelId] = useState("");
+   190→  const [editGuruId, setEditGuruId] = useState("");
+   191→
+   192→  const openEditCell = useCallback((cell: EditCell) => {
+   193→    setEditCell(cell);
+   194→    setEditMapelId(cell.existing?.mapelId || "");
+   195→    setEditGuruId(cell.existing?.guruId || "");
+   196→  }, []);
+   197→
+   198→  const saveMutation = useMutation({
+   199→    mutationFn: async () => {
+   200→      if (!editCell) return;
+   201→      const mapel = (mapelList as MapelItem[]).find((m) => m.id === editMapelId);
+   202→      const guru = (guruList as GuruItem[]).find((g) => g.id === editGuruId);
+   203→      const body = {
+   204→        hari: editCell.hari, jamKe: editCell.jamKe, rombel: editCell.rombel,
+   205→        mapelId: editMapelId, mapelKode: mapel?.kode || "", mapelNama: mapel?.nama || "",
+   206→        guruId: editGuruId || "", guruNama: guru?.nama || "",
+   207→        tahunPelajaran, semester,
+   208→      };
+   209→      const res = await fetch("/api/jadwal/kelas", {
+   210→        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+   211→      });
+   212→      const d = await res.json(); if (!res.ok) throw new Error(d.error); return d;
+   213→    },
+   214→    onSuccess: () => {
+   215→      qc.invalidateQueries({ queryKey: ["jadwal-all"] });
+   216→      qc.invalidateQueries({ queryKey: ["jadwal-kelas"] });
+   217→      toast({ title: "Jadwal disimpan" });
+   218→      setEditCell(null);
+   219→    },
+   220→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   221→  });
+   222→
+   223→  const deleteCellMutation = useMutation({
+   224→    mutationFn: async () => {
+   225→      if (!editCell?.existing?.id) return;
+   226→      const res = await fetch(`/api/jadwal/kelas?id=${editCell.existing.id}`, { method: "DELETE" });
+   227→      const d = await res.json(); if (!res.ok) throw new Error(d.error); return d;
+   228→    },
+   229→    onSuccess: () => {
+   230→      qc.invalidateQueries({ queryKey: ["jadwal-all"] });
+   231→      qc.invalidateQueries({ queryKey: ["jadwal-kelas"] });
+   232→      toast({ title: "Jadwal dihapus" });
+   233→      setEditCell(null);
+   234→    },
+   235→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   236→  });
+   237→
+   238→  // ─── Print Handler ──────────────────────────────────────────────────────────
+   239→  const handlePrint = () => window.print();
+   240→
+   241→  if (isLoading) return <Skeleton className="h-[600px] w-full" />;
+   242→  if (!tahunPelajaran) return <div className="text-center py-16 text-muted-foreground">Pilih Tahun Pelajaran terlebih dahulu</div>;
+   243→
+   244→  return (
+   245→    <div className="space-y-3 print:space-y-0">
+   246→      {/* ─── Toolbar ──────────────────────────────────────────────────────────── */}
+   247→      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
+   248→        <div className="flex items-center gap-2">
+   249→          <Select value={filterRombel} onValueChange={setFilterRombel}>
+   250→            <SelectTrigger className="w-48 h-9">
+   251→              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+   252→              <SelectValue placeholder="Semua Kelas" />
+   253→            </SelectTrigger>
+   254→            <SelectContent>
+   255→              <SelectItem value="Semua">Semua Kelas</SelectItem>
+   256→              {(rombelList as string[]).map((r) => (
+   257→                <SelectItem key={r} value={r}>{r}</SelectItem>
+   258→              ))}
+   259→            </SelectContent>
+   260→          </Select>
+   261→        </div>
+   262→        <div className="flex items-center gap-1.5">
+   263→          <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={handlePrint}>
+   264→            <Printer className="h-3.5 w-3.5" /> Cetak
+   265→          </Button>
+   266→        </div>
+   267→      </div>
+   268→
+   269→      {/* ─── Legend ──────────────────────────────────────────────────────────── */}
+   270→      {(mapelList as MapelItem[]).length > 0 && (
+   271→        <div className="flex flex-wrap gap-1.5 print:hidden">
+   272→          {(mapelList as MapelItem[]).map((m) => {
+   273→            const color = getMapelColor(m.id, mapelList as MapelItem[]);
+   274→            return (
+   275→              <span
+   276→                key={m.id}
+   277→                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border"
+   278→                style={{ backgroundColor: color.bg, color: color.text, borderColor: color.border }}
+   279→              >
+   280→                {m.kode}
+   281→              </span>
+   282→            );
+   283→          })}
+   284→        </div>
+   285→      )}
+   286→
+   287→      {/* ─── Grid ─────────────────────────────────────────────────────────────── */}
+   288→      <div className="border rounded-lg overflow-hidden bg-white print:border-1">
+   289→        <ScrollArea className="w-full print:overflow-visible">
+   290→          <div className="min-w-max">
+   291→            <table className="w-full border-collapse text-xs">
+   292→              {/* ── Header Row 1: Hari ── */}
+   293→              <thead>
+   294→                <tr className="bg-gradient-to-b from-slate-100 to-slate-50 print:bg-gray-200">
+   295→                  <th
+   296→                    rowSpan={2}
+   297→                    className="border border-slate-200 bg-slate-100 px-3 py-2 text-left font-bold text-slate-700 min-w-[120px] sticky left-0 z-20 print:bg-gray-200 print:sticky print:left-0"
+   298→                    style={{ top: 0 }}
+   299→                  >
+   300→                    Kelas
+   301→                  </th>
+   302→                  {HARI.map((hari) => {
+   303→                    const span = (jamList as JamItem[]).length || 1;
+   304→                    return (
+   305→                      <th
+   306→                        key={hari}
+   307→                        colSpan={span}
+   308→                        className="border border-slate-200 px-3 py-2 text-center font-bold text-slate-700 uppercase tracking-wider bg-gradient-to-b from-slate-200 to-slate-100"
+   309→                      >
+   310→                        {hari}
+   311→                      </th>
+   312→                    );
+   313→                  })}
+   314→                  <th
+   315→                    rowSpan={2}
+   316→                    className="border border-slate-200 bg-slate-100 px-2 py-1 text-center text-slate-400 w-8 print:hidden"
+   317→                    title="Hapus"
+   318→                  >
+   319→                    <Trash2 className="h-3 w-3 mx-auto" />
+   320→                  </th>
+   321→                </tr>
+   322→                {/* ── Header Row 2: Jam ── */}
+   323→                <tr className="bg-slate-50 print:bg-gray-100">
+   324→                  {(jamList as JamItem[]).length > 0
+   325→                    ? HARI.flatMap((hari) =>
+   326→                        (jamList as JamItem[]).map((jam) => (
+   327→                          <th
+   328→                            key={`${hari}-${jam.jamKe}`}
+   329→                            className={`border border-slate-200 px-1 py-1 text-center font-medium min-w-[60px] ${jam.isIstirahat ? "bg-amber-100 text-amber-700" : "text-slate-500"}`}
+   330→                          >
+   331→                            {jam.isIstirahat ? (
+   332→                              <div className="text-[10px] font-bold uppercase tracking-wider">Istirahat</div>
+   333→                            ) : (
+   334→                              <>
+   335→                                <div>{jam.jamKe}</div>
+   336→                                <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+   337→                              </>
+   338→                            )}
+   339→                          </th>
+   340→                        ))
+   341→                      )
+   342→                    : HARI.map((hari) => (
+   343→                        <th key={hari} className="border border-slate-200 px-2 py-1 text-center text-slate-400">
+   344→                          -
+   345→                        </th>
+   346→                      ))}
+   347→                </tr>
+   348→              </thead>
+   349→
+   350→              {/* ── Body ── */}
+   351→              <tbody>
+   352→                {filteredRombels.length === 0 ? (
+   353→                  <tr>
+   354→                    <td colSpan={100} className="py-12 text-center text-muted-foreground">
+   355→                      <School className="h-10 w-10 mx-auto mb-2 opacity-30" />
+   356→                      <p>Belum ada data. Lengkapi Mata Pelajaran &amp; Jam Pelajaran di tab &quot;Master Data&quot;</p>
+   357→                    </td>
+   358→                  </tr>
+   359→                ) : (
+   360→                  filteredRombels.map((rombel, rowIdx) => (
+   361→                    <tr key={rombel} className={rowIdx % 2 === 1 ? "bg-slate-50/50" : ""}>
+   362→                      <td className="border border-slate-200 px-3 py-1 font-bold text-slate-700 sticky left-0 z-10 bg-white text-sm print:bg-white print:sticky print:left-0">
+   363→                        {rombel}
+   364→                      </td>
+   365→                      {HARI.flatMap((hari) =>
+   366→                        (jamList as JamItem[]).length > 0
+   367→                          ? (jamList as JamItem[]).map((jam) => {
+   368→                              // Istirahat row — render as gray break cell
+   369→                              if (jam.isIstirahat) {
+   370→                                return (
+   371→                                  <td
+   372→                                    key={`${hari}-${jam.jamKe}`}
+   373→                                    className="border border-slate-200 bg-amber-50/60 text-center"
+   374→                                  >
+   375→                                    <div className="py-1 text-[9px] font-medium text-amber-600/70 uppercase tracking-wider">
+   376→                                      Istirahat
+   377→                                    </div>
+   378→                                  </td>
+   379→                                );
+   380→                              }
+   381→                              const key = `${rombel}-${hari}-${jam.jamKe}`;
+   382→                              const entry = jadwalMap[key];
+   383→                              const color = entry ? getMapelColor(entry.mapelId, mapelList as MapelItem[]) : null;
+   384→                              return (
+   385→                                <td
+   386→                                  key={`${hari}-${jam.jamKe}`}
+   387→                                  className="border border-slate-200 p-0 cursor-pointer hover:brightness-95 transition-all print:cursor-default print:hover:brightness-100"
+   388→                                  style={{
+   389→                                    backgroundColor: color?.bg || "transparent",
+   390→                                    borderColor: color?.border || "#E2E8F0",
+   391→                                  }}
+   392→                                  onClick={() => openEditCell({ rombel, hari, jamKe: jam.jamKe, existing: entry })}
+   393→                                >
+   394→                                  {entry ? (
+   395→                                    <div className="flex flex-col items-center justify-center py-1 px-0.5 min-h-[32px]">
+   396→                                      <span
+   397→                                        className="font-bold leading-tight"
+   398→                                        style={{ color: color?.text || "#374151", fontSize: "10px" }}
+   399→                                      >
+   400→                                        {entry.mapelKode}
+   401→                                      </span>
+   402→                                      <span
+   403→                                        className="opacity-60 truncate max-w-[55px] w-full text-center"
+   404→                                        style={{ color: color?.text || "#374151", fontSize: "8px" }}
+   405→                                      >
+   406→                                        {entry.guruNama}
+   407→                                      </span>
+   408→                                    </div>
+   409→                                  ) : (
+   410→                                    <div className="min-h-[32px] flex items-center justify-center print:hidden">
+   411→                                      <span className="text-slate-300 text-lg leading-none">·</span>
+   412→                                    </div>
+   413→                                  )}
+   414→                                </td>
+   415→                              );
+   416→                            })
+   417→                          : [<td key={hari} className="border border-slate-200" />]
+   418→                      )}
+   419→                      <td className="border border-slate-200 text-center print:hidden">
+   420→                        <Button
+   421→                          variant="ghost"
+   422→                          size="icon"
+   423→                          className="h-6 w-6 text-slate-400 hover:text-destructive"
+   424→                          onClick={() => {
+   425→                            const rombelJadwal = (allJadwal as JadwalItem[]).filter((j) => j.rombel === rombel);
+   426→                            Promise.all(
+   427→                              rombelJadwal.map((j) =>
+   428→                                fetch(`/api/jadwal/kelas?id=${j.id}`, { method: "DELETE" })
+   429→                              )
+   430→                            ).then(() => {
+   431→                              qc.invalidateQueries({ queryKey: ["jadwal-all"] });
+   432→                              toast({ title: `Jadwal ${rombel} dihapus` });
+   433→                            });
+   434→                          }}
+   435→                        >
+   436→                          <X className="h-3 w-3" />
+   437→                        </Button>
+   438→                      </td>
+   439→                    </tr>
+   440→                  ))
+   441→                )}
+   442→              </tbody>
+   443→            </table>
+   444→          </div>
+   445→        </ScrollArea>
+   446→      </div>
+   447→
+   448→      {/* ─── Edit Cell Dialog ──────────────────────────────────────────────────── */}
+   449→      <Dialog open={!!editCell} onOpenChange={(open) => !open && setEditCell(null)}>
+   450→        <DialogContent className="sm:max-w-md">
+   451→          <DialogHeader>
+   452→            <DialogTitle>Edit Jadwal</DialogTitle>
+   453→            <DialogDescription>
+   454→              {editCell?.rombel} — {editCell?.hari}, Jam ke-{editCell?.jamKe}
+   455→            </DialogDescription>
+   456→          </DialogHeader>
+   457→          <div className="grid gap-4 py-2">
+   458→            <div className="grid gap-2">
+   459→              <Label>Mata Pelajaran</Label>
+   460→              <Select value={editMapelId} onValueChange={setEditMapelId}>
+   461→                <SelectTrigger>
+   462→                  <SelectValue placeholder="Pilih Mapel" />
+   463→                </SelectTrigger>
+   464→                <SelectContent>
+   465→                  {(mapelList as MapelItem[]).map((m) => (
+   466→                    <SelectItem key={m.id} value={m.id}>
+   467→                      <span className="font-medium">{m.kode}</span> — {m.nama}
+   468→                    </SelectItem>
+   469→                  ))}
+   470→                </SelectContent>
+   471→              </Select>
+   472→            </div>
+   473→            <div className="grid gap-2">
+   474→              <Label>Guru</Label>
+   475→              <Select value={editGuruId} onValueChange={setEditGuruId}>
+   476→                <SelectTrigger>
+   477→                  <SelectValue placeholder="Pilih Guru" />
+   478→                </SelectTrigger>
+   479→                <SelectContent>
+   480→                  {(guruList as GuruItem[]).map((g) => (
+   481→                    <SelectItem key={g.id} value={g.id}>{g.nama}</SelectItem>
+   482→                  ))}
+   483→                </SelectContent>
+   484→              </Select>
+   485→            </div>
+   486→          </div>
+   487→          <DialogFooter className="gap-2">
+   488→            {editCell?.existing && (
+   489→              <Button
+   490→                variant="destructive"
+   491→                size="sm"
+   492→                onClick={() => deleteCellMutation.mutate()}
+   493→                disabled={deleteCellMutation.isPending}
+   494→              >
+   495→                {deleteCellMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+   496→                Hapus
+   497→              </Button>
+   498→            )}
+   499→            <div className="flex-1" />
+   500→            <Button variant="outline" onClick={() => setEditCell(null)}>Batal</Button>
+   501→            <Button
+   502→              onClick={() => saveMutation.mutate()}
+   503→              disabled={saveMutation.isPending || !editMapelId}
+   504→            >
+   505→              {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+   506→              Simpan
+   507→            </Button>
+   508→          </DialogFooter>
+   509→        </DialogContent>
+   510→      </Dialog>
+   511→    </div>
+   512→  );
+   513→}
+   514→
+   515→// ═══════════════════════════════════════════════════════════════════════════════
+   516→// ROSTER PER GURU — Guru Schedule View
+   517→// ═══════════════════════════════════════════════════════════════════════════════
+   518→function RosterPerGuru() {
+   519→  const { tahunPelajaran, semester } = useAppStore();
+   520→
+   521→  const { data: guruList = [] } = useQuery({
+   522→    queryKey: ["jadwal-guru", tahunPelajaran, semester],
+   523→    queryFn: async () => {
+   524→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   525→      const r = await fetch(`/api/guru/list?${p}`); if (!r.ok) throw new Error("Gagal"); return r.json();
+   526→    },
+   527→    enabled: !!tahunPelajaran,
+   528→  });
+   529→
+   530→  const { data: jamList = [] } = useQuery({
+   531→    queryKey: ["jadwal-jam", tahunPelajaran, semester],
+   532→    queryFn: async () => {
+   533→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   534→      const r = await fetch(`/api/jadwal/jam?${p}`); if (!r.ok) throw new Error("Gagal"); return r.json();
+   535→    },
+   536→    enabled: !!tahunPelajaran,
+   537→  });
+   538→
+   539→  const { data: mapelList = [] } = useQuery({
+   540→    queryKey: ["jadwal-mapel", tahunPelajaran, semester],
+   541→    queryFn: async () => {
+   542→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   543→      const r = await fetch(`/api/jadwal/mapel?${p}`); if (!r.ok) throw new Error("Gagal"); return r.json();
+   544→    },
+   545→    enabled: !!tahunPelajaran,
+   546→  });
+   547→
+   548→  const [selectedGuru, setSelectedGuru] = useState("");
+   549→  const effectiveGuru = selectedGuru || (guruList.length > 0 ? guruList[0]?.id || "" : "");
+   550→
+   551→  const { data: jadwalData = [], isLoading } = useQuery({
+   552→    queryKey: ["jadwal-roster-guru", tahunPelajaran, semester, effectiveGuru],
+   553→    queryFn: async () => {
+   554→      if (!effectiveGuru) return [];
+   555→      const p = new URLSearchParams({ tahunPelajaran, semester, guruId: effectiveGuru });
+   556→      const r = await fetch(`/api/jadwal/kelas?${p}`); if (!r.ok) throw new Error("Gagal"); return r.json();
+   557→    },
+   558→    enabled: !!effectiveGuru && !!tahunPelajaran,
+   559→  });
+   560→
+   561→  const jadwalMap = useMemo(() => {
+   562→    const map: Record<string, JadwalItem> = {};
+   563→    for (const j of jadwalData) map[`${j.hari}-${j.jamKe}`] = j;
+   564→    return map;
+   565→  }, [jadwalData]);
+   566→
+   567→  const selectedGuruName = useMemo(() => {
+   568→    const g = (guruList as GuruItem[]).find((g) => g.id === effectiveGuru);
+   569→    return g?.nama || "";
+   570→  }, [guruList, effectiveGuru]);
+   571→
+   572→  return (
+   573→    <div className="space-y-3">
+   574→      <div className="flex items-center justify-between gap-3 flex-wrap">
+   575→        <div className="flex items-center gap-2">
+   576→          <GraduationCap className="h-4 w-4 text-muted-foreground" />
+   577→          <Select value={selectedGuru} onValueChange={setSelectedGuru}>
+   578→            <SelectTrigger className="w-56"><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
+   579→            <SelectContent>
+   580→              {(guruList as GuruItem[]).map((g) => (
+   581→                <SelectItem key={g.id} value={g.id}>{g.nama}</SelectItem>
+   582→              ))}
+   583→            </SelectContent>
+   584→          </Select>
+   585→        </div>
+   586→      </div>
+   587→
+   588→      {!effectiveGuru ? (
+   589→        <Card><CardContent className="py-16 text-center text-muted-foreground">Pilih guru</CardContent></Card>
+   590→      ) : isLoading ? (
+   591→        <Skeleton className="h-96 w-full" />
+   592→      ) : jadwalData.length === 0 ? (
+   593→        <Card><CardContent className="py-16 text-center text-muted-foreground">Belum ada jadwal</CardContent></Card>
+   594→      ) : (
+   595→        <div className="border rounded-lg overflow-hidden bg-white print:overflow-visible">
+   596→          <ScrollArea className="w-full">
+   597→            <div className="min-w-max">
+   598→              <table className="w-full border-collapse text-xs">
+   599→                <thead>
+   600→                  <tr className="bg-gradient-to-b from-slate-100 to-slate-50">
+   601→                    <th rowSpan={2} className="border border-slate-200 bg-slate-100 px-3 py-2 text-left font-bold text-slate-700 sticky left-0 z-20 min-w-[120px]" style={{top:0}}>
+   602→                      Hari / Jam
+   603→                    </th>
+   604→                    {HARI.map((h) => (
+   605→                      <th key={h} className="border border-slate-200 px-3 py-2 text-center font-bold text-slate-700 uppercase tracking-wider bg-gradient-to-b from-slate-200 to-slate-100 min-w-[60px]">
+   606→                        {h}
+   607→                      </th>
+   608→                    ))}
+   609→                  </tr>
+   610→                </thead>
+   611→                <tbody>
+   612→                  {(jamList as JamItem[]).map((jam) => (
+   613→                    <tr key={jam.jamKe}>
+   614→                      <td className="border border-slate-200 px-3 py-1 font-medium text-slate-700 sticky left-0 z-10 bg-white" style={{top:0}}>
+   615→                        <div>Jam ke-{jam.jamKe}</div>
+   616→                        <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+   617→                      </td>
+   618→                      {HARI.map((hari) => {
+   619→                        const key = `${hari}-${jam.jamKe}`;
+   620→                        const j = jadwalMap[key];
+   621→                        const color = j ? getMapelColor(j.mapelId, mapelList as MapelItem[]) : null;
+   622→                        return (
+   623→                          <td key={hari} className="border border-slate-200 p-0 text-center" style={{backgroundColor: color?.bg || "transparent"}}>
+   624→                            {j ? (
+   625→                              <div className="py-1 px-0.5">
+   626→                                <span className="font-bold" style={{color: color?.text, fontSize:"10px"}}>{j.mapelKode}</span>
+   627→                                <div className="opacity-60 truncate max-w-[55px] mx-auto" style={{color: color?.text, fontSize:"8px"}}>({j.rombel})</div>
+   628→                              </div>
+   629→                            ) : <div className="min-h-[28px]"><span className="text-slate-300">·</span></div>}
+   630→                          </td>
+   631→                        );
+   632→                      })}
+   633→                    </tr>
+   634→                  ))}
+   635→                </tbody>
+   636→              </table>
+   637→            </div>
+   638→          </ScrollArea>
+   639→        </div>
+   640→      )}
+   641→    </div>
+   642→  );
+   643→}
+   644→
+   645→// ═══════════════════════════════════════════════════════════════════════════════
+   646→// MAPEL CRUD
+   647→// ═══════════════════════════════════════════════════════════════════════════════
+   648→function MapelManager() {
+   649→  const { toast } = useToast();
+   650→  const { tahunPelajaran, semester } = useAppStore();
+   651→  const qc = useQueryClient();
+   652→  const { data: mapelList = [], isLoading } = useQuery({
+   653→    queryKey: ["jadwal-mapel", tahunPelajaran, semester],
+   654→    queryFn: async () => {
+   655→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   656→      const r = await fetch(`/api/jadwal/mapel?${p}`); if (!r.ok) throw new Error(); return r.json();
+   657→    },
+   658→    enabled: !!tahunPelajaran,
+   659→  });
+   660→  const [formOpen, setFormOpen] = useState(false);
+   661→  const [editItem, setEditItem] = useState<MapelItem | null>(null);
+   662→  const [deleteTarget, setDeleteTarget] = useState<MapelItem | null>(null);
+   663→  const [kode, setKode] = useState("");
+   664→  const [nama, setNama] = useState("");
+   665→  const openCreate = () => { setEditItem(null); setKode(""); setNama(""); setFormOpen(true); };
+   666→  const openEdit = (item: MapelItem) => { setEditItem(item); setKode(item.kode); setNama(item.nama); setFormOpen(true); };
+   667→  const saveMutation = useMutation({
+   668→    mutationFn: async () => {
+   669→      const body = { kode, nama, tahunPelajaran, semester };
+   670→      if (editItem) {
+   671→        const r = await fetch("/api/jadwal/mapel", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({id:editItem.id,...body}) });
+   672→        const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   673→      } else {
+   674→        const r = await fetch("/api/jadwal/mapel", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+   675→        const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   676→      }
+   677→    },
+   678→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-mapel"]}); toast({title: editItem ? "Mapel diperbarui" : "Mapel ditambahkan"}); setFormOpen(false); },
+   679→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   680→  });
+   681→  const deleteMutation = useMutation({
+   682→    mutationFn: async (id: string) => {
+   683→      const r = await fetch(`/api/jadwal/mapel?id=${id}`, {method:"DELETE"}); const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   684→    },
+   685→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-mapel"]}); toast({title:"Mapel dihapus"}); setDeleteTarget(null); },
+   686→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   687→  });
+   688→  if (isLoading) return <Skeleton className="h-64 w-full" />;
+   689→  return (<>
+   690→    <div className="flex items-center justify-between mb-4">
+   691→      <h3 className="text-lg font-semibold">Mata Pelajaran</h3>
+   692→      <Button onClick={openCreate} size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Tambah Mapel</Button>
+   693→    </div>
+   694→    <Card>
+   695→      <CardContent className="p-0">
+   696→        <Table><TableHeader><TableRow>
+   697→          <TableHead className="w-16">No</TableHead><TableHead>Kode</TableHead><TableHead>Nama</TableHead><TableHead className="w-24 text-center">Aksi</TableHead>
+   698→        </TableRow></TableHeader><TableBody>
+   699→          {mapelList.length === 0 ? (
+   700→            <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
+   701→          ) : mapelList.map((m: MapelItem, i: number) => (
+   702→            <TableRow key={m.id}>
+   703→              <TableCell className="text-center">{i+1}</TableCell>
+   704→              <TableCell><Badge variant="secondary">{m.kode}</Badge></TableCell>
+   705→              <TableCell>{m.nama}</TableCell>
+   706→              <TableCell className="text-center">
+   707→                <div className="flex gap-1 justify-center">
+   708→                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>openEdit(m)}><Pencil className="h-3.5 w-3.5"/></Button>
+   709→                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={()=>setDeleteTarget(m)}><Trash2 className="h-3.5 w-3.5"/></Button>
+   710→                </div>
+   711→              </TableCell>
+   712→            </TableRow>
+   713→          ))}
+   714→        </TableBody></Table>
+   715→      </CardContent>
+   716→    </Card>
+   717→    <Dialog open={formOpen} onOpenChange={setFormOpen}>
+   718→      <DialogContent>
+   719→        <DialogHeader><DialogTitle>{editItem?"Edit":"Tambah"} Mata Pelajaran</DialogTitle><DialogDescription>Masukkan kode dan nama</DialogDescription></DialogHeader>
+   720→        <div className="grid gap-4 py-4">
+   721→          <div className="grid gap-2"><Label>Kode Mapel</Label><Input placeholder="cth: MTK, B.IND" value={kode} onChange={e=>setKode(e.target.value)}/></div>
+   722→          <div className="grid gap-2"><Label>Nama Mata Pelajaran</Label><Input placeholder="cth: Matematika" value={nama} onChange={e=>setNama(e.target.value)}/></div>
+   723→        </div>
+   724→        <DialogFooter>
+   725→          <Button variant="outline" onClick={()=>setFormOpen(false)}>Batal</Button>
+   726→          <Button onClick={()=>saveMutation.mutate()} disabled={saveMutation.isPending||!kode||!nama}>
+   727→            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin"/>} Simpan
+   728→          </Button>
+   729→        </DialogFooter>
+   730→      </DialogContent>
+   731→    </Dialog>
+   732→    <AlertDialog open={!!deleteTarget} onOpenChange={()=>setDeleteTarget(null)}>
+   733→      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus Mapel</AlertDialogTitle><AlertDialogDescription>Hapus <strong>{deleteTarget?.nama}</strong>?</AlertDialogDescription></AlertDialogHeader>
+   734→        <AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={()=>deleteTarget&&deleteMutation.mutate(deleteTarget.id)}>Hapus</AlertDialogAction></AlertDialogFooter>
+   735→      </AlertDialogContent>
+   736→    </AlertDialog>
+   737→  </>);
+   738→}
+   739→
+   740→// ═══════════════════════════════════════════════════════════════════════════════
+   741→// JAM PELAJARAN CRUD
+   742→// ═══════════════════════════════════════════════════════════════════════════════
+   743→function JamManager() {
+   744→  const { toast } = useToast();
+   745→  const { tahunPelajaran, semester } = useAppStore();
+   746→  const qc = useQueryClient();
+   747→  const { data: jamList = [], isLoading } = useQuery({
+   748→    queryKey: ["jadwal-jam", tahunPelajaran, semester],
+   749→    queryFn: async () => {
+   750→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   751→      const r = await fetch(`/api/jadwal/jam?${p}`); if (!r.ok) throw new Error(); return r.json();
+   752→    },
+   753→    enabled: !!tahunPelajaran,
+   754→  });
+   755→  const [formOpen, setFormOpen] = useState(false);
+   756→  const [editItem, setEditItem] = useState<JamItem | null>(null);
+   757→  const [deleteTarget, setDeleteTarget] = useState<JamItem | null>(null);
+   758→  const [jamKe, setJamKe] = useState("");
+   759→  const [jamMulai, setJamMulai] = useState("");
+   760→  const [jamSelesai, setJamSelesai] = useState("");
+   761→  const [isIstirahat, setIsIstirahat] = useState(false);
+   762→  const openCreate = () => { setEditItem(null); setJamKe(""); setJamMulai(""); setJamSelesai(""); setIsIstirahat(false); setFormOpen(true); };
+   763→  const openEdit = (item: JamItem) => { setEditItem(item); setJamKe(String(item.jamKe)); setJamMulai(item.jamMulai); setJamSelesai(item.jamSelesai); setIsIstirahat(item.isIstirahat); setFormOpen(true); };
+   764→  const saveMutation = useMutation({
+   765→    mutationFn: async () => {
+   766→      const body = {jamKe:parseInt(jamKe), jamMulai, jamSelesai, isIstirahat, tahunPelajaran, semester};
+   767→      if (editItem) {
+   768→        const r = await fetch("/api/jadwal/jam", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:editItem.id,...body})});
+   769→        const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   770→      } else {
+   771→        const r = await fetch("/api/jadwal/jam", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+   772→        const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   773→      }
+   774→    },
+   775→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-jam"]}); toast({title: editItem ? "Jam diperbarui" : "Jam ditambahkan"}); setFormOpen(false); },
+   776→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   777→  });
+   778→  const deleteMutation = useMutation({
+   779→    mutationFn: async (id: string) => {
+   780→      const p = new URLSearchParams({id, tahunPelajaran, semester});
+   781→      const r = await fetch(`/api/jadwal/jam?${p}`, {method:"DELETE"}); const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   782→    },
+   783→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-jam"]}); toast({title:"Jam dihapus"}); setDeleteTarget(null); },
+   784→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   785→  });
+   786→  if (isLoading) return <Skeleton className="h-64 w-full" />;
+   787→  return (<>
+   788→    <div className="flex items-center justify-between mb-4">
+   789→      <h3 className="text-lg font-semibold">Jam Pelajaran</h3>
+   790→      <Button onClick={openCreate} size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Tambah Jam</Button>
+   791→    </div>
+   792→    <Card>
+   793→      <CardContent className="p-0">
+   794→        <Table><TableHeader><TableRow>
+   795→          <TableHead className="w-16">No</TableHead><TableHead className="w-24">Jam ke</TableHead><TableHead>Jam Mulai</TableHead><TableHead>Jam Selesai</TableHead><TableHead className="w-20 text-center">Tipe</TableHead><TableHead className="w-24 text-center">Aksi</TableHead>
+   796→        </TableRow></TableHeader><TableBody>
+   797→          {jamList.length === 0 ? (
+   798→            <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
+   799→          ) : jamList.map((j: JamItem, i: number) => (
+   800→            <TableRow key={j.id}>
+   801→              <TableCell className="text-center">{i+1}</TableCell>
+   802→              <TableCell><Badge variant="outline">{j.jamKe}</Badge></TableCell>
+   803→              <TableCell>{j.jamMulai}</TableCell>
+   804→              <TableCell>{j.jamSelesai}</TableCell>
+   805→              <TableCell className="text-center">{j.isIstirahat ? <Badge className="bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-100">Istirahat</Badge> : <Badge variant="secondary">Pelajaran</Badge>}</TableCell>
+   806→              <TableCell className="text-center">
+   807→                <div className="flex gap-1 justify-center">
+   808→                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>openEdit(j)}><Pencil className="h-3.5 w-3.5"/></Button>
+   809→                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={()=>setDeleteTarget(j)}><Trash2 className="h-3.5 w-3.5"/></Button>
+   810→                </div>
+   811→              </TableCell>
+   812→            </TableRow>
+   813→          ))}
+   814→        </TableBody></Table>
+   815→      </CardContent>
+   816→    </Card>
+   817→    <Dialog open={formOpen} onOpenChange={setFormOpen}>
+   818→      <DialogContent>
+   819→        <DialogHeader><DialogTitle>{editItem?"Edit":"Tambah"} Jam Pelajaran</DialogTitle><DialogDescription>{isIstirahat ? "Atur waktu istirahat" : "Atur nomor jam dan waktu"}</DialogDescription></DialogHeader>
+   820→        <div className="grid gap-4 py-4">
+   821→          <div className="flex items-center gap-3 rounded-lg border p-3 bg-amber-50/50 border-amber-200">
+   822→            <label className="relative inline-flex items-center cursor-pointer">
+   823→              <input type="checkbox" checked={isIstirahat} onChange={e=>setIsIstirahat(e.target.checked)} className="sr-only peer"/>
+   824→              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+   825→            </label>
+   826→            <Label className="text-sm font-medium text-amber-800">Jam Istirahat</Label>
+   827→          </div>
+   828→          <div className="grid gap-2"><Label>Jam ke-</Label><Input type="number" min={1} placeholder="1" value={jamKe} onChange={e=>setJamKe(e.target.value)} disabled={isIstirahat}/><p className="text-[11px] text-muted-foreground">Urutan jam. Istirahat biasanya di antara jam pelajaran (cth: 3, 6, 9).</p></div>
+   829→          <div className="grid grid-cols-2 gap-4">
+   830→            <div className="grid gap-2"><Label>Jam Mulai</Label><Input type="time" value={jamMulai} onChange={e=>setJamMulai(e.target.value)}/></div>
+   831→            <div className="grid gap-2"><Label>Jam Selesai</Label><Input type="time" value={jamSelesai} onChange={e=>setJamSelesai(e.target.value)}/></div>
+   832→          </div>
+   833→        </div>
+   834→        <DialogFooter>
+   835→          <Button variant="outline" onClick={()=>setFormOpen(false)}>Batal</Button>
+   836→          <Button onClick={()=>saveMutation.mutate()} disabled={saveMutation.isPending||!jamMulai||!jamSelesai}>
+   837→            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin"/>} Simpan
+   838→          </Button>
+   839→        </DialogFooter>
+   840→      </DialogContent>
+   841→    </Dialog>
+   842→    <AlertDialog open={!!deleteTarget} onOpenChange={()=>setDeleteTarget(null)}>
+   843→      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Hapus Jam</AlertDialogTitle><AlertDialogDescription>Hapus Jam ke-{deleteTarget?.jamKe}?</AlertDialogDescription></AlertDialogHeader>
+   844→        <AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={()=>deleteTarget&&deleteMutation.mutate(deleteTarget.id)}>Hapus</AlertDialogAction></AlertDialogFooter>
+   845→      </AlertDialogContent>
+   846→    </AlertDialog>
+   847→  </>);
+   848→}
+   849→
+   850→// ═══════════════════════════════════════════════════════════════════════════════
+   851→// AKSES MANAGEMENT (Admin)
+   852→// ═══════════════════════════════════════════════════════════════════════════════
+   853→function AksesManager() {
+   854→  const { toast } = useToast();
+   855→  const { tahunPelajaran, semester } = useAppStore();
+   856→  const qc = useQueryClient();
+   857→  const { data: users = [] } = useQuery({
+   858→    queryKey: ["jadwal-users"],
+   859→    queryFn: async () => { const r = await fetch("/api/users"); if (!r.ok) throw new Error(); return r.json(); },
+   860→  });
+   861→  const { data: rombelList = [] } = useQuery({
+   862→    queryKey: ["jadwal-rombel", tahunPelajaran, semester],
+   863→    queryFn: async () => {
+   864→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   865→      const r = await fetch(`/api/siswa/rombel?${p}`); if (!r.ok) throw new Error(); return r.json();
+   866→    },
+   867→    enabled: !!tahunPelajaran,
+   868→  });
+   869→  const { data: aksesList = [], isLoading } = useQuery({
+   870→    queryKey: ["jadwal-akses", tahunPelajaran, semester],
+   871→    queryFn: async () => {
+   872→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   873→      const r = await fetch(`/api/jadwal/akses?${p}`); if (!r.ok) throw new Error(); return r.json();
+   874→    },
+   875→    enabled: !!tahunPelajaran,
+   876→  });
+   877→  const [selectedUser, setSelectedUser] = useState("");
+   878→  const [selectedRombel, setSelectedRombel] = useState("");
+   879→  const grantMutation = useMutation({
+   880→    mutationFn: async () => {
+   881→      const r = await fetch("/api/jadwal/akses", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({userId:selectedUser, rombel:selectedRombel, tahunPelajaran, semester})});
+   882→      const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   883→    },
+   884→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-akses"]}); toast({title:"Akses diberikan"}); setSelectedRombel(""); },
+   885→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   886→  });
+   887→  const revokeMutation = useMutation({
+   888→    mutationFn: async (id: string) => {
+   889→      const r = await fetch(`/api/jadwal/akses?id=${id}`, {method:"DELETE"}); const d = await r.json(); if (!r.ok) throw new Error(d.error);
+   890→    },
+   891→    onSuccess: () => { qc.invalidateQueries({queryKey:["jadwal-akses"]}); toast({title:"Akses dicabut"}); },
+   892→    onError: (e: Error) => toast({title:"Error", description:e.message, variant:"destructive"}),
+   893→  });
+   894→  return (<div>
+   895→    <div className="flex items-center justify-between mb-4">
+   896→      <h3 className="text-lg font-semibold">Akses Edit Jadwal</h3>
+   897→    </div>
+   898→    <Card className="mb-6">
+   899→      <CardHeader className="pb-3"><CardTitle className="text-sm">Berikan Akses Baru</CardTitle></CardHeader>
+   900→      <CardContent>
+   901→        <div className="flex items-end gap-3">
+   902→          <div className="flex-1"><Label className="text-xs">User</Label>
+   903→            <Select value={selectedUser} onValueChange={setSelectedUser}>
+   904→              <SelectTrigger><SelectValue placeholder="Pilih User" /></SelectTrigger>
+   905→              <SelectContent>
+   906→                {(users as {id:string;username:string;nama:string;role:string}[]).map((u)=>(<SelectItem key={u.id} value={u.id}>{u.nama||u.username} ({u.role})</SelectItem>))}
+   907→              </SelectContent>
+   908→            </Select>
+   909→          </div>
+   910→          <div className="flex-1"><Label className="text-xs">Rombel</Label>
+   911→            <Select value={selectedRombel} onValueChange={setSelectedRombel}>
+   912→              <SelectTrigger><SelectValue placeholder="Pilih Rombel" /></SelectTrigger>
+   913→              <SelectContent>
+   914→                {(rombelList as string[]).map((r)=>(<SelectItem key={r} value={r}>{r}</SelectItem>))}
+   915→              </SelectContent>
+   916→            </Select>
+   917→          </div>
+   918→          <Button onClick={()=>grantMutation.mutate()} disabled={grantMutation.isPending||!selectedUser||!selectedRombel} className="gap-1.5">
+   919→            {grantMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Shield className="h-4 w-4"/>} Berikan Akses
+   920→          </Button>
+   921→        </div>
+   922→      </CardContent>
+   923→    </Card>
+   924→    <Card><CardContent className="p-0">
+   925→      <Table><TableHeader><TableRow>
+   926→        <TableHead className="w-16">No</TableHead><TableHead>User</TableHead><TableHead>Rombel</TableHead><TableHead>Tahun Pelajaran</TableHead><TableHead className="w-24 text-center">Aksi</TableHead>
+   927→      </TableRow></TableHeader><TableBody>
+   928→        {isLoading ? (
+   929→          <TableRow><TableCell colSpan={5} className="py-8 text-center"><Loader2 className="h-6 w-6 mx-auto animate-spin"/></TableCell></TableRow>
+   930→        ) : (aksesList as AksesItem[]).length === 0 ? (
+   931→          <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Belum ada akses</TableCell></TableRow>
+   932→        ) : (aksesList as AksesItem[]).map((a,i)=>(
+   933→          <TableRow key={a.id}>
+   934→            <TableCell className="text-center">{i+1}</TableCell>
+   935→            <TableCell>{a.user?.nama||a.user?.username||a.userId}</TableCell>
+   936→            <TableCell><Badge variant="secondary">{a.rombel}</Badge></TableCell>
+   937→            <TableCell>{a.tahunPelajaran} — {a.semester}</TableCell>
+   938→            <TableCell className="text-center">
+   939→              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={()=>revokeMutation.mutate(a.id)}><Trash2 className="h-3.5 w-3.5"/></Button>
+   940→            </TableCell>
+   941→          </TableRow>
+   942→        ))}
+   943→      </TableBody></Table>
+   944→    </CardContent></Card>
+   945→  </div>);
+   946→}
+   947→
+   948→// ═══════════════════════════════════════════════════════════════════════════════
+   949→// MAIN PAGE
+   950→// ═══════════════════════════════════════════════════════════════════════════════
+   951→export default function JadwalPelajaranPage() {
+   952→  const { tahunPelajaran, semester } = useAppStore();
+   953→  const session = useSession();
+   954→  const isAdmin = session.data?.user?.role === "admin";
+   955→
+   956→  return (
+   957→    <div className="space-y-4">
+   958→      {/* Header */}
+   959→      <div className="flex items-center gap-3">
+   960→        <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400">
+   961→          <CalendarClock className="h-6 w-6" />
+   962→        </div>
+   963→        <div>
+   964→          <h2 className="text-2xl font-bold tracking-tight">Jadwal Pelajaran</h2>
+   965→          <p className="text-sm text-muted-foreground">
+   966→            Kelola jadwal pelajaran sekolah
+   967→          </p>
+   968→        </div>
+   969→      </div>
+   970→
+   971→      {!tahunPelajaran ? (
+   972→        <Card>
+   973→          <CardContent className="py-16 text-center text-muted-foreground">
+   974→            <CalendarClock className="h-12 w-12 mx-auto mb-3 opacity-40" />
+   975→            <p>Pilih Tahun Pelajaran terlebih dahulu di bagian atas</p>
+   976→          </CardContent>
+   977→        </Card>
+   978→      ) : (
+   979→        <Tabs defaultValue="jadwal" className="w-full">
+   980→          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">
+   981→            <TabsTrigger value="jadwal" className="gap-1.5">
+   982→              <LayoutGrid className="h-4 w-4 hidden sm:block" />
+   983→              <span>Jadwal</span>
+   984→            </TabsTrigger>
+   985→            <TabsTrigger value="roster-guru" className="gap-1.5">
+   986→              <GraduationCap className="h-4 w-4 hidden sm:block" />
+   987→              <span>Roster Guru</span>
+   988→            </TabsTrigger>
+   989→            <TabsTrigger value="master" className="gap-1.5">
+   990→              <BookOpen className="h-4 w-4 hidden sm:block" />
+   991→              <span>Master Data</span>
+   992→            </TabsTrigger>
+   993→            {isAdmin && (
+   994→              <TabsTrigger value="akses" className="gap-1.5">
+   995→                <UserCheck className="h-4 w-4 hidden sm:block" />
+   996→                <span>Akses</span>
+   997→              </TabsTrigger>
+   998→            )}
+   999→          </TabsList>
+  1000→
+  1001→          <TabsContent value="jadwal" className="mt-4">
+  1002→            <TimetableView />
+  1003→          </TabsContent>
+  1004→
+  1005→          <TabsContent value="roster-guru" className="mt-4">
+  1006→            <RosterPerGuru />
+  1007→          </TabsContent>
+  1008→
+  1009→          <TabsContent value="master" className="mt-4">
+  1010→            <Tabs defaultValue="mapel">
+  1011→              <TabsList>
+  1012→                <TabsTrigger value="mapel"><BookOpen className="h-3.5 w-3.5 mr-1.5"/> Mata Pelajaran</TabsTrigger>
+  1013→                <TabsTrigger value="jam"><Clock className="h-3.5 w-3.5 mr-1.5"/> Jam Pelajaran</TabsTrigger>
+  1014→              </TabsList>
+  1015→              <TabsContent value="mapel" className="mt-4"><MapelManager /></TabsContent>
+  1016→              <TabsContent value="jam" className="mt-4"><JamManager /></TabsContent>
+  1017→            </Tabs>
+  1018→          </TabsContent>
+  1019→
+  1020→          {isAdmin && (
+  1021→            <TabsContent value="akses" className="mt-4">
+  1022→              <AksesManager />
+  1023→            </TabsContent>
+  1024→          )}
+  1025→        </Tabs>
+  1026→      )}
+  1027→    </div>
+  1028→  );
+  1029→}
+  1030→

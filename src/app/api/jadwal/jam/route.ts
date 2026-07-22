@@ -80,13 +80,13 @@ export async function PUT(req: NextRequest) {
     if (session.user.role !== "admin") return NextResponse.json({ error: "Hanya admin" }, { status: 403 });
 
     const body = await req.json();
-    const { id, jamKe, jamMulai, jamSelesai } = body;
+    const { id, jamKe, jamMulai, jamSelesai, isIstirahat } = body;
 
     if (!id) return NextResponse.json({ error: "ID wajib" }, { status: 400 });
 
     const jam = await db.jamPelajaran.update({
       where: { id },
-      data: { jamKe, jamMulai, jamSelesai, isIstirahat: isIstirahat || false },
+      data: { jamKe, jamMulai, jamSelesai, isIstirahat: isIstirahat === true },
     });
 
     return NextResponse.json(jam);
