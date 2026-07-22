@@ -60,24 +60,50 @@ interface HariLiburItem {
   tahunPelajaran: string;
 }
 
-// Color per holiday category — sesuai legend Kalender Pendidikan
+// Color per holiday category — sesuai legend Kalender Pendidikan (10 warna)
 const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "Libur Nasional": { bg: "#FEE2E2", text: "#991B1B", border: "#FECACA" },       // 🔴 Merah
-  "Libur Khusus":     { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },       // 🩷 Pink
-  "Libur Semester":   { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },       // 🟠 Oranye
-  "Asesmen":         { bg: "#ECFDF5", text: "#166534", border: "#A7F3D0" },       // 🟢 Hijau
-  "Perkiraan TKA":   { bg: "#CFFAFE", text: "#155E75", border: "#67E8F9" },       // 🩵 Cyan
-  "Hari Pertama Masuk":{ bg: "#DBEAFE", text: "#1E3A5F", border: "#93C5FD" },       // 🔵 Biru Navy
-  "Penyerahan Rapor":  { bg: "#FEF9C3", text: "#854D0E", border: "#FDE047" },       // 🟡 Kuning
-  "Hari Pendidikan":  { bg: "#E0E7FF", text: "#3730A3", border: "#A5B4FC" },       // 🔵 Biru Muda
-  "Lainnya":         { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" },       // 🟣 Ungu
+  "Libur Nasional":          { bg: "#FEE2E2", text: "#991B1B", border: "#FECACA" },   // 1. 🔴 Merah — Libur umum & nasional
+  "Libur Semester":          { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },   // 2. 🟠 Oranye Muda — Libur semester
+  "Asesmen":                 { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" },   // 3. 🟢 Hijau — Asesmen / Ujian
+  "Hari Pertama Masuk":      { bg: "#DBEAFE", text: "#1E3A5F", border: "#93C5FD" },   // 4. 🔵 Biru Tua — Hari pertama masuk sekolah
+  "Penyerahan Rapor":        { bg: "#FEF08A", text: "#854D0E", border: "#FDE047" },   // 5. 🟡 Kuning — Penyerahan rapor & kelulusan
+  "Weekend":                 { bg: "#FED7AA", text: "#78350F", border: "#FDBA74" },   // 6. 🟤 Oranye/Coklat — Tidak termasuk 5 hari kerja
+  "Perkiraan TKA":           { bg: "#CFFAFE", text: "#155E75", border: "#67E8F9" },   // 7. 🩵 Cyan/Biru Muda — Perkiraan pelaksanaan TKA
+  "Hari Pendidikan Nasional":{ bg: "#E9D5FF", text: "#581C87", border: "#C084FC" },   // 8. 🟣 Ungu — Hari Pendidikan Nasional
+  "Libur Khusus":            { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },   // 9. 🩷 Pink — Libur khusus
+  "Hari Guru":               { bg: "#FEF9C3", text: "#A16207", border: "#FDE68A" },   // 10. 🟨 Kuning Muda — Hari Guru (tidak libur)
 };
 
-// Kategori yang BLOK input absensi (siswa tidak hadir)
-const BLOCK_CATEGORIES = ["Libur Nasional", "Libur Khusus", "Libur Semester"];
+// Kategori yang BLOK input absensi (hari tidak efektif)
+const BLOCK_CATEGORIES = ["Libur Nasional", "Libur Khusus", "Libur Semester", "Penyerahan Rapor", "Hari Pendidikan Nasional", "Weekend"];
+
+// Kategori yang TIDAK BLOK (masih bisa input, tapi ditandai warna khusus)
+const NON_BLOCK_CATEGORIES = ["Asesmen", "Perkiraan TKA", "Hari Pertama Masuk", "Hari Guru"];
+
+// Legend items for display
+const KALENDER_LEGEND: { kategori: string; label: string; colorKey: string }[] = [
+  { kategori: "Libur Nasional", label: "Libur Umum & Nasional", colorKey: "Libur Nasional" },
+  { kategori: "Libur Semester", label: "Libur Semester", colorKey: "Libur Semester" },
+  { kategori: "Asesmen", label: "Asesmen / Ujian", colorKey: "Asesmen" },
+  { kategori: "Hari Pertama Masuk", label: "Hari Pertama Masuk Sekolah", colorKey: "Hari Pertama Masuk" },
+  { kategori: "Penyerahan Rapor", label: "Penyerahan Rapor & Kelulusan", colorKey: "Penyerahan Rapor" },
+  { kategori: "Weekend", label: "Tidak Termasuk 5 Hari Kerja", colorKey: "Weekend" },
+  { kategori: "Perkiraan TKA", label: "Perkiraan Pelaksanaan TKA", colorKey: "Perkiraan TKA" },
+  { kategori: "Hari Pendidikan Nasional", label: "Hari Pendidikan Nasional", colorKey: "Hari Pendidikan Nasional" },
+  { kategori: "Libur Khusus", label: "Libur Khusus", colorKey: "Libur Khusus" },
+  { kategori: "Hari Guru", label: "Hari Guru (Tidak Libur)", colorKey: "Hari Guru" },
+];
 
 function getLiburColor(kategori: string) {
-  return KATEGORI_COLORS[kategori] || KATEGORI_COLORS["Lainnya"];
+  return KATEGORI_COLORS[kategori] || { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" };
+}
+
+function isBlockedCategory(kategori: string): boolean {
+  return BLOCK_CATEGORIES.includes(kategori);
+}
+
+function isNonBlockedCategory(kategori: string): boolean {
+  return NON_BLOCK_CATEGORIES.includes(kategori);
 }
 
 interface KodeAbsensiItem {
@@ -150,6 +176,25 @@ export default function AbsensiPage() {
   const [liburLabel, setLiburLabel] = useState("");
   const [liburKategori, setLiburKategori] = useState("Libur Nasional");
 
+  // ─── Seed kalender mutation ─────────────────────────────────────────────
+  const seedKalenderMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/absensi/libur/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tahunPelajaran }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Kalender Pendidikan berhasil dimuat", description: data.message });
+      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const liburMutation = useMutation({
     mutationFn: async () => {
       const r = await fetch("/api/absensi/libur", {
@@ -185,14 +230,6 @@ export default function AbsensiPage() {
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
-  // ─── Set default rombel (computed, not useEffect) ──────────────────────────
-  const effectiveRombel = selectedRombel || (rombelList.length > 0 ? rombelList[0] as string : "");
-  React.useEffect(() => {
-    if (!selectedRombel && rombelList.length > 0) {
-      setSelectedRombel(rombelList[0] as string);
-    }
-  }, [rombelList.length, selectedRombel]);
 
   // ─── Attendance Code Config ─────────────────────────────────────────────
   const [kodeConfig, setKodeConfig] = useState<KodeAbsensiItem[]>(DEFAULT_KODE_ABSENSI);
@@ -381,6 +418,9 @@ export default function AbsensiPage() {
           // Skip Sundays (0) and Saturdays (6)
           const dowFill = getDayOfWeek(selectedYear, selectedMonth, d);
           if (dowFill === 0 || dowFill === 6) continue;
+          // Skip blocked holiday categories
+          const liburInfo = hariLiburMap[tanggal];
+          if (liburInfo && isBlockedCategory(liburInfo.kategori)) continue;
           items.push({
             siswaId: siswa.id,
             siswaNama: siswa.nama,
@@ -563,6 +603,31 @@ export default function AbsensiPage() {
         </div>
       </div>
 
+      {/* ─── Kalender Pendidikan Legend (10 warna) ────────────────────────── */}
+      <Card className="print:hidden">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <BookOpenCheck className="h-4 w-4 text-slate-500" />
+            <span className="text-xs font-semibold text-slate-600">Keterangan Kalender Pendidikan</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {KALENDER_LEGEND.map((item) => {
+              const c = KATEGORI_COLORS[item.colorKey];
+              return (
+                <div
+                  key={item.kategori}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium"
+                  style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.text }} />
+                  <span>{item.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ─── Attendance Spreadsheet ───────────────────────────────────────── */}
       {selectedRombel && (siswaList as SiswaListItem[]).length > 0 ? (
         <div className="border rounded-lg overflow-hidden bg-white print:overflow-visible">
@@ -601,16 +666,20 @@ export default function AbsensiPage() {
                   <tr className="bg-slate-50 print:bg-gray-100">
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                       const dow = getDayOfWeek(selectedYear, selectedMonth, day);
-                      const isSunday = dow === 0;
-                      const isSaturday = dow === 6;
+                      const isWeekend = dow === 0 || dow === 6;
+                      const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const liburInfo = hariLiburMap[tanggal];
+                      const wkndColor = KATEGORI_COLORS["Weekend"];
+                      const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
+                      const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
+                      const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
                       return (
                         <th
                           key={day}
-                          className={`border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px] ${
-                            (isSunday || isSaturday) ? "bg-red-50 text-red-400" : "text-slate-500"
-                          }`}
+                          className="border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px]"
+                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : { color: "" }}
                         >
-                          {day}
+                          <span className={isWeekend || liburInfo ? "line-through opacity-80" : ""}>{day}</span>
                         </th>
                       );
                     })}
@@ -620,14 +689,23 @@ export default function AbsensiPage() {
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                       const dow = getDayOfWeek(selectedYear, selectedMonth, day);
                       const isWeekend = dow === 0 || dow === 6;
+                      const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const liburInfo = hariLiburMap[tanggal];
+                      const wkndColor = KATEGORI_COLORS["Weekend"];
+                      const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
+                      const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
+                      const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
                       return (
                         <th
                           key={day}
-                          className={`border border-slate-200 px-0.5 py-0 text-[9px] text-center ${
-                            isWeekend ? "bg-red-50 text-red-300" : "text-slate-400"
-                          }`}
+                          className="border border-slate-200 px-0.5 py-0 text-[9px] text-center"
+                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : { color: "" }}
                         >
-                          {HARI_NAMES[dow]}
+                          {liburInfo && !isWeekend ? (
+                            <span className="truncate" title={liburInfo.label}>{liburInfo.label.length > 3 ? liburInfo.label.slice(0, 3) : liburInfo.label}</span>
+                          ) : (
+                            HARI_NAMES[dow]
+                          )}
                         </th>
                       );
                     })}
@@ -653,31 +731,60 @@ export default function AbsensiPage() {
                           const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                           const liburInfo = hariLiburMap[tanggal];
                           const isLibur = !!liburInfo;
+                          const isBlockedLibur = isLibur && isBlockedCategory(liburInfo.kategori);
+                          const isSpecialLibur = isLibur && isNonBlockedCategory(liburInfo.kategori);
+                          const wkndColor = KATEGORI_COLORS["Weekend"];
                           const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
                           const kode = getCellKode(siswa.id, tanggal);
                           const isLocalChanged = `${siswa.id}-${tanggal}` in localChanges;
                           const kodeInfo = kode ? kodeConfig.find((k) => k.kode === kode) : null;
+                          const isBlocked = isWeekend || isBlockedLibur;
 
                           return (
                             <td
                               key={day}
-                              className={`border border-slate-200 text-center select-none transition-colors print:cursor-default ${
-                                isWeekend ? "bg-red-50/50" : isLibur ? "" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
+                              className={`border text-center select-none transition-colors print:cursor-default ${
+                                isBlocked ? "" : isSpecialLibur ? "cursor-pointer hover:opacity-80" : isLocalChanged ? "cursor-pointer hover:bg-slate-50" : "cursor-pointer hover:bg-slate-50"
                               }`}
-                              style={liburColor ? { backgroundColor: liburColor.bg, borderColor: liburColor.border } : kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
+                              style={{
+                                backgroundColor: isWeekend ? wkndColor.bg
+                                  : isBlockedLibur && liburColor ? liburColor.bg
+                                  : isSpecialLibur && liburColor ? liburColor.bg
+                                  : kodeInfo && isLocalChanged ? kodeInfo.bgColor
+                                  : undefined,
+                                borderColor: isBlockedLibur && liburColor ? liburColor.border
+                                  : isSpecialLibur && liburColor ? liburColor.border
+                                  : undefined,
+                              }}
                               onClick={() => {
-                                if (isWeekend || isLibur) return;
+                                if (isBlocked) return;
                                 handleCellClick(siswa.id, tanggal, kode);
                               }}
+                              title={liburInfo ? `${liburInfo.label} (${liburInfo.kategori})` : isWeekend ? "Weekend" : undefined}
                             >
                               <span
                                 className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
-                                  isWeekend ? "text-red-300/50" : isLibur && liburColor ? liburColor.text : kodeInfo ? "" : "text-slate-200"
+                                  isWeekend ? "" : isBlockedLibur && liburColor ? "" : isSpecialLibur && liburColor ? "" : kodeInfo ? "" : "text-slate-200"
                                 }`}
-                                style={kodeInfo ? { color: kodeInfo.color } : undefined}
+                                style={{
+                                  color: isWeekend ? wkndColor.text
+                                    : isBlockedLibur && liburColor ? liburColor.text
+                                    : isSpecialLibur && liburColor ? liburColor.text
+                                    : kodeInfo ? kodeInfo.color
+                                    : undefined,
+                                }}
                               >
-                                {isWeekend ? "×" : isLibur && liburColor ? (
-                                  <span className="text-[8px] font-medium leading-tight" style={{ color: liburColor.text }} title={liburInfo.label}>{liburInfo.label.length > 4 ? liburInfo.label.slice(0, 3) + "…" : liburInfo.label}</span>
+                                {isWeekend ? (
+                                  <span className="opacity-40 text-[9px]">✕</span>
+                                ) : isBlockedLibur && liburColor ? (
+                                  <span className="text-[7px] font-medium leading-tight opacity-70" title={liburInfo.label}>{liburInfo.label.length > 3 ? liburInfo.label.slice(0, 2) + "…" : liburInfo.label}</span>
+                                ) : isSpecialLibur && liburColor ? (
+                                  <span className="relative">
+                                    {kode ? (
+                                      <span className="font-bold">{kode}</span>
+                                    ) : null}
+                                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: liburColor.text }} title={liburInfo.label} />
+                                  </span>
                                 ) : kode || ""}
                               </span>
                             </td>
@@ -727,9 +834,19 @@ export default function AbsensiPage() {
               <CalendarOff className="h-4 w-4 text-orange-500" />
               Hari Libur & Non-Efektif — {BULAN_NAMES[selectedMonth - 1]} {selectedYear}
             </CardTitle>
-            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setLiburFormOpen(true)}>
-              <Plus className="h-3 w-3" /> Tambah
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                onClick={() => seedKalenderMutation.mutate()}
+                disabled={seedKalenderMutation.isPending}
+              >
+                {seedKalenderMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookOpenCheck className="h-3 w-3" />}
+                Muat Kalender Pendidikan
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setLiburFormOpen(true)}>
+                <Plus className="h-3 w-3" /> Tambah
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
@@ -783,11 +900,15 @@ export default function AbsensiPage() {
               <Select value={liburKategori} onValueChange={setLiburKategori}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Libur Nasional">Libur Nasional</SelectItem>
-                  <SelectItem value="Libur Khusus">Libur Khusus</SelectItem>
-                  <SelectItem value="Libur Semester">Libur Semester</SelectItem>
-                  <SelectItem value="Asesmen">Asesmen / Ujian</SelectItem>
-                  <SelectItem value="Lainnya">Lainnya</SelectItem>
+                  <SelectItem value="Libur Nasional">🔴 Libur Nasional</SelectItem>
+                  <SelectItem value="Libur Semester">🟠 Libur Semester</SelectItem>
+                  <SelectItem value="Asesmen">🟢 Asesmen / Ujian</SelectItem>
+                  <SelectItem value="Hari Pertama Masuk">🔵 Hari Pertama Masuk Sekolah</SelectItem>
+                  <SelectItem value="Penyerahan Rapor">🟡 Penyerahan Rapor & Kelulusan</SelectItem>
+                  <SelectItem value="Perkiraan TKA">🩵 Perkiraan Pelaksanaan TKA</SelectItem>
+                  <SelectItem value="Hari Pendidikan Nasional">🟣 Hari Pendidikan Nasional</SelectItem>
+                  <SelectItem value="Libur Khusus">🩷 Libur Khusus</SelectItem>
+                  <SelectItem value="Hari Guru">🟨 Hari Guru (Tidak Libur)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
