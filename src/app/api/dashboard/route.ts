@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       totalMutasiMasuk,
       totalMutasiKeluar,
       siswaPerRombel,
+      genderDist,
+      statusDist,
       recentMutasiMasuk,
       recentMutasiKeluar,
       siswaGroups,
@@ -31,6 +33,16 @@ export async function GET(request: NextRequest) {
         where: whereTP,
         _count: { rombel: true },
         orderBy: { rombel: 'asc' },
+      }),
+      db.siswa.groupBy({
+        by: ['jenisKelamin'],
+        where: whereTP,
+        _count: { id: true },
+      }),
+      db.siswa.groupBy({
+        by: ['status'],
+        where: whereTP,
+        _count: { id: true },
       }),
       db.mutasiMasuk.findMany({
         where: whereTP,
@@ -53,6 +65,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalSiswa, totalGuru, totalMutasiMasuk, totalMutasiKeluar,
+      genderDistribution: genderDist.map((g) => ({
+        jenisKelamin: g.jenisKelamin || 'Tidak diisi',
+        jumlah: g._count.id,
+      })),
+      statusDistribution: statusDist.map((s) => ({
+        status: s.status || 'Tidak diisi',
+        jumlah: s._count.id,
+      })),
       siswaPerRombel: siswaPerRombel.map((s) => ({ kelas: s.rombel, jumlah: s._count.rombel })),
       recentMutasiMasuk, recentMutasiKeluar,
       tahunPelajaranOverview: siswaGroups.map((g) => ({
