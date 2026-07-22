@@ -475,3 +475,24 @@ Stage Summary:
 - File modified: `src/components/pages/DashboardPage.tsx`, `src/app/page.tsx`
 - Commit: `fix: perbaiki layout dashboard & tambah fitur collapse sidebar`
 - Push: `0b1117d..64618a1 main -> main`
+---
+Task ID: 2
+Agent: Main Agent
+Task: Redesign tampilan aplikasi agar lebih modern dan menarik
+
+Work Log:
+- Analisa tampilan existing dan identifikasi area perbaikan
+- Redesign globals.css dengan color palette baru (emerald/teal theme)
+- Tambah utility CSS: glass, glass-subtle, gradient-text, card-glow, shimmer, bg-blob
+- Custom scrollbar yang lebih halus dan elegan
+- Redesign Sidebar: dark gradient (emerald→violet), backdrop blur, active dot indicator
+- Redesign TahunPelajaranSelector: tema gelap untuk sidebar
+- Redesign DashboardPage: gradient icons, card glow, bar chart gradient fill
+- Redesign topbar & footer: glassmorphism, pill badges
+- Redesign table headers: uppercase tracking, hover transitions
+- Lint check passed, push ke GitHub berhasil
+
+Stage Summary:
+- Files modified: globals.css, page.tsx, DashboardPage.tsx
+- Commit: 74487d8 "style: redesign tampilan aplikasi agar lebih modern dan menarik"
+- Push: 64618a1..74487d8 main -> main
