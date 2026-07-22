@@ -452,3 +452,26 @@ Stage Summary:
 - Setelah revert, pencarian berfungsi sempurna tanpa perubahan tambahan
 - Files reverted (kembali ke semula): siswa/route.ts, siswa/list/route.ts, guru/route.ts, mutasi-keluar/route.ts, mutasi-masuk/route.ts
 - 0 perubahan kode diperlukan — kode asli sudah benar untuk SQLite
+---
+Task ID: 1
+Agent: Main Agent
+Task: Perbaiki ikon yang menutupi informasi di dashboard & tambah fitur collapse sidebar
+
+Work Log:
+- Analisa gambar screenshot menggunakan VLM skill untuk mengidentifikasi masalah layout
+- Identifikasi masalah: absolute gradient overlay, trend badge yang overlap dengan angka, teks terpotong
+- Fix SummaryCard component: hapus `absolute` gradient overlay, pindahkan trend icon ke dalam area teks
+- Perbaiki sizing: icon 10x10 (sebelumnya 11x11), font lebih kecil, gap lebih ketat
+- Tambah fitur sidebar collapse/expand untuk desktop:
+  - Import icon PanelLeftClose dan PanelLeftOpen
+  - Sidebar component menerima prop `collapsed` dan `onToggleCollapse`
+  - Tombol collapse di header sidebar (desktop only)
+  - DashboardShell mengelola state `sidebarCollapsed`
+  - Expand button muncul di topbar saat sidebar collapsed
+  - Sidebar menggunakan `lg:absolute lg:-translate-x-full` saat collapsed
+- Push ke GitHub berhasil
+
+Stage Summary:
+- File modified: `src/components/pages/DashboardPage.tsx`, `src/app/page.tsx`
+- Commit: `fix: perbaiki layout dashboard & tambah fitur collapse sidebar`
+- Push: `0b1117d..64618a1 main -> main`
