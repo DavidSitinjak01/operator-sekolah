@@ -60,14 +60,21 @@ interface HariLiburItem {
   tahunPelajaran: string;
 }
 
-// Color per holiday category
+// Color per holiday category — sesuai legend Kalender Pendidikan
 const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "Libur Nasional": { bg: "#FEF2F2", text: "#991B1B", border: "#FECACA" },
-  "Libur Khusus": { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },
-  "Libur Semester": { bg: "#F0F9FF", text: "#075985", border: "#BAE6FD" },
-  "Asesmen": { bg: "#FAFAF9", text: "#57534E", border: "#D6D3D1" },
-  "Lainnya": { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" },
+  "Libur Nasional": { bg: "#FEE2E2", text: "#991B1B", border: "#FECACA" },       // 🔴 Merah
+  "Libur Khusus":     { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },       // 🩷 Pink
+  "Libur Semester":   { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },       // 🟠 Oranye
+  "Asesmen":         { bg: "#ECFDF5", text: "#166534", border: "#A7F3D0" },       // 🟢 Hijau
+  "Perkiraan TKA":   { bg: "#CFFAFE", text: "#155E75", border: "#67E8F9" },       // 🩵 Cyan
+  "Hari Pertama Masuk":{ bg: "#DBEAFE", text: "#1E3A5F", border: "#93C5FD" },       // 🔵 Biru Navy
+  "Penyerahan Rapor":  { bg: "#FEF9C3", text: "#854D0E", border: "#FDE047" },       // 🟡 Kuning
+  "Hari Pendidikan":  { bg: "#E0E7FF", text: "#3730A3", border: "#A5B4FC" },       // 🔵 Biru Muda
+  "Lainnya":         { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" },       // 🟣 Ungu
 };
+
+// Kategori yang BLOK input absensi (siswa tidak hadir)
+const BLOCK_CATEGORIES = ["Libur Nasional", "Libur Khusus", "Libur Semester"];
 
 function getLiburColor(kategori: string) {
   return KATEGORI_COLORS[kategori] || KATEGORI_COLORS["Lainnya"];
