@@ -313,10 +313,10 @@ model AbsensiSiswa {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@unique([nisn, rombel, tahunPelajaran, semester])
   @@unique([nama, rombel, tahunPelajaran, semester])
   @@index([tahunPelajaran, semester])
   @@index([rombel])
+  @@index([nisn, rombel, tahunPelajaran, semester])
 }
 
 model HariLibur {
