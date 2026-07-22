@@ -541,7 +541,7 @@ export default function AbsensiPage() {
         body: fd,
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
+      if (!r.ok) throw new Error(d.detail ? `${d.error}: ${d.detail}` : d.error || `Error ${r.status}`);
       return d;
     },
     onSuccess: (data) => {
