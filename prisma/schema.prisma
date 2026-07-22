@@ -232,6 +232,7 @@ model JamPelajaran {
   jamKe           Int
   jamMulai        String
   jamSelesai      String
+  isIstirahat     Boolean  @default(false)
   tahunPelajaran  String   @default("2025/2026")
   semester        String   @default("Ganjil")
   createdAt       DateTime @default(now())

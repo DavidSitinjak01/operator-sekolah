@@ -76,6 +76,7 @@ interface MapelItem {
 
 interface JamItem {
   id: string; jamKe: number; jamMulai: string; jamSelesai: string;
+  isIstirahat: boolean;
   tahunPelajaran: string; semester: string;
 }
 
@@ -325,10 +326,16 @@ function TimetableView() {
                         (jamList as JamItem[]).map((jam) => (
                           <th
                             key={`${hari}-${jam.jamKe}`}
-                            className="border border-slate-200 px-1 py-1 text-center font-medium text-slate-500 min-w-[60px]"
+                            className={`border border-slate-200 px-1 py-1 text-center font-medium min-w-[60px] ${jam.isIstirahat ? "bg-amber-100 text-amber-700" : "text-slate-500"}`}
                           >
-                            <div>{jam.jamKe}</div>
-                            <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+                            {jam.isIstirahat ? (
+                              <div className="text-[10px] font-bold uppercase tracking-wider">Istirahat</div>
+                            ) : (
+                              <>
+                                <div>{jam.jamKe}</div>
+                                <div className="text-[9px] text-slate-400">{jam.jamMulai}-{jam.jamSelesai}</div>
+                              </>
+                            )}
                           </th>
                         ))
                       )
@@ -358,6 +365,19 @@ function TimetableView() {
                       {HARI.flatMap((hari) =>
                         (jamList as JamItem[]).length > 0
                           ? (jamList as JamItem[]).map((jam) => {
+                              // Istirahat row — render as gray break cell
+                              if (jam.isIstirahat) {
+                                return (
+                                  <td
+                                    key={`${hari}-${jam.jamKe}`}
+                                    className="border border-slate-200 bg-amber-50/60 text-center"
+                                  >
+                                    <div className="py-1 text-[9px] font-medium text-amber-600/70 uppercase tracking-wider">
+                                      Istirahat
+                                    </div>
+                                  </td>
+                                );
+                              }
                               const key = `${rombel}-${hari}-${jam.jamKe}`;
                               const entry = jadwalMap[key];
                               const color = entry ? getMapelColor(entry.mapelId, mapelList as MapelItem[]) : null;
@@ -738,11 +758,12 @@ function JamManager() {
   const [jamKe, setJamKe] = useState("");
   const [jamMulai, setJamMulai] = useState("");
   const [jamSelesai, setJamSelesai] = useState("");
-  const openCreate = () => { setEditItem(null); setJamKe(""); setJamMulai(""); setJamSelesai(""); setFormOpen(true); };
-  const openEdit = (item: JamItem) => { setEditItem(item); setJamKe(String(item.jamKe)); setJamMulai(item.jamMulai); setJamSelesai(item.jamSelesai); setFormOpen(true); };
+  const [isIstirahat, setIsIstirahat] = useState(false);
+  const openCreate = () => { setEditItem(null); setJamKe(""); setJamMulai(""); setJamSelesai(""); setIsIstirahat(false); setFormOpen(true); };
+  const openEdit = (item: JamItem) => { setEditItem(item); setJamKe(String(item.jamKe)); setJamMulai(item.jamMulai); setJamSelesai(item.jamSelesai); setIsIstirahat(item.isIstirahat); setFormOpen(true); };
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const body = {jamKe:parseInt(jamKe), jamMulai, jamSelesai, tahunPelajaran, semester};
+      const body = {jamKe:parseInt(jamKe), jamMulai, jamSelesai, isIstirahat, tahunPelajaran, semester};
       if (editItem) {
         const r = await fetch("/api/jadwal/jam", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:editItem.id,...body})});
         const d = await r.json(); if (!r.ok) throw new Error(d.error);
@@ -771,16 +792,17 @@ function JamManager() {
     <Card>
       <CardContent className="p-0">
         <Table><TableHeader><TableRow>
-          <TableHead className="w-16">No</TableHead><TableHead className="w-24">Jam ke</TableHead><TableHead>Jam Mulai</TableHead><TableHead>Jam Selesai</TableHead><TableHead className="w-24 text-center">Aksi</TableHead>
+          <TableHead className="w-16">No</TableHead><TableHead className="w-24">Jam ke</TableHead><TableHead>Jam Mulai</TableHead><TableHead>Jam Selesai</TableHead><TableHead className="w-20 text-center">Tipe</TableHead><TableHead className="w-24 text-center">Aksi</TableHead>
         </TableRow></TableHeader><TableBody>
           {jamList.length === 0 ? (
-            <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
+            <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Belum ada data</TableCell></TableRow>
           ) : jamList.map((j: JamItem, i: number) => (
             <TableRow key={j.id}>
               <TableCell className="text-center">{i+1}</TableCell>
               <TableCell><Badge variant="outline">{j.jamKe}</Badge></TableCell>
               <TableCell>{j.jamMulai}</TableCell>
               <TableCell>{j.jamSelesai}</TableCell>
+              <TableCell className="text-center">{j.isIstirahat ? <Badge className="bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-100">Istirahat</Badge> : <Badge variant="secondary">Pelajaran</Badge>}</TableCell>
               <TableCell className="text-center">
                 <div className="flex gap-1 justify-center">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>openEdit(j)}><Pencil className="h-3.5 w-3.5"/></Button>
@@ -794,9 +816,16 @@ function JamManager() {
     </Card>
     <Dialog open={formOpen} onOpenChange={setFormOpen}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{editItem?"Edit":"Tambah"} Jam Pelajaran</DialogTitle><DialogDescription>Atur nomor jam dan waktu</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{editItem?"Edit":"Tambah"} Jam Pelajaran</DialogTitle><DialogDescription>{isIstirahat ? "Atur waktu istirahat" : "Atur nomor jam dan waktu"}</DialogDescription></DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2"><Label>Jam ke-</Label><Input type="number" min={1} placeholder="1" value={jamKe} onChange={e=>setJamKe(e.target.value)}/></div>
+          <div className="flex items-center gap-3 rounded-lg border p-3 bg-amber-50/50 border-amber-200">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={isIstirahat} onChange={e=>setIsIstirahat(e.target.checked)} className="sr-only peer"/>
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+            <Label className="text-sm font-medium text-amber-800">Jam Istirahat</Label>
+          </div>
+          <div className="grid gap-2"><Label>Jam ke-</Label><Input type="number" min={1} placeholder="1" value={jamKe} onChange={e=>setJamKe(e.target.value)} disabled={isIstirahat}/><p className="text-[11px] text-muted-foreground">Urutan jam. Istirahat biasanya di antara jam pelajaran (cth: 3, 6, 9).</p></div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2"><Label>Jam Mulai</Label><Input type="time" value={jamMulai} onChange={e=>setJamMulai(e.target.value)}/></div>
             <div className="grid gap-2"><Label>Jam Selesai</Label><Input type="time" value={jamSelesai} onChange={e=>setJamSelesai(e.target.value)}/></div>
@@ -804,7 +833,7 @@ function JamManager() {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={()=>setFormOpen(false)}>Batal</Button>
-          <Button onClick={()=>saveMutation.mutate()} disabled={saveMutation.isPending||!jamKe||!jamMulai||!jamSelesai}>
+          <Button onClick={()=>saveMutation.mutate()} disabled={saveMutation.isPending||!jamMulai||!jamSelesai}>
             {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin"/>} Simpan
           </Button>
         </DialogFooter>

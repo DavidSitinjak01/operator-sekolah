@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
     if (session.user.role !== "admin") return NextResponse.json({ error: "Hanya admin" }, { status: 403 });
 
     const body = await req.json();
-    const { jamKe, jamMulai, jamSelesai, tahunPelajaran, semester } = body;
+    const { jamKe, jamMulai, jamSelesai, isIstirahat = false, tahunPelajaran, semester } = body;
 
-    if (!jamKe || !jamMulai || !jamSelesai) {
+    if (jamKe === undefined || !jamMulai || !jamSelesai) {
       return NextResponse.json({ error: "Jam ke, jam mulai, dan jam selesai wajib diisi" }, { status: 400 });
     }
 
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
         jamKe,
         jamMulai,
         jamSelesai,
+        isIstirahat,
         tahunPelajaran: tp,
         semester: sem,
       },
@@ -85,7 +86,7 @@ export async function PUT(req: NextRequest) {
 
     const jam = await db.jamPelajaran.update({
       where: { id },
-      data: { jamKe, jamMulai, jamSelesai },
+      data: { jamKe, jamMulai, jamSelesai, isIstirahat: isIstirahat || false },
     });
 
     return NextResponse.json(jam);
