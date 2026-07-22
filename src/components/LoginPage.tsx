@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { School, Loader2, Eye, EyeOff, LogIn, BookOpen, GraduationCap, Sparkles } from "lucide-react";
+import { School, Loader2, Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import Image from "next/image";
+import LogoReveal from "@/components/LogoReveal";
 
 interface SchoolInfo {
   namaSekolah: string;
@@ -77,7 +77,6 @@ export default function LoginPage() {
   const getLogoSrc = () => {
     if (!schoolInfo?.logoSekolah) return null;
     if (schoolInfo.logoSekolah.startsWith("data:")) return schoolInfo.logoSekolah;
-    // File path from local dev — serve via /icon route
     return "/icon";
   };
 
@@ -92,27 +91,8 @@ export default function LoginPage() {
       <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-teal-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
 
-      {/* ─── Floating decorative icons ─── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[8%] left-[12%] animate-bounce" style={{ animationDuration: "3s" }}>
-          <BookOpen className="w-6 h-6 text-emerald-300/60" />
-        </div>
-        <div className="absolute top-[15%] right-[18%] animate-bounce" style={{ animationDuration: "4s", animationDelay: "1s" }}>
-          <GraduationCap className="w-5 h-5 text-teal-300/50" />
-        </div>
-        <div className="absolute bottom-[20%] left-[8%] animate-bounce" style={{ animationDuration: "3.5s", animationDelay: "0.5s" }}>
-          <Sparkles className="w-4 h-4 text-amber-300/50" />
-        </div>
-        <div className="absolute top-[60%] right-[10%] animate-bounce" style={{ animationDuration: "5s", animationDelay: "2s" }}>
-          <BookOpen className="w-5 h-5 text-emerald-200/40" />
-        </div>
-        <div className="absolute bottom-[35%] left-[45%] animate-bounce" style={{ animationDuration: "4.5s", animationDelay: "1.5s" }}>
-          <GraduationCap className="w-6 h-6 text-teal-200/30" />
-        </div>
-      </div>
-
       {/* ═══════════════════════════════════════════════════════════════════
-          LEFT SIDE — Illustration & Branding (hidden on mobile, visible lg+)
+          LEFT SIDE — Robot → Logo Animation (hidden on mobile, visible lg+)
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative flex-col items-center justify-center p-8 xl:p-12">
         {/* Subtle pattern overlay */}
@@ -125,76 +105,14 @@ export default function LoginPage() {
           }}
         />
 
-        <div className="relative z-10 flex flex-col items-center max-w-lg">
-          {/* School Logo or Student illustration */}
-          <div className="relative">
-            {/* Glow behind image */}
-            <div className="absolute -inset-4 bg-gradient-to-br from-emerald-300/30 via-teal-200/20 to-emerald-400/20 rounded-3xl blur-2xl" />
-
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-emerald-900/10 border border-white/60">
-              {hasLogo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={getLogoSrc()!}
-                  alt={`Logo ${schoolName}`}
-                  width={400}
-                  height={400}
-                  className="w-auto h-auto max-h-[520px] object-contain p-8"
-                  priority
-                />
-              ) : (
-                <Image
-                  src="/images/student-studying.png"
-                  alt="Karikatur siswa SMA sedang belajar"
-                  width={400}
-                  height={534}
-                  className="w-auto h-auto max-h-[520px] object-contain"
-                  priority
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Quote / tagline */}
-          <div className="mt-8 text-center space-y-3">
-            <h2 className="text-2xl xl:text-3xl font-bold text-emerald-900 leading-tight">
-              {schoolInfo?.namaSekolah ? (
-                <>
-                  {schoolName}
-                </>
-              ) : (
-                <>
-                  Kelola Data Sekolah
-                  <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
-                    Dengan Mudah & Cepat
-                  </span>
-                </>
-              )}
-            </h2>
-            <p className="text-emerald-700/60 text-sm xl:text-base max-w-sm mx-auto leading-relaxed">
-              {schoolInfo?.npsn ? (
-                <>
-                  NPSN: {schoolInfo.npsn} &middot; Sistem Informasi Operator Sekolah
-                </>
-              ) : (
-                "Sistem informasi lengkap untuk mengelola data siswa, guru, dan mutasi sekolah secara digital."
-              )}
-            </p>
-          </div>
-
-          {/* Feature badges */}
-          <div className="mt-6 flex flex-wrap gap-2 justify-center">
-            {["Data Siswa", "Data Guru", "Mutasi", "Laporan"].map((feature) => (
-              <span
-                key={feature}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 border border-emerald-200/60 text-xs font-medium text-emerald-700 shadow-sm backdrop-blur-sm"
-              >
-                <Sparkles className="w-3 h-3 text-emerald-500" />
-                {feature}
-              </span>
-            ))}
-          </div>
+        <div className="relative z-10 flex flex-col items-center w-full max-w-lg">
+          {!loadingSchool && (
+            <LogoReveal
+              logoSrc={getLogoSrc()}
+              schoolName={schoolName}
+              hasLogo={hasLogo}
+            />
+          )}
         </div>
       </div>
 
@@ -224,15 +142,8 @@ export default function LoginPage() {
               ) : (
                 <>
                   <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
-                  <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg">
-                    <Image
-                      src="/images/student-studying.png"
-                      alt="Karikatur siswa SMA"
-                      width={128}
-                      height={128}
-                      className="w-full h-full object-cover"
-                      priority
-                    />
+                  <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                    <School className="w-12 h-12 text-white" />
                   </div>
                 </>
               )}
