@@ -521,12 +521,12 @@ export default function AbsensiPage() {
                   <tr className="bg-slate-50 print:bg-gray-100">
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                       const dow = getDayOfWeek(selectedYear, selectedMonth, day);
-                      const isSunday = dow === 0;
+                      const isWeekend = dow === 0 || dow === 6;
                       return (
                         <th
                           key={day}
                           className={`border border-slate-200 px-0.5 py-0 text-[9px] text-center ${
-                            (isSunday || isSaturday) ? "bg-red-50 text-red-300" : "text-slate-400"
+                            isWeekend ? "bg-red-50 text-red-300" : "text-slate-400"
                           }`}
                         >
                           {HARI_NAMES[dow]}
@@ -551,7 +551,7 @@ export default function AbsensiPage() {
                         {/* Date cells */}
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const dow = getDayOfWeek(selectedYear, selectedMonth, day);
-                          const isSunday = dow === 0;
+                          const isWeekend = dow === 0 || dow === 6;
                           const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                           const kode = getCellKode(siswa.id, tanggal);
                           const isLocalChanged = `${siswa.id}-${tanggal}` in localChanges;
@@ -561,18 +561,18 @@ export default function AbsensiPage() {
                             <td
                               key={day}
                               className={`border border-slate-200 text-center select-none transition-colors print:cursor-default ${
-                                (isSunday || isSaturday) ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
+                                isWeekend ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
                               }`}
                               style={kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
                               onClick={() => handleCellClick(siswa.id, tanggal, kode)}
                             >
                               <span
                                 className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
-                                  (isSunday || isSaturday) ? "text-red-300/50" : kodeInfo ? "" : "text-slate-200"
+                                  isWeekend ? "text-red-300/50" : kodeInfo ? "" : "text-slate-200"
                                 }`}
                                 style={kodeInfo ? { color: kodeInfo.color } : undefined}
                               >
-                                {(isSunday || isSaturday) ? "×" : kode || ""}
+                                {isWeekend ? "×" : kode || ""}
                               </span>
                             </td>
                           );
