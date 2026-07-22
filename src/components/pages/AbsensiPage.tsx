@@ -676,27 +676,30 @@ export default function AbsensiPage() {
       </Card>
 
       {/* ─── Print Header (visible only on print) ──────────────────────────── */}
-      <div className="hidden print:block print:mb-4 print:space-y-2">
-        <h2 className="text-center text-base font-bold">{namaSekolah || "Nama Sekolah"}</h2>
-        <p className="text-center text-xs">Lembar Absensi Siswa</p>
-        <div className="flex justify-between text-[10px] mt-1">
-          <div>
-            <p><span className="font-semibold">Kelas:</span> {selectedRombel}</p>
-            <p><span className="font-semibold">Tahun Pelajaran:</span> {tahunPelajaran} — Semester {semester}</p>
-            <p><span className="font-semibold">Bulan:</span> {BULAN_NAMES[selectedMonth - 1]} {selectedYear}</p>
+      <div className="hidden print:block print:mb-2">
+        <div className="text-center mb-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide">{namaSekolah || "Nama Sekolah"}</h2>
+          <p className="text-[11px] mt-0.5">LEMBAR ABSENSI SISWA</p>
+        </div>
+        <div className="flex justify-between text-[10px] mb-1">
+          <div className="space-y-0.5">
+            <p><span className="font-semibold">Kelas</span> : {selectedRombel}</p>
+            <p><span className="font-semibold">Tahun Pelajaran</span> : {tahunPelajaran} — Semester {semester}</p>
+            <p><span className="font-semibold">Bulan</span> : {BULAN_NAMES[selectedMonth - 1]} {selectedYear}</p>
           </div>
-          <div className="text-right">
-            <p><span className="font-semibold">Jumlah Siswa:</span> {siswaCounts.total} orang</p>
-            <p><span className="font-semibold">Laki-laki:</span> {siswaCounts.l} orang</p>
-            <p><span className="font-semibold">Perempuan:</span> {siswaCounts.p} orang</p>
+          <div className="text-right space-y-0.5">
+            <p>Jumlah Siswa : <span className="font-semibold">{siswaCounts.total}</span> orang</p>
+            <p>Laki-laki : <span className="font-semibold">{siswaCounts.l}</span> orang</p>
+            <p>Perempuan : <span className="font-semibold">{siswaCounts.p}</span> orang</p>
           </div>
         </div>
-        <hr className="border-t border-black/30 mt-2" />
+        <hr className="border-t-2 border-black/60 mt-2" />
       </div>
 
       {/* ─── Attendance Spreadsheet ───────────────────────────────────────── */}
       {selectedRombel && (siswaList as SiswaListItem[]).length > 0 ? (
-        <div className="border rounded-lg overflow-hidden bg-white print:overflow-visible">
+        <>
+        <div className="border rounded-lg overflow-hidden bg-white print:overflow-visible print:border-none print:rounded-none">
           <ScrollArea className="w-full print:overflow-visible">
             <div className="min-w-max">
               <table className="w-full border-collapse text-xs">
@@ -876,6 +879,27 @@ export default function AbsensiPage() {
             </div>
           </ScrollArea>
         </div>
+
+        {/* ─── Print-only Signature Block ──────────────────────────────────── */}
+        <div className="hidden print:block print:mt-8 print:mb-4">
+          <div className="flex justify-between text-[10px]">
+            <div className="text-center">
+              <p className="font-semibold">Mengetahui,</p>
+              <p className="mb-1">Kepala Sekolah</p>
+              <div className="h-16 border-b border-black/40"></div>
+              <p className="font-semibold mt-1">{namaSekolah ? namaSekolah.split(" ").slice(-1).join(" ") : ".............................."}</p>
+              <p>NIP. ................................</p>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold">........................, ........................ {selectedYear}</p>
+              <p className="mb-1">Wali Kelas</p>
+              <div className="h-16 border-b border-black/40"></div>
+              <p className="font-semibold mt-1">........................................</p>
+              <p>NIP. ................................</p>
+            </div>
+          </div>
+        </div>
+        </>
       ) : selectedRombel ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">

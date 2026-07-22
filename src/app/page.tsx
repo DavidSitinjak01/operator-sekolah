@@ -299,7 +299,7 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
-function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
+function Sidebar({ open, onClose, collapsed, onToggleCollapse, className }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void; className?: string }) {
   const { activePage, setActivePage } = useAppStore();
   const [manageTPOpen, setManageTPOpen] = useState(false);
   const { data: session } = useSession();
@@ -367,7 +367,8 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean
           "[background:linear-gradient(180deg,oklch(0.17_0.04_160)_0%,oklch(0.14_0.05_170)_50%,oklch(0.12_0.04_260)_100%)]",
           open && !collapsed ? "translate-x-0" : "-translate-x-full",
           !collapsed && "lg:translate-x-0 lg:static lg:z-auto",
-          collapsed && "lg:-translate-x-full lg:absolute lg:z-auto"
+          collapsed && "lg:-translate-x-full lg:absolute lg:z-auto",
+          className
         )}
       >
         {/* Header */}
@@ -644,6 +645,7 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
     <div className="min-h-screen flex flex-col bg-background">
         <div className="flex flex-1">
           <Sidebar
+            className="print:hidden"
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             collapsed={sidebarCollapsed}
@@ -652,7 +654,7 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
 
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top bar for mobile */}
-            <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 glass-subtle border-b border-border/60 lg:hidden">
+            <header className="print:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 glass-subtle border-b border-border/60 lg:hidden">
               <Button
                 variant="ghost"
                 size="icon"
@@ -676,7 +678,7 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
 
             {/* Expand sidebar button (desktop only, visible when sidebar is collapsed) */}
             {sidebarCollapsed && (
-              <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 glass-subtle border-b border-border/60">
+              <div className="print:hidden hidden lg:flex items-center gap-3 px-5 py-2.5 glass-subtle border-b border-border/60">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -695,14 +697,14 @@ function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSide
             )}
 
             {/* Main content */}
-            <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <main className="flex-1 p-4 md:p-6 lg:p-8 print:p-0 print:m-0">
               <PageContent />
             </main>
           </div>
         </div>
 
         {/* Sticky Footer */}
-        <footer className="mt-auto glass-subtle border-t border-border/60 px-4 py-3">
+        <footer className="print:hidden mt-auto glass-subtle border-t border-border/60 px-4 py-3">
           <div className="flex items-center justify-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
             <p className="text-[11px] text-muted-foreground font-medium">
