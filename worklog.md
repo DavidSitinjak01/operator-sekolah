@@ -542,3 +542,23 @@ Stage Summary:
 - Tabel: kolom = tanggal (1-31), baris = siswa, kolom summary = jumlah per kode
 - Hari Minggu ditandai merah, Sabtu ditandai biru
 - Sticky header + sticky kolom No dan Nama
+---
+Task ID: 3
+Agent: Main Agent
+Task: Ubah input absensi dari klik cycle ke dialog picker per sel
+
+Work Log:
+- Hapus handleCellClick lama (cycle mode) diganti dengan dialog picker
+- Tambah state `selectedCell` untuk melacak sel mana yang diklik
+- Buat Dialog "Pilih Keterangan Absensi" dengan grid 2 kolom berisi tombol kode
+- Setiap tombol menampilkan huruf kode besar + label (H=Hadir, S=Sakit, I=Izin, A=Alpa)
+- Tombol aktif ditandai dengan ring dan background warna sesuai konfigurasi
+- Tombol "Kosong" untuk menghapus/mengosongkan absensi
+- Dialog menampilkan nama siswa dan tanggal di header
+- Commit & push ke GitHub
+
+Stage Summary:
+- Klik sel → muncul dialog dengan pilihan kode absensi (H, S, I, A) + Kosong
+- Kode yang sedang aktif ditandai dengan highlight
+- Pilih kode → sel langsung terisi, dialog otomatis tutup
+- Sinkron dengan konfigurasi kode yang sudah disimpan admin
