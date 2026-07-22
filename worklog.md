@@ -562,3 +562,42 @@ Stage Summary:
 - Kode yang sedang aktif ditandai dengan highlight
 - Pilih kode → sel langsung terisi, dialog otomatis tutup
 - Sinkron dengan konfigurasi kode yang sudah disimpan admin
+
+---
+Task ID: 10
+Agent: main
+Task: Implement 10 warna kalender pendidikan pada lembar absensi
+
+Work Log:
+- Analyzed uploaded Kalender Pendidikan PDF using VLM (z-ai-web-dev-sdk) to identify all 10 color legends
+- First VLM pass found only 8 colors; prompted specifically for legend box and found all 10
+- Second VLM pass extracted specific dates per color category for July 2026 - July 2027
+- Updated KATEGORI_COLORS in AbsensiPage.tsx with 10 categories matching kalender:
+  1. Merah - Libur Umum & Nasional
+  2. Oranye Muda - Libur Semester  
+  3. Hijau - Asesmen / Ujian
+  4. Biru Tua - Hari Pertama Masuk Sekolah
+  5. Kuning - Penyerahan Rapor & Kelulusan
+  6. Oranye/Coklat - Tidak Termasuk 5 Hari Kerja (Weekend)
+  7. Cyan - Perkiraan Pelaksanaan TKA
+  8. Ungu - Hari Pendidikan Nasional
+  9. Pink - Libur Khusus
+  10. Kuning Muda - Hari Guru (Tidak Libur)
+- Changed weekend cell colors from red to brown/oranye (matching kalender legend)
+- Updated header rows (Row 2: dates, Row 3: day names) to show holiday colors with strikethrough
+- Added kalender legend section (Card) showing all 10 colors with dots
+- Updated BLOCK_CATEGORIES: Libur Nasional, Libur Khusus, Libur Semester, Penyerahan Rapor, Hari Pendidikan Nasional, Weekend
+- Added NON_BLOCK_CATEGORIES: Asesmen, Perkiraan TKA, Hari Pertama Masuk, Hari Guru (still clickable, marked with dot indicator)
+- Updated "Isi Semua H" fill-all to skip blocked holiday dates
+- Updated libur form dialog with all 9 kategori options (excluding Weekend which is auto)
+- Created seed API at /api/absensi/libur/seed with 100+ holiday dates from kalender
+- Added "Muat Kalender Pendidikan" button in Hari Libur management section
+- Fixed duplicate effectiveRombel declaration
+- Pushed to GitHub
+
+Stage Summary:
+- 10 color categories fully implemented matching Kalender Pendidikan Dinas Pendidikan Prov. Sumatera Utara
+- All dates from kalender (Jul 2026 - Jul 2027) available via seed API
+- Smart blocking: holidays block input, special days (asesmen, TKA) remain clickable
+- Weekend color changed from red to brown per kalender specification
+- Code pushed to GitHub: commit c9e6cf0

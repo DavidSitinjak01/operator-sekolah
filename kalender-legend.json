@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Berdasarkan gambar yang Anda berikan, berikut adalah detail dari **LEGEND/KETERANGAN** warna yang terletak di bagian bawah tengah (di bawah kalender bulan Juli 2027):\n\n**Jumlah total kotak warna dalam legend: 10**\n\nBerikut rinciannya:\n\n1.  **Nomor urut:** 1\n    *   **Warna:** Merah\n    *   **Teks/Keterangan:** : Libur umum dan nasional\n\n2.  **Nomor urut:** 2\n    *   **Warna:** Oranye (Coklat Muda)\n    *   **Teks/Keterangan:** : Libur semester\n\n3.  **Nomor urut:** 3\n    *   **Warna:** Hijau Tua\n    *   **Teks/Keterangan:** : Asesmen\n\n4.  **Nomor urut:** 4\n    *   **Warna:** Biru Tua\n    *   **Teks/Keterangan:** : Hari Pertama Masuk Sekolah\n\n5.  **Nomor urut:** 5\n    *   **Warna:** Kuning\n    *   **Teks/Keterangan:** : Penyerahan Raport dan Kelulusan\n\n6.  **Nomor urut:** 6\n    *   **Warna:** Oranye (Coklat)\n    *   **Teks/Keterangan:** : Tidak termasuk 5 hari kerja\n\n7.  **Nomor urut:** 7\n    *   **Warna:** Biru Muda (Cyan)\n    *   **Teks/Keterangan:** : Perkiraan Pelaksanaan TKA\n\n8.  **Nomor urut:** 8\n    *   **Warna:** Ungu (Biru Lila)\n    *   **Teks/Keterangan:** : Hari Pendidikan Nasional\n\n9.  **Nomor urut:** 9\n    *   **Warna:** Pink (Merah Muda)\n    *   **Teks/Keterangan:** : Libur Khusus\n\n10. **Nomor urut:** 10\n    *   **Warna:** Kuning Muda (Kuning Terang)\n    *   **Teks/Keterangan:** : Hari Guru (Tidak Libur)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1784741290,
+  "id": "202607230128048a8b4c690d84415e",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202607230128048a8b4c690d84415e",
+  "usage": {
+    "completion_tokens": 502,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 5888,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 6390
+  }
+}
