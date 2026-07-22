@@ -286,6 +286,19 @@ model Absensi {
   @@index([siswaId])
 }
 
+model HariLibur {
+  id              String   @id @default(cuid())
+  tanggal         String   // format: YYYY-MM-DD
+  label           String   @default("")
+  kategori        String   @default("Libur Nasional") // Libur Nasional, Libur Khusus, Libur Semester, Asesmen, Lainnya
+  tahunPelajaran  String   @default("2026/2027")
+  createdAt       DateTime @default(now())
+
+  @@unique([tanggal, tahunPelajaran])
+  @@index([tahunPelajaran])
+  @@index([tanggal])
+}
+
 model JadwalAkses {
   id              String   @id @default(cuid())
   userId          String

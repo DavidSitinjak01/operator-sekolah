@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
   Download, Trash2, Settings2, Loader2, Users, BookOpenCheck,
-  RotateCcw, X, Check,
+  RotateCcw, X, Check, CalendarOff, Plus, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,27 @@ interface AbsensiItem {
   semester: string;
 }
 
+interface HariLiburItem {
+  id: string;
+  tanggal: string;
+  label: string;
+  kategori: string;
+  tahunPelajaran: string;
+}
+
+// Color per holiday category
+const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  "Libur Nasional": { bg: "#FEF2F2", text: "#991B1B", border: "#FECACA" },
+  "Libur Khusus": { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },
+  "Libur Semester": { bg: "#F0F9FF", text: "#075985", border: "#BAE6FD" },
+  "Asesmen": { bg: "#FAFAF9", text: "#57534E", border: "#D6D3D1" },
+  "Lainnya": { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" },
+};
+
+function getLiburColor(kategori: string) {
+  return KATEGORI_COLORS[kategori] || KATEGORI_COLORS["Lainnya"];
+}
+
 interface KodeAbsensiItem {
   kode: string;
   label: string;
@@ -89,11 +110,82 @@ export default function AbsensiPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // ─── Month/Year selector ───────────────────────────────────────────────
+  // ─── Month/Year selector (early so queries can use bulanStr) ────────────
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedRombel, setSelectedRombel] = useState("");
+  const bulanStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+
+  // ─── Fetch hari libur for selected month ────────────────────────────────
+  const { data: hariLiburList = [] } = useQuery({
+    queryKey: ["hari-libur", tahunPelajaran, bulanStr],
+    queryFn: async () => {
+      const p = new URLSearchParams({ tahunPelajaran, bulan: bulanStr });
+      const r = await fetch(`/api/absensi/libur?${p}`);
+      if (!r.ok) throw new Error("Gagal");
+      return r.json();
+    },
+    enabled: !!tahunPelajaran && !!bulanStr,
+  });
+
+  const hariLiburMap = useMemo(() => {
+    const map: Record<string, HariLiburItem> = {};
+    for (const h of hariLiburList as HariLiburItem[]) {
+      map[h.tanggal] = h;
+    }
+    return map;
+  }, [hariLiburList]);
+
+  // ─── Libur form state ────────────────────────────────────────────────────
+  const [liburFormOpen, setLiburFormOpen] = useState(false);
+  const [liburTanggal, setLiburTanggal] = useState("");
+  const [liburLabel, setLiburLabel] = useState("");
+  const [liburKategori, setLiburKategori] = useState("Libur Nasional");
+
+  const liburMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/absensi/libur", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tanggal: liburTanggal, label: liburLabel, kategori: liburKategori, tahunPelajaran }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: () => {
+      toast({ title: "Hari libur ditambahkan" });
+      setLiburFormOpen(false);
+      setLiburTanggal("");
+      setLiburLabel("");
+      setLiburKategori("Libur Nasional");
+      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteLiburMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const r = await fetch(`/api/absensi/libur?id=${id}`, { method: "DELETE" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: () => {
+      toast({ title: "Hari libur dihapus" });
+      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── Set default rombel (computed, not useEffect) ──────────────────────────
+  const effectiveRombel = selectedRombel || (rombelList.length > 0 ? rombelList[0] as string : "");
+  React.useEffect(() => {
+    if (!selectedRombel && rombelList.length > 0) {
+      setSelectedRombel(rombelList[0] as string);
+    }
+  }, [rombelList.length, selectedRombel]);
 
   // ─── Attendance Code Config ─────────────────────────────────────────────
   const [kodeConfig, setKodeConfig] = useState<KodeAbsensiItem[]>(DEFAULT_KODE_ABSENSI);
@@ -176,7 +268,6 @@ export default function AbsensiPage() {
   });
 
   // ─── Fetch absensi for selected month ───────────────────────────────────
-  const bulanStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
   const { data: absensiList = [], isLoading: isLoadingAbsensi } = useQuery({
     queryKey: ["absensi-data", tahunPelajaran, semester, selectedRombel, bulanStr],
     queryFn: async () => {
@@ -553,6 +644,9 @@ export default function AbsensiPage() {
                           const dow = getDayOfWeek(selectedYear, selectedMonth, day);
                           const isWeekend = dow === 0 || dow === 6;
                           const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                          const liburInfo = hariLiburMap[tanggal];
+                          const isLibur = !!liburInfo;
+                          const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
                           const kode = getCellKode(siswa.id, tanggal);
                           const isLocalChanged = `${siswa.id}-${tanggal}` in localChanges;
                           const kodeInfo = kode ? kodeConfig.find((k) => k.kode === kode) : null;
@@ -561,18 +655,23 @@ export default function AbsensiPage() {
                             <td
                               key={day}
                               className={`border border-slate-200 text-center select-none transition-colors print:cursor-default ${
-                                isWeekend ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
+                                isWeekend ? "bg-red-50/50" : isLibur ? "" : isLocalChanged ? "bg-yellow-50" : "cursor-pointer hover:bg-slate-50"
                               }`}
-                              style={kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
-                              onClick={() => handleCellClick(siswa.id, tanggal, kode)}
+                              style={liburColor ? { backgroundColor: liburColor.bg, borderColor: liburColor.border } : kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
+                              onClick={() => {
+                                if (isWeekend || isLibur) return;
+                                handleCellClick(siswa.id, tanggal, kode);
+                              }}
                             >
                               <span
                                 className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
-                                  isWeekend ? "text-red-300/50" : kodeInfo ? "" : "text-slate-200"
+                                  isWeekend ? "text-red-300/50" : isLibur && liburColor ? liburColor.text : kodeInfo ? "" : "text-slate-200"
                                 }`}
                                 style={kodeInfo ? { color: kodeInfo.color } : undefined}
                               >
-                                {isWeekend ? "×" : kode || ""}
+                                {isWeekend ? "×" : isLibur && liburColor ? (
+                                  <span className="text-[8px] font-medium leading-tight" style={{ color: liburColor.text }} title={liburInfo.label}>{liburInfo.label.length > 4 ? liburInfo.label.slice(0, 3) + "…" : liburInfo.label}</span>
+                                ) : kode || ""}
                               </span>
                             </td>
                           );
@@ -612,6 +711,89 @@ export default function AbsensiPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ─── Hari Libur Management ────────────────────────────────────────── */}
+      <Card className="print:hidden mb-4">
+        <CardHeader className="pb-3 pt-4 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CalendarOff className="h-4 w-4 text-orange-500" />
+              Hari Libur & Non-Efektif — {BULAN_NAMES[selectedMonth - 1]} {selectedYear}
+            </CardTitle>
+            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setLiburFormOpen(true)}>
+              <Plus className="h-3 w-3" /> Tambah
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          {(hariLiburList as HariLiburItem[]).length === 0 ? (
+            <p className="text-xs text-muted-foreground py-3 text-center">Belum ada hari libur untuk bulan ini</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+              {(hariLiburList as HariLiburItem[]).map((h) => {
+                const c = getLiburColor(h.kategori);
+                return (
+                  <div
+                    key={h.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium"
+                    style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+                  >
+                    <span className="font-mono font-bold">{h.tanggal.split("-")[2]}</span>
+                    <span className="opacity-80">{h.label}</span>
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-0.5">{h.kategori}</Badge>
+                    <button
+                      className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                      onClick={() => deleteLiburMutation.mutate(h.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Libur Form Dialog ────────────────────────────────────────────── */}
+      <Dialog open={liburFormOpen} onOpenChange={setLiburFormOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tambah Hari Libur</DialogTitle>
+            <DialogDescription>Tambah hari libur atau non-efektif di bulan ini</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-3">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Tanggal</Label>
+              <Input type="date" value={liburTanggal} onChange={(e) => setLiburTanggal(e.target.value)} className="h-9" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Keterangan</Label>
+              <Input placeholder="cth: Kemerdekaan RI" value={liburLabel} onChange={(e) => setLiburLabel(e.target.value)} className="h-9" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Kategori</Label>
+              <Select value={liburKategori} onValueChange={setLiburKategori}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Libur Nasional">Libur Nasional</SelectItem>
+                  <SelectItem value="Libur Khusus">Libur Khusus</SelectItem>
+                  <SelectItem value="Libur Semester">Libur Semester</SelectItem>
+                  <SelectItem value="Asesmen">Asesmen / Ujian</SelectItem>
+                  <SelectItem value="Lainnya">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setLiburFormOpen(false)}>Batal</Button>
+            <Button size="sm" onClick={() => liburMutation.mutate()} disabled={liburMutation.isPending || !liburTanggal}>
+              {liburMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Cell Kode Picker Dialog ──────────────────────────────────────── */}
       <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
