@@ -210,27 +210,34 @@ export default function AbsensiPage() {
     return existing?.kodeAbsensi || "";
   }, [absensiMap, localChanges]);
 
+  // ─── Cell selection dialog state ──────────────────────────────────────
+  const [selectedCell, setSelectedCell] = useState<{ siswaId: string; siswaNama: string; tanggal: string; currentKode: string } | null>(null);
+
   const handleCellClick = useCallback((siswaId: string, tanggal: string, currentKode: string) => {
-    // Cycle to next code, or clear if at last code
-    const codes = kodeConfig.map((k) => k.kode);
-    const emptyIdx = -1;
-    const currentIdx = codes.indexOf(currentKode);
+    if (getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2])) === 0) return;
+    const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
+    setSelectedCell({
+      siswaId,
+      siswaNama: siswa?.nama || "",
+      tanggal,
+      currentKode,
+    });
+  }, [selectedYear, selectedMonth, siswaList]);
 
-    // If empty or at last code, set to first code; otherwise next
-    const nextKode = currentIdx === -1 || currentIdx >= codes.length - 1 ? "" : codes[currentIdx + 1];
-
+  const handleSelectKode = useCallback((kode: string) => {
+    if (!selectedCell) return;
     setLocalChanges((prev) => {
       const next = { ...prev };
-      if (nextKode === "") {
-        // Check if there's existing data to "remove"
-        const localKey = `${siswaId}-${tanggal}`;
+      if (kode === "") {
+        const localKey = `${selectedCell.siswaId}-${selectedCell.tanggal}`;
         delete next[localKey];
       } else {
-        next[`${siswaId}-${tanggal}`] = nextKode;
+        next[`${selectedCell.siswaId}-${selectedCell.tanggal}`] = kode;
       }
       return next;
     });
-  }, [kodeConfig]);
+    setSelectedCell(null);
+  }, [selectedCell]);
 
   // ─── Save mutation ─────────────────────────────────────────────────────
   const saveMutation = useMutation({
@@ -555,10 +562,7 @@ export default function AbsensiPage() {
                                 isSunday ? "bg-red-50/50" : isLocalChanged ? "bg-yellow-50" : "hover:bg-slate-50"
                               }`}
                               style={kodeInfo ? { backgroundColor: isLocalChanged ? kodeInfo.bgColor : undefined } : undefined}
-                              onClick={() => {
-                                if (isSunday) return;
-                                handleCellClick(siswa.id, tanggal, kode);
-                              }}
+                              onClick={() => handleCellClick(siswa.id, tanggal, kode)}
                             >
                               <span
                                 className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
@@ -606,6 +610,59 @@ export default function AbsensiPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ─── Cell Kode Picker Dialog ──────────────────────────────────────── */}
+      <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">Pilih Keterangan Absensi</DialogTitle>
+            <DialogDescription className="text-xs">
+              {selectedCell?.siswaNama} — {selectedCell?.tanggal}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-2">
+            {/* Hapus / Kosongkan */}
+            <button
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 ${
+                !selectedCell?.currentKode
+                  ? "border-slate-400 bg-slate-100 text-slate-600 ring-2 ring-slate-300"
+                  : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+              onClick={() => handleSelectKode("")}
+            >
+              <span className="text-lg">—</span>
+              <span>Kosong</span>
+            </button>
+            {/* Kode options */}
+            {kodeConfig.map((k) => {
+              const isSelected = selectedCell?.currentKode === k.kode;
+              const isExisting = absensiMap[`${selectedCell?.siswaId}-${selectedCell?.tanggal}`]?.kodeAbsensi === k.kode;
+              const isActive = isSelected || (!selectedCell?.currentKode && isExisting);
+              return (
+                <button
+                  key={k.kode}
+                  className={`flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 ${
+                    isActive
+                      ? "ring-2"
+                      : "hover:opacity-90"
+                  }`}
+                  style={{
+                    backgroundColor: isActive ? k.bgColor : "white",
+                    borderColor: k.color,
+                    color: k.color,
+                    ringColor: k.color,
+                    boxShadow: isActive ? `0 0 0 2px ${k.color}40` : undefined,
+                  }}
+                  onClick={() => handleSelectKode(k.kode)}
+                >
+                  <span className="text-xl leading-none">{k.kode}</span>
+                  <span className="text-[10px] font-medium opacity-80">{k.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Kode Absensi Config Dialog ────────────────────────────────────── */}
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
