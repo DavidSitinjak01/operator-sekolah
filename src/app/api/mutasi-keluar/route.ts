@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { iContains } from '@/lib/db-search';
 import { NextRequest, NextResponse } from 'next/server';
 
 // ── GET: List with joined siswa data ─────────────────────────────────────────
@@ -19,10 +20,10 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.siswa = {
         OR: [
-          { nama: { contains: search } },
-          { nipd: { contains: search } },
-          { nisn: { contains: search } },
-          { nik: { contains: search } },
+          { nama: iContains(search) },
+          { nipd: iContains(search) },
+          { nisn: iContains(search) },
+          { nik: iContains(search) },
         ],
       };
     }

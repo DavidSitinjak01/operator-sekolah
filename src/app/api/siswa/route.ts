@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { iContains } from '@/lib/db-search';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -14,10 +15,10 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { nama: { contains: search } },
-        { nipd: { contains: search } },
-        { nisn: { contains: search } },
-        { nik: { contains: search } },
+        { nama: iContains(search) },
+        { nipd: iContains(search) },
+        { nisn: iContains(search) },
+        { nik: iContains(search) },
       ];
     }
     if (rombel) where.rombel = rombel;

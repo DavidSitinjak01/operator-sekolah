@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { iContains } from '@/lib/db-search';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -13,9 +14,9 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { nama: { contains: search } },
-        { nip: { contains: search } },
-        { nuptk: { contains: search } },
+        { nama: iContains(search) },
+        { nip: iContains(search) },
+        { nuptk: iContains(search) },
       ];
     }
     if (tahunPelajaran) where.tahunPelajaran = tahunPelajaran;
