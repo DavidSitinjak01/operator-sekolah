@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ import MutasiKeluarPage from "@/components/pages/MutasiKeluarPage";
 import GuruPage from "@/components/pages/GuruPage";
 import PengaturanPage from "@/components/pages/PengaturanPage";
 import ManajemenUserPage from "@/components/pages/ManajemenUserPage";
+import JadwalPelajaranPage from "@/components/pages/JadwalPelajaranPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ const navItems = [
   { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
+  { key: "jadwal-pelajaran" as const, label: "Jadwal Pelajaran", icon: CalendarClock },
   { key: "pengaturan" as const, label: "Pengaturan", icon: Settings, adminOrOperator: true },
   { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOrOperator: true },
 ];
@@ -599,6 +601,8 @@ function PageContent() {
       return <MutasiKeluarPage />;
     case "guru":
       return <GuruPage />;
+    case "jadwal-pelajaran":
+      return <JadwalPelajaranPage />;
     case "pengaturan":
       return <PengaturanPage />;
     case "manajemen-user":

@@ -211,3 +211,67 @@ model Pengaturan {
   value           String   @default("")
   updatedAt       DateTime @updatedAt
 }
+
+// ─── Jadwal Pelajaran Models ──────────────────────────────────────────────────
+
+model Mapel {
+  id              String   @id @default(cuid())
+  kode            String
+  nama            String
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([kode, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+}
+
+model JamPelajaran {
+  id              String   @id @default(cuid())
+  jamKe           Int
+  jamMulai        String
+  jamSelesai      String
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([jamKe, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+}
+
+model JadwalKelas {
+  id              String   @id @default(cuid())
+  hari            String
+  jamKe           Int
+  mapelId         String
+  mapelKode       String   @default("")
+  mapelNama       String   @default("")
+  guruId          String   @default("")
+  guruNama        String   @default("")
+  rombel          String
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([hari, jamKe, rombel, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
+  @@index([guruId])
+  @@index([hari])
+}
+
+model JadwalAkses {
+  id              String   @id @default(cuid())
+  userId          String
+  rombel          String
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, rombel, tahunPelajaran, semester])
+  @@index([userId])
+  @@index([tahunPelajaran, semester])
+}
