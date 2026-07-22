@@ -627,7 +627,7 @@ export default function MutasiKeluarPage() {
                       <TableHead className="hidden lg:table-cell">Rombel</TableHead>
                       <TableHead className="hidden xl:table-cell">Tujuan Sekolah</TableHead>
                       <TableHead className="hidden lg:table-cell">Tgl Keluar</TableHead>
-                      <TableHead className="text-center">Status Dapodik</TableHead>
+                      <TableHead className="text-center">Keluar Dapodik</TableHead>
                       <TableHead className="text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>

@@ -456,7 +456,7 @@ export default function MutasiMasukPage() {
                       <TableHead className="hidden lg:table-cell">
                         No. Surat
                       </TableHead>
-                      <TableHead className="text-center">Status Dapodik</TableHead>
+                      <TableHead className="text-center">Masuk Dapodik</TableHead>
                       <TableHead className="text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
