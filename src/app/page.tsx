@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -295,7 +295,7 @@ function TahunPelajaranSelector({ onManage }: { onManage: () => void }) {
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
-function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Sidebar({ open, onClose, collapsed, onToggleCollapse }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
   const { activePage, setActivePage } = useAppStore();
   const [manageTPOpen, setManageTPOpen] = useState(false);
   const { data: session } = useSession();
@@ -359,8 +359,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
-          open ? "translate-x-0" : "-translate-x-full"
+          "fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-border flex flex-col transition-all duration-300 ease-in-out",
+          open && !collapsed ? "translate-x-0" : "-translate-x-full",
+          !collapsed && "lg:translate-x-0 lg:static lg:z-auto",
+          collapsed && "lg:-translate-x-full lg:absolute lg:z-auto"
         )}
       >
         {/* Header */}
@@ -377,6 +379,13 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             className="ml-auto lg:hidden p-1 rounded-md hover:bg-muted"
           >
             <X className="w-5 h-5" />
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            className="hidden lg:flex ml-auto p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+            title={collapsed ? "Buka Sidebar" : "Tutup Sidebar"}
+          >
+            <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
 
@@ -605,24 +614,35 @@ function PageContent() {
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <AuthGuard>
       <QueryClientProvider client={queryClient}>
-        <DashboardShell sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <DashboardShell
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
         <Toaster />
       </QueryClientProvider>
     </AuthGuard>
   );
 }
 
-function DashboardShell({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void }) {
+function DashboardShell({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void; sidebarCollapsed: boolean; setSidebarCollapsed: (collapsed: boolean) => void }) {
   const { tahunPelajaran, semester } = useAppStore();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50">
         <div className="flex flex-1">
-          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Sidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
 
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top bar for mobile */}
@@ -647,6 +667,26 @@ function DashboardShell({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean;
                 </span>
               </div>
             </header>
+
+            {/* Expand sidebar button (desktop only, visible when sidebar is collapsed) */}
+            {sidebarCollapsed && (
+              <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white border-b border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <PanelLeftOpen className="w-4 h-4 mr-2" />
+                  <span className="text-sm">Menu</span>
+                </Button>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                    {tahunPelajaran} — {semester}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Main content */}
             <main className="flex-1 p-4 md:p-6 lg:p-8">

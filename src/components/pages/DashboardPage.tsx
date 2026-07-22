@@ -99,32 +99,32 @@ function SummaryCard({
   trend?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
-      <div className="absolute top-0 right-0 w-24 h-24 rounded-bl-full bg-gradient-to-br from-primary/5 to-transparent" />
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', iconBg)}>
+    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', iconBg)}>
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-          <p className="text-2xl font-bold tracking-tight mt-0.5">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider leading-none">{title}</p>
+          <p className="text-xl font-bold tracking-tight mt-1 leading-none">
             {(value ?? 0).toLocaleString('id-ID')}
           </p>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
-          )}
-        </div>
-        {trend && (
-          <div className={cn(
-            'flex items-center gap-0.5 text-xs font-medium px-2 py-1 rounded-full',
-            trend === 'up' && 'bg-emerald-50 text-emerald-600',
-            trend === 'down' && 'bg-rose-50 text-rose-600',
-            trend === 'neutral' && 'bg-slate-50 text-slate-500',
-          )}>
-            <TrendingUp className="h-3 w-3" />
-            <span>{trend === 'up' ? '+' : trend === 'down' ? '-' : '='}</span>
+          <div className="flex items-center gap-2 mt-1.5">
+            {trend && (
+              <span className={cn(
+                'inline-flex items-center gap-0.5 text-[11px] font-medium leading-none',
+                trend === 'up' && 'text-emerald-600',
+                trend === 'down' && 'text-rose-600',
+                trend === 'neutral' && 'text-slate-400',
+              )}>
+                <TrendingUp className="h-3 w-3" />
+              </span>
+            )}
+            {description && (
+              <span className="text-[11px] text-muted-foreground truncate leading-none">{description}</span>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -195,11 +195,11 @@ function SummaryCardsSkeleton() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i} className="border-0 shadow-sm">
-          <CardContent className="flex items-center gap-3 p-5">
-            <Skeleton className="h-11 w-11 rounded-xl" />
+          <CardContent className="flex items-center gap-3 p-4">
+            <Skeleton className="h-10 w-10 rounded-xl" />
             <div className="flex-1 space-y-1.5">
               <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-6 w-12" />
+              <Skeleton className="h-5 w-12" />
             </div>
           </CardContent>
         </Card>
