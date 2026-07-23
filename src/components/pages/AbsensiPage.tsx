@@ -341,6 +341,7 @@ export default function AbsensiPage() {
   const daysInMonth = useMemo(() => getDaysInMonth(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
 
   // ─── Local changes state (unsaved) ─────────────────────────────────────
+  // Values: "H", "S", "I", "A" = set kode; "" (empty string) = delete record
   const [localChanges, setLocalChanges] = useState<Record<string, string>>({});
 
   const getCellKode = useCallback((siswaId: string, tanggal: string): string => {
@@ -369,44 +370,72 @@ export default function AbsensiPage() {
     if (!selectedCell) return;
     setLocalChanges((prev) => {
       const next = { ...prev };
+      const localKey = `${selectedCell.siswaId}|${selectedCell.tanggal}`;
       if (kode === "") {
-        const localKey = `${selectedCell.siswaId}|${selectedCell.tanggal}`;
-        delete next[localKey];
+        // Mark for deletion: only store "" if there's an existing DB record
+        const existing = absensiMap[localKey];
+        if (existing) {
+          next[localKey] = ""; // signal to delete this record on save
+        } else {
+          delete next[localKey]; // nothing in DB, just remove local override
+        }
       } else {
-        next[`${selectedCell.siswaId}|${selectedCell.tanggal}`] = kode;
+        next[localKey] = kode;
       }
       return next;
     });
     setSelectedCell(null);
-  }, [selectedCell]);
+  }, [selectedCell, absensiMap]);
 
-  // ─── Save mutation ─────────────────────────────────────────────────────
+  // ─── Save mutation (handles both save and delete) ────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const items = Object.entries(localChanges).map(([key, kodeAbsensi]) => {
-        const [siswaId, tanggal] = key.split("|");
-        const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
-        return {
-          siswaId,
-          siswaNama: siswa?.nama || "",
-          nisn: siswa?.nisn || "",
-          rombel: selectedRombel,
-          tanggal,
-          kodeAbsensi,
-        };
-      });
+      const entries = Object.entries(localChanges);
+      const toUpsert: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
+      const toDelete: { siswaId: string; tanggal: string }[] = [];
 
-      const r = await fetch("/api/absensi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, tahunPelajaran, semester }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      return d;
+      for (const [key, kodeAbsensi] of entries) {
+        const [siswaId, tanggal] = key.split("|");
+        if (kodeAbsensi === "") {
+          toDelete.push({ siswaId, tanggal });
+        } else {
+          const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
+          toUpsert.push({
+            siswaId,
+            siswaNama: siswa?.nama || "",
+            nisn: siswa?.nisn || "",
+            rombel: selectedRombel,
+            tanggal,
+            kodeAbsensi,
+          });
+        }
+      }
+
+      // Upsert items
+      if (toUpsert.length > 0) {
+        const r = await fetch("/api/absensi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: toUpsert, tahunPelajaran, semester }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+      }
+
+      // Delete items (empty kodeAbsensi)
+      for (const item of toDelete) {
+        await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}&siswaId=${item.siswaId}&tanggal=${item.tanggal}`, {
+          method: "DELETE",
+        });
+      }
+
+      return { saved: toUpsert.length, deleted: toDelete.length };
     },
     onSuccess: (data) => {
-      toast({ title: "Absensi tersimpan", description: `${data.count} data disimpan` });
+      const parts: string[] = [];
+      if (data.saved > 0) parts.push(`${data.saved} disimpan`);
+      if (data.deleted > 0) parts.push(`${data.deleted} dihapus`);
+      toast({ title: "Absensi diperbarui", description: parts.join(", ") || "Tidak ada perubahan" });
       setLocalChanges({});
       qc.invalidateQueries({ queryKey: ["absensi-data"] });
     },
@@ -414,6 +443,43 @@ export default function AbsensiPage() {
   });
 
   // ─── Fill all visible as "H" ─────────────────────────────────────────────
+  // ─── Reset per siswa (per row) ─────────────────────────────────────────
+  const resetSiswaMutation = useMutation({
+    mutationFn: async (siswaId: string) => {
+      // Delete all absensi records for this siswa in the current month
+      const r = await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}&siswaId=${siswaId}`, {
+        method: "DELETE",
+      });
+      if (!r.ok) throw new Error("Gagal menghapus");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Absensi siswa direset", description: "Semua data kehadiran siswa ini di bulan ini dikosongkan" });
+      setLocalChanges({});
+      qc.invalidateQueries({ queryKey: ["absensi-data"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── Reset all absensi for selected rombel in the month ────────────────
+  const [resetAllDialogOpen, setResetAllDialogOpen] = useState(false);
+  const resetAllMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}`, {
+        method: "DELETE",
+      });
+      if (!r.ok) throw new Error("Gagal menghapus");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Absensi direset", description: `Semua data kehadiran ${selectedRombel} bulan ${bulanStr} dikosongkan` });
+      setLocalChanges({});
+      setResetAllDialogOpen(false);
+      qc.invalidateQueries({ queryKey: ["absensi-data"] });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const fillAllMutation = useMutation({
     mutationFn: async (kode: string) => {
       const items: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
@@ -467,10 +533,17 @@ export default function AbsensiPage() {
         summary[a.siswaId][a.kodeAbsensi]++;
       }
     }
-    // Also count local changes
+    // Also count local changes (including deletions)
     for (const [key, kode] of Object.entries(localChanges)) {
-      const [siswaId] = key.split("|");
-      if (summary[siswaId] && kode in summary[siswaId]) {
+      const [siswaId, tanggal] = key.split("|");
+      if (!summary[siswaId]) continue;
+      if (kode === "") {
+        // Deletion: subtract the existing DB value from summary
+        const existing = absensiMap[key];
+        if (existing && existing.kodeAbsensi in summary[siswaId]) {
+          summary[siswaId][existing.kodeAbsensi] = Math.max(0, summary[siswaId][existing.kodeAbsensi] - 1);
+        }
+      } else if (kode in summary[siswaId]) {
         summary[siswaId][kode]++;
       }
     }
@@ -727,6 +800,14 @@ export default function AbsensiPage() {
                 {fillAllMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                 Isi Semua H
               </Button>
+              <Button
+                variant="outline" size="sm" className="gap-1.5 text-rose-500 border-rose-300 hover:bg-rose-50"
+                onClick={() => setResetAllDialogOpen(true)}
+                disabled={!selectedRombel}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset Semua
+              </Button>
               {hasChanges && (
                 <Button size="sm" className="gap-1.5" onClick={() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); saveMutation.mutate(); }} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -835,6 +916,14 @@ export default function AbsensiPage() {
                         {k.label}
                       </th>
                     ))}
+                    <th
+                      rowSpan={3}
+                      className="border border-slate-200 bg-slate-100 px-1 py-1 text-center font-bold text-rose-400 min-w-[36px] sticky right-0 z-20 print:hidden"
+                      style={{ top: 0 }}
+                      title="Kosongkan"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 inline" />
+                    </th>
                   </tr>
                   {/* ── Header Row 2: Dates ── */}
                   <tr className="bg-slate-50 print:bg-gray-100">
@@ -989,6 +1078,17 @@ export default function AbsensiPage() {
                             </span>
                           </td>
                         ))}
+                        {/* Reset per-siswa */}
+                        <td className="border border-slate-200 text-center print:hidden sticky right-0 z-10 bg-white">
+                          <button
+                            className="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors print:hidden"
+                            title="Kosongkan absensi siswa ini"
+                            onClick={() => resetSiswaMutation.mutate(siswa.id)}
+                            disabled={resetSiswaMutation.isPending}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -1157,7 +1257,7 @@ export default function AbsensiPage() {
             {/* Kode options */}
             {kodeConfig.map((k) => {
               const isSelected = selectedCell?.currentKode === k.kode;
-              const isExisting = absensiMap[`${selectedCell?.siswaId}-${selectedCell?.tanggal}`]?.kodeAbsensi === k.kode;
+              const isExisting = absensiMap[`${selectedCell?.siswaId}|${selectedCell?.tanggal}`]?.kodeAbsensi === k.kode;
               const isActive = isSelected || (!selectedCell?.currentKode && isExisting);
               return (
                 <button
@@ -1184,6 +1284,30 @@ export default function AbsensiPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Reset All Confirmation Dialog ───────────────────────────────── */}
+      <AlertDialog open={resetAllDialogOpen} onOpenChange={setResetAllDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Semua Data Absensi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua data kehadiran untuk <strong>{selectedRombel}</strong> pada bulan <strong>{BULAN_NAMES[selectedMonth - 1]} {selectedYear}</strong> akan dikosongkan.
+              Data yang sudah diisi akan hilang dan tidak bisa dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={() => resetAllMutation.mutate()}
+              disabled={resetAllMutation.isPending}
+            >
+              {resetAllMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Ya, Reset Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ─── Kode Absensi Config Dialog ────────────────────────────────────── */}
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>

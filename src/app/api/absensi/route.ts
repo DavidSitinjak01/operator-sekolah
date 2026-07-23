@@ -145,7 +145,7 @@ export async function PUT(req: NextRequest) {
 }
 
 // ─── DELETE: Delete absensi records ─────────────────────────────────────
-// Query params: id OR rombel + bulan
+// Query params: id | rombel + bulan | rombel + bulan + siswaId | rombel + bulan + siswaId + tanggal
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -162,23 +162,33 @@ export async function DELETE(req: NextRequest) {
     const bulan = searchParams.get("bulan");
     const tp = searchParams.get("tahunPelajaran") || "2025/2026";
     const sem = searchParams.get("semester") || "Ganjil";
+    const siswaId = searchParams.get("siswaId");
+    const tanggal = searchParams.get("tanggal");
+
+    let deletedCount = 0;
 
     if (id) {
       await db.absensi.delete({ where: { id } });
+      deletedCount = 1;
     } else if (rombel && bulan) {
-      await db.absensi.deleteMany({
-        where: {
-          rombel,
-          tahunPelajaran: tp,
-          semester: sem,
-          tanggal: { startsWith: bulan },
-        },
-      });
+      const where: Record<string, unknown> = {
+        rombel,
+        tahunPelajaran: tp,
+        semester: sem,
+        tanggal: { startsWith: bulan },
+      };
+      // Optional: filter by specific siswaId
+      if (siswaId) where.siswaId = siswaId;
+      // Optional: filter by specific tanggal
+      if (tanggal) where.tanggal = tanggal;
+
+      const result = await db.absensi.deleteMany({ where });
+      deletedCount = result.count;
     } else {
       return NextResponse.json({ error: "ID atau rombel+bulan wajib" }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deleted: deletedCount });
   } catch (error: unknown) {
     console.error("[ABSENSI DELETE]", error);
     return NextResponse.json({ error: "Gagal menghapus absensi" }, { status: 500 });
