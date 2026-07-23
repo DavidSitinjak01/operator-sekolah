@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
@@ -332,7 +332,7 @@ export default function AbsensiPage() {
   const absensiMap = useMemo(() => {
     const map: Record<string, AbsensiItem> = {};
     for (const a of absensiList as AbsensiItem[]) {
-      map[`${a.siswaId}-${a.tanggal}`] = a;
+      map[`${a.siswaId}|${a.tanggal}`] = a;
     }
     return map;
   }, [absensiList]);
@@ -344,7 +344,7 @@ export default function AbsensiPage() {
   const [localChanges, setLocalChanges] = useState<Record<string, string>>({});
 
   const getCellKode = useCallback((siswaId: string, tanggal: string): string => {
-    const localKey = `${siswaId}-${tanggal}`;
+    const localKey = `${siswaId}|${tanggal}`;
     if (localKey in localChanges) return localChanges[localKey];
     const existing = absensiMap[localKey];
     return existing?.kodeAbsensi || "";
@@ -370,10 +370,10 @@ export default function AbsensiPage() {
     setLocalChanges((prev) => {
       const next = { ...prev };
       if (kode === "") {
-        const localKey = `${selectedCell.siswaId}-${selectedCell.tanggal}`;
+        const localKey = `${selectedCell.siswaId}|${selectedCell.tanggal}`;
         delete next[localKey];
       } else {
-        next[`${selectedCell.siswaId}-${selectedCell.tanggal}`] = kode;
+        next[`${selectedCell.siswaId}|${selectedCell.tanggal}`] = kode;
       }
       return next;
     });
@@ -384,7 +384,7 @@ export default function AbsensiPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const items = Object.entries(localChanges).map(([key, kodeAbsensi]) => {
-        const [siswaId, tanggal] = key.split("-");
+        const [siswaId, tanggal] = key.split("|");
         const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
         return {
           siswaId,
@@ -469,7 +469,7 @@ export default function AbsensiPage() {
     }
     // Also count local changes
     for (const [key, kode] of Object.entries(localChanges)) {
-      const [siswaId] = key.split("-");
+      const [siswaId] = key.split("|");
       if (summary[siswaId] && kode in summary[siswaId]) {
         summary[siswaId][kode]++;
       }
@@ -564,6 +564,39 @@ export default function AbsensiPage() {
   };
 
   const hasChanges = Object.keys(localChanges).length > 0;
+
+  // ─── Auto-save with debounce (3 detik setelah perubahan terakhir) ─────
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isAutoSavingRef = useRef(false);
+
+  // Effect: trigger auto-save 3 seconds after last local change
+  useEffect(() => {
+    if (!hasChanges || isAutoSavingRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      isAutoSavingRef.current = true;
+      saveMutation.mutate(undefined, {
+        onSuccess: () => { isAutoSavingRef.current = false; },
+        onError: () => { isAutoSavingRef.current = false; },
+      });
+    }, 3000);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [localChanges]);
+
+  // ─── beforeunload: peringatkan jika ada perubahan yang belum tersimpan ──
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasChanges]);
+
+  // Status auto-save
+  const autoSaveStatus = hasChanges ? (saveMutation.isPending ? 'Menyimpan...' : 'Auto-save 3 detik') : null;
 
   if (isLoadingSiswa) return <Skeleton className="h-96 w-full" />;
   if (!tahunPelajaran) return <div className="text-center py-16 text-muted-foreground">Pilih Tahun Pelajaran terlebih dahulu</div>;
@@ -667,6 +700,23 @@ export default function AbsensiPage() {
 
             <div className="flex-1" />
 
+            {/* Auto-save indicator */}
+            {autoSaveStatus && (
+              <div className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                saveMutation.isPending
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-amber-50 text-amber-600"
+              )}>
+                {saveMutation.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
+                {autoSaveStatus}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex items-center gap-2">
               <Button
@@ -678,9 +728,9 @@ export default function AbsensiPage() {
                 Isi Semua H
               </Button>
               {hasChanges && (
-                <Button size="sm" className="gap-1.5" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+                <Button size="sm" className="gap-1.5" onClick={() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); saveMutation.mutate(); }} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Simpan ({Object.keys(localChanges).length})
+                  Simpan Sekarang ({Object.keys(localChanges).length})
                 </Button>
               )}
             </div>
@@ -873,7 +923,7 @@ export default function AbsensiPage() {
                           const wkndColor = KATEGORI_COLORS["Weekend"];
                           const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
                           const kode = getCellKode(siswa.id, tanggal);
-                          const isLocalChanged = `${siswa.id}-${tanggal}` in localChanges;
+                          const isLocalChanged = `${siswa.id}|${tanggal}` in localChanges;
                           const kodeInfo = kode ? kodeConfig.find((k) => k.kode === kode) : null;
                           const isBlocked = isWeekend || isBlockedLibur;
 
