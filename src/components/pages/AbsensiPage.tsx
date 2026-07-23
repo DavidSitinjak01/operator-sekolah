@@ -755,8 +755,7 @@ export default function AbsensiPage() {
       {/* ─── Attendance Spreadsheet ───────────────────────────────────────── */}
       {selectedRombel && (siswaList as SiswaListItem[]).length > 0 ? (
         <>
-        <div className="border rounded-lg overflow-hidden bg-white print:overflow-visible print:border-none print:rounded-none">
-          <ScrollArea className="w-full print:overflow-visible">
+        <div className="border rounded-lg bg-white print:overflow-visible print:border-none print:rounded-none overflow-x-auto">
             <div className="min-w-max">
               <table className="w-full border-collapse text-xs">
                 {/* ── Header Row 1: Day names ── */}
@@ -946,7 +945,6 @@ export default function AbsensiPage() {
                 </tbody>
               </table>
             </div>
-          </ScrollArea>
         </div>
 
         {/* ─── Print-only Signature Block ──────────────────────────────────── */}
