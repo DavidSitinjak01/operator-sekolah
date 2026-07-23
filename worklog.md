@@ -522,3 +522,29 @@ Stage Summary:
 - 3 reset levels: per-cell (Kosong in picker), per-siswa (row icon), per-class (Reset Semua button)
 - All deletions persist to database and sync to dashboard
 - Commit: ed3b357 pushed to main
+
+---
+Task ID: 2-a
+Agent: main
+Task: Fix date header coloring, remove Reset Semua, remove per-row reset column
+
+Work Log:
+- Analyzed uploaded screenshot via VLM to identify issues: date header coloring, Reset Semua button, per-row reset column
+- Read AbsensiPage.tsx to understand current code structure
+- Fixed date header coloring: Added explicit `bg-white text-slate-700` class for normal weekday dates in both Header Row 2 (dates) and Header Row 3 (day names), ensuring clean dark text against white background
+- Removed `resetSiswaMutation` (per-student all-days reset) — lines 446-462
+- Removed `resetAllDialogOpen` state and `resetAllMutation` (reset all class) — lines 464-481
+- Removed "Reset Semua" button from toolbar — lines 803-810
+- Removed per-row reset column header (RotateCcw icon) — lines 919-926
+- Removed per-row reset cell (RotateCcw button per student) — lines 1081-1091
+- Removed Reset All confirmation AlertDialog — lines 1288-1309
+- Verified per-cell "Kosong" button in kode picker dialog still works for individual cell reset
+- Ran lint — no new errors from changes
+- Verified via agent browser: Reset Semua button gone, table compiles successfully
+
+Stage Summary:
+- Date headers for normal weekdays now have explicit white background and dark slate text (was inheriting unclear colors before)
+- "Reset Semua" feature completely removed (button, dialog, mutation, state)
+- Per-row reset column removed (RotateCcw column at right edge of table)
+- Admin can only reset individual cells: click cell → picker dialog → "Kosong" button
+- All changes compile successfully, no lint errors

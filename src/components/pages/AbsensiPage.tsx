@@ -443,43 +443,6 @@ export default function AbsensiPage() {
   });
 
   // ─── Fill all visible as "H" ─────────────────────────────────────────────
-  // ─── Reset per siswa (per row) ─────────────────────────────────────────
-  const resetSiswaMutation = useMutation({
-    mutationFn: async (siswaId: string) => {
-      // Delete all absensi records for this siswa in the current month
-      const r = await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}&siswaId=${siswaId}`, {
-        method: "DELETE",
-      });
-      if (!r.ok) throw new Error("Gagal menghapus");
-      return r.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Absensi siswa direset", description: "Semua data kehadiran siswa ini di bulan ini dikosongkan" });
-      setLocalChanges({});
-      qc.invalidateQueries({ queryKey: ["absensi-data"] });
-    },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  // ─── Reset all absensi for selected rombel in the month ────────────────
-  const [resetAllDialogOpen, setResetAllDialogOpen] = useState(false);
-  const resetAllMutation = useMutation({
-    mutationFn: async () => {
-      const r = await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}`, {
-        method: "DELETE",
-      });
-      if (!r.ok) throw new Error("Gagal menghapus");
-      return r.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Absensi direset", description: `Semua data kehadiran ${selectedRombel} bulan ${bulanStr} dikosongkan` });
-      setLocalChanges({});
-      setResetAllDialogOpen(false);
-      qc.invalidateQueries({ queryKey: ["absensi-data"] });
-    },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
   const fillAllMutation = useMutation({
     mutationFn: async (kode: string) => {
       const items: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
@@ -800,14 +763,6 @@ export default function AbsensiPage() {
                 {fillAllMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                 Isi Semua H
               </Button>
-              <Button
-                variant="outline" size="sm" className="gap-1.5 text-rose-500 border-rose-300 hover:bg-rose-50"
-                onClick={() => setResetAllDialogOpen(true)}
-                disabled={!selectedRombel}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset Semua
-              </Button>
               {hasChanges && (
                 <Button size="sm" className="gap-1.5" onClick={() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); saveMutation.mutate(); }} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -916,14 +871,7 @@ export default function AbsensiPage() {
                         {k.label}
                       </th>
                     ))}
-                    <th
-                      rowSpan={3}
-                      className="border border-slate-200 bg-slate-100 px-1 py-1 text-center font-bold text-rose-400 min-w-[36px] sticky right-0 z-20 print:hidden"
-                      style={{ top: 0 }}
-                      title="Kosongkan"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 inline" />
-                    </th>
+
                   </tr>
                   {/* ── Header Row 2: Dates ── */}
                   <tr className="bg-slate-50 print:bg-gray-100">
@@ -936,11 +884,15 @@ export default function AbsensiPage() {
                       const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
                       const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
                       const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
+                      const isNormalDay = !isWeekend && !liburInfo;
                       return (
                         <th
                           key={day}
-                          className="border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px]"
-                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : { color: "" }}
+                          className={cn(
+                            "border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px]",
+                            isNormalDay && "bg-white text-slate-700"
+                          )}
+                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : undefined}
                         >
                           <span className={isWeekend || liburInfo ? "line-through opacity-80" : ""}>{day}</span>
                         </th>
@@ -958,11 +910,15 @@ export default function AbsensiPage() {
                       const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
                       const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
                       const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
+                      const isNormalDay = !isWeekend && !liburInfo;
                       return (
                         <th
                           key={day}
-                          className="border border-slate-200 px-0.5 py-0 text-[9px] text-center"
-                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : { color: "" }}
+                          className={cn(
+                            "border border-slate-200 px-0.5 py-0 text-[9px] text-center",
+                            isNormalDay && "bg-white text-slate-700"
+                          )}
+                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : undefined}
                         >
                           {liburInfo && !isWeekend ? (
                             <span className="truncate" title={liburInfo.label}>{liburInfo.label.length > 3 ? liburInfo.label.slice(0, 3) : liburInfo.label}</span>
@@ -1078,17 +1034,6 @@ export default function AbsensiPage() {
                             </span>
                           </td>
                         ))}
-                        {/* Reset per-siswa */}
-                        <td className="border border-slate-200 text-center print:hidden sticky right-0 z-10 bg-white">
-                          <button
-                            className="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors print:hidden"
-                            title="Kosongkan absensi siswa ini"
-                            onClick={() => resetSiswaMutation.mutate(siswa.id)}
-                            disabled={resetSiswaMutation.isPending}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}
@@ -1284,30 +1229,6 @@ export default function AbsensiPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* ─── Reset All Confirmation Dialog ───────────────────────────────── */}
-      <AlertDialog open={resetAllDialogOpen} onOpenChange={setResetAllDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset Semua Data Absensi?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Semua data kehadiran untuk <strong>{selectedRombel}</strong> pada bulan <strong>{BULAN_NAMES[selectedMonth - 1]} {selectedYear}</strong> akan dikosongkan.
-              Data yang sudah diisi akan hilang dan tidak bisa dikembalikan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-rose-600 hover:bg-rose-700 text-white"
-              onClick={() => resetAllMutation.mutate()}
-              disabled={resetAllMutation.isPending}
-            >
-              {resetAllMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-              Ya, Reset Semua
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* ─── Kode Absensi Config Dialog ────────────────────────────────────── */}
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
