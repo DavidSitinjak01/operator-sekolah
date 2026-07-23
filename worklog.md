@@ -499,3 +499,26 @@ Stage Summary:
 - New features: Auto-save (3s debounce), beforeunload warning, visual save indicator
 - Dashboard sync: Already working via /api/dashboard API reading from Absensi table
 - Commit: d951978 pushed to main
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add ability to reset/clear attendance entries when there's a data entry mistake
+
+Work Log:
+- Fixed "Kosong" button: previously only removed from localChanges (client state), now actually deletes the record from DB
+- Changed handleSelectKode("") to store "" in localChanges when there's an existing DB record (marks for deletion)
+- Updated saveMutation to split items into toUpsert and toDelete arrays, handling both operations
+- Added resetSiswaMutation: deletes all absensi records for one student in current month via API DELETE
+- Added resetAllMutation: deletes all absensi records for entire rombel in current month
+- Added "Reset Semua" button (rose-colored) next to "Isi Semua H" in toolbar
+- Added per-siswa reset button (RotateCcw icon) in new sticky right column of table
+- Added header cell for reset column (rowSpan=3, RotateCcw icon)
+- Added confirmation AlertDialog for "Reset Semua" action
+- Updated API DELETE route to support optional siswaId and tanggal query params
+- Fixed absensiMap key separator consistency (found one more "-" that should be "|")
+- Fixed summaryPerSiswa to subtract deleted items instead of incrementing empty kode
+
+Stage Summary:
+- 3 reset levels: per-cell (Kosong in picker), per-siswa (row icon), per-class (Reset Semua button)
+- All deletions persist to database and sync to dashboard
+- Commit: ed3b357 pushed to main
