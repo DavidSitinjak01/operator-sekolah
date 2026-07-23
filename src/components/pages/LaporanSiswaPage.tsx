@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, Printer, ClipboardCheck, BookOpenCheck, ChevronDown,
-  Users, Loader2, AlertCircle,
+  Users, Loader2, AlertCircle, UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import {
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
 import LaporanSiswaPrintPage from "@/components/LaporanSiswaPrintPage";
+import LaporanPerSiswaPrintPage from "@/components/LaporanPerSiswaPrintPage";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type ReportMode = "kehadiran" | "catatan" | "lengkap";
@@ -83,18 +84,6 @@ interface CatatanResponse {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-const BULAN_NAMES = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
-
-function formatTanggal(dateStr: string): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return `${d.getDate()} ${BULAN_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 function getPersentaseColor(pct: number): string {
   if (pct >= 90) return "text-emerald-600 bg-emerald-50 border-emerald-200";
   if (pct >= 75) return "text-amber-600 bg-amber-50 border-amber-200";
@@ -113,6 +102,92 @@ const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string
 
 function getKategoriColor(kategori: string) {
   return KATEGORI_COLORS[kategori] || KATEGORI_COLORS["Lainnya"];
+}
+
+// ─── Student List Card with per-student print ────────────────────────────────
+function DaftarSiswaCard({
+  kehadiranData,
+  catatanData,
+  onPrintSiswa,
+}: {
+  kehadiranData: KehadiranResponse | null;
+  catatanData: CatatanResponse | null;
+  onPrintSiswa: (siswaId: string, siswaNama: string, nisn: string) => void;
+}) {
+  if (!kehadiranData) return null;
+
+  // Build catatan count map
+  const catatanCountMap = new Map<string, number>();
+  if (catatanData) {
+    for (const s of catatanData.summary) {
+      catatanCountMap.set(s.siswaId, s.catatan.length);
+    }
+  }
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-violet-600" />
+            Daftar Siswa — Cetak Per Siswa
+          </CardTitle>
+          <Badge variant="outline" className="text-[10px]">
+            {kehadiranData.summary.length} siswa
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Klik ikon cetak untuk mencetak laporan individual siswa (kehadiran + catatan)
+        </p>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="max-h-96">
+          <div className="space-y-1">
+            {kehadiranData.summary.map((siswa, idx) => {
+              const catatanCount = catatanCountMap.get(siswa.siswaId) || 0;
+              return (
+                <div
+                  key={siswa.siswaId}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors group"
+                >
+                  <span className="text-xs font-medium text-muted-foreground w-6 text-center">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{siswa.siswaNama}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-emerald-600">H:{siswa.H}</span>
+                      <span className="text-[10px] text-amber-600">S:{siswa.S}</span>
+                      <span className="text-[10px] text-blue-600">I:{siswa.I}</span>
+                      <span className="text-[10px] text-red-600">A:{siswa.A}</span>
+                      {catatanCount > 0 && (
+                        <span className="text-[10px] text-violet-600">Catatan:{catatanCount}</span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px] font-semibold px-1.5 py-0 shrink-0", getPersentaseColor(siswa.persentase))}
+                  >
+                    {siswa.persentase}%
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
+                    onClick={() => onPrintSiswa(siswa.siswaId, siswa.siswaNama, siswa.nisn)}
+                    title={`Cetak laporan ${siswa.siswaNama}`}
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Kehadiran Summary Card ────────────────────────────────────────────────
@@ -149,7 +224,6 @@ function KehadiranSummaryCard({ data }: { data: KehadiranResponse | null }) {
           </div>
         </div>
 
-        {/* Kehadiran detail per siswa */}
         <ScrollArea className="max-h-72">
           <div className="space-y-1.5">
             {data.summary.map((siswa, idx) => (
@@ -220,7 +294,6 @@ function CatatanSummaryCard({ data }: { data: CatatanResponse | null }) {
           </div>
         </div>
 
-        {/* Catatan detail per siswa */}
         <ScrollArea className="max-h-72">
           <div className="space-y-2">
             {data.summary.length === 0 ? (
@@ -255,7 +328,6 @@ function CatatanSummaryCard({ data }: { data: CatatanResponse | null }) {
                               </p>
                             )}
                           </div>
-                          <span className="text-[10px] text-muted-foreground shrink-0">{formatTanggal(c.tanggal)}</span>
                         </div>
                       );
                     })}
@@ -281,6 +353,13 @@ export default function LaporanSiswaPage() {
   const [reportMode, setReportMode] = useState<ReportMode>("lengkap");
   const [laporanOpen, setLaporanOpen] = useState(false);
 
+  // Per-student print state
+  const [printSiswa, setPrintSiswa] = useState<{
+    siswaId: string;
+    siswaNama: string;
+    nisn: string;
+  } | null>(null);
+
   // ─── Fetch rombel list ──────────────────────────────────────────────────
   const { data: rombelList = [], isLoading: rombelLoading } = useQuery({
     queryKey: ["absensi-rombel", tahunPelajaran, semester],
@@ -301,7 +380,7 @@ export default function LaporanSiswaPage() {
       if (!res.ok) throw new Error("Gagal memuat data kehadiran");
       return res.json() as Promise<KehadiranResponse>;
     },
-    enabled: !!selectedRombel && (reportMode === "kehadiran" || reportMode === "lengkap"),
+    enabled: !!selectedRombel,
   });
 
   // ─── Fetch catatan data for preview ───────────────────────────────────────
@@ -313,15 +392,14 @@ export default function LaporanSiswaPage() {
       if (!res.ok) throw new Error("Gagal memuat data catatan");
       return res.json() as Promise<CatatanResponse>;
     },
-    enabled: !!selectedRombel && (reportMode === "catatan" || reportMode === "lengkap"),
+    enabled: !!selectedRombel,
   });
 
   const showKehadiran = reportMode === "kehadiran" || reportMode === "lengkap";
   const showCatatan = reportMode === "catatan" || reportMode === "lengkap";
 
-  const isLoading = (showKehadiran && kehadiranLoading) || (showCatatan && catatanLoading);
+  const isLoading = kehadiranLoading || catatanLoading;
 
-  // ─── Effective rombel (considering search) ───────────────────────────────
   const effectiveRombel = selectedRombel;
 
   // ─── Report mode config ──────────────────────────────────────────────────
@@ -343,6 +421,10 @@ export default function LaporanSiswaPage() {
     },
   };
 
+  const handlePrintSiswa = (siswaId: string, siswaNama: string, nisn: string) => {
+    setPrintSiswa({ siswaId, siswaNama, nisn });
+  };
+
   return (
     <div className="space-y-6">
       {/* ─── Page Header ─────────────────────────────────────────────── */}
@@ -352,7 +434,7 @@ export default function LaporanSiswaPage() {
           Laporan Penilaian Siswa
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Cetak laporan gabungan kehadiran dan catatan siswa untuk kenaikan kelas
+          Cetak laporan gabungan kehadiran dan catatan siswa — per kelas atau per siswa individual
         </p>
       </div>
 
@@ -427,7 +509,7 @@ export default function LaporanSiswaPage() {
           className="gap-2 shrink-0"
         >
           <Printer className="h-4 w-4" />
-          <span className="hidden sm:inline">Cetak Laporan</span>
+          <span className="hidden sm:inline">Cetak Per Kelas</span>
           <span className="sm:hidden">Cetak</span>
         </Button>
       </div>
@@ -447,7 +529,7 @@ export default function LaporanSiswaPage() {
       {isLoading && selectedRombel && (
         <div className="space-y-4">
           <Skeleton className="h-48 w-full rounded-xl" />
-          {(showKehadiran && showCatatan) && <Skeleton className="h-48 w-full rounded-xl" />}
+          <Skeleton className="h-48 w-full rounded-xl" />
         </div>
       )}
 
@@ -464,6 +546,15 @@ export default function LaporanSiswaPage() {
         </div>
       )}
 
+      {/* ─── Daftar Siswa with per-student print ───────────────────────── */}
+      {!isLoading && selectedRombel && kehadiranData && (
+        <DaftarSiswaCard
+          kehadiranData={kehadiranData}
+          catatanData={catatanData ?? null}
+          onPrintSiswa={handlePrintSiswa}
+        />
+      )}
+
       {/* ─── Kehadiran Preview ───────────────────────────────────────── */}
       {!isLoading && selectedRombel && showKehadiran && (
         <KehadiranSummaryCard data={kehadiranData ?? null} />
@@ -474,7 +565,7 @@ export default function LaporanSiswaPage() {
         <CatatanSummaryCard data={catatanData ?? null} />
       )}
 
-      {/* ─── Legend for persentase colors ────────────────────────────── */}
+      {/* ─── Legend ────────────────────────────────────────────────────── */}
       {selectedRombel && showKehadiran && kehadiranData && !isLoading && (
         <div className="flex items-center gap-4 flex-wrap px-1">
           <span className="text-xs text-muted-foreground">Keterangan:</span>
@@ -494,7 +585,7 @@ export default function LaporanSiswaPage() {
         </div>
       )}
 
-      {/* ─── Print Dialog ────────────────────────────────────────────── */}
+      {/* ─── Print Dialog (per kelas) ────────────────────────────────── */}
       <LaporanSiswaPrintPage
         open={laporanOpen}
         onClose={() => setLaporanOpen(false)}
@@ -503,6 +594,20 @@ export default function LaporanSiswaPage() {
         semester={semester}
         mode={reportMode}
       />
+
+      {/* ─── Print Dialog (per siswa) ────────────────────────────────── */}
+      {printSiswa && (
+        <LaporanPerSiswaPrintPage
+          open={!!printSiswa}
+          onClose={() => setPrintSiswa(null)}
+          siswaId={printSiswa.siswaId}
+          siswaNama={printSiswa.siswaNama}
+          nisn={printSiswa.nisn}
+          rombel={effectiveRombel}
+          tahunPelajaran={tahunPelajaran}
+          semester={semester}
+        />
+      )}
     </div>
   );
 }

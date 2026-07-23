@@ -594,3 +594,19 @@ Stage Summary:
 - Kehadiran laporan uses Siswa as primary source, matches Absensi records by ID then by name
 - Catatan laporan shows all students in class with their catatan (if any)
 - Both APIs have fallback logic for cross-table compatibility
+
+---
+Task ID: 3
+Agent: main
+Task: Add cetak laporan per siswa + fix login page session
+
+Work Log:
+- Created /src/app/api/laporan-per-siswa/route.ts: GET API that returns combined data for one student (siswa info, kehadiran H/S/I/A, detail absensi per tanggal, catatan list)
+- Created /src/components/LaporanPerSiswaPrintPage.tsx: Dialog-based print preview with A4 formatting, kop surat, 3 sections (Rekap Kehadiran, Rincian Kehadiran Harian, Catatan Siswa), tanda tangan
+- Updated /src/components/pages/LaporanSiswaPage.tsx: Added DaftarSiswaCard component with per-student print buttons, renamed main button to "Cetak Per Kelas", added state management for per-student print dialog
+- Fixed /src/lib/auth.ts: Reduced session.maxAge from 8 hours to 15 minutes so users must login each time
+
+Stage Summary:
+- Per-student print: select class → see student list → click printer icon on any student → print dialog with combined attendance + notes report
+- Per-class print: unchanged, click "Cetak Per Kelas" button
+- Login: session expires after 15 minutes, user must re-login
