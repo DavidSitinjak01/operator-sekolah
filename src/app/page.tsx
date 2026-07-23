@@ -68,7 +68,7 @@ const navItems = [
   { key: "mutasi-masuk" as const, label: "Mutasi Masuk", icon: LogIn },
   { key: "mutasi-keluar" as const, label: "Mutasi Keluar", icon: LogOut },
   { key: "guru" as const, label: "Data Guru", icon: GraduationCap },
-  { key: "jadwal-pelajaran" as const, label: "Jadwal Pelajaran", icon: CalendarClock },
+  { key: "jadwal-pelajaran" as const, label: "Jadwal Pelajaran", icon: CalendarClock, adminOrOperator: true },
   { key: "absensi" as const, label: "Absensi Siswa", icon: ClipboardCheck, adminOrOperator: true },
   { key: "catatan-siswa" as const, label: "Catatan Siswa", icon: FileText, adminOrOperator: true },
   { key: "laporan-siswa" as const, label: "Laporan Siswa", icon: BookOpenCheck, adminOrOperator: true },
