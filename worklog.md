@@ -577,3 +577,20 @@ Stage Summary:
 - Default mode is "Laporan Kenaikan Kelas" (lengkap) which shows both kehadiran and catatan
 - Print dialog generates formal A4 report with kop surat, tables, and signature area
 - No new API endpoints needed — reuses existing /api/catatan-siswa/laporan and /api/laporan-catatan
+
+---
+Task ID: 2
+Agent: main
+Task: Fix Laporan Siswa page - empty dropdown and missing kehadiran data
+
+Work Log:
+- Investigated issue: dropdown rombel was empty because it fetched from /api/absensi/rombel (AbsensiSiswa table) which has no data, while students exist in /api/siswa/rombel (Siswa table)
+- Fixed LaporanSiswaPage.tsx: changed rombel source from /api/absensi/rombel to /api/siswa/rombel
+- Updated /api/catatan-siswa/laporan/route.ts: now uses Siswa table as primary source (with AbsensiSiswa as fallback), matches attendance records by both ID and name for cross-table compatibility
+- Updated /api/laporan-catatan/route.ts: now uses Siswa table as student source, matches catatan by both ID and name, shows ALL students in class (even without catatan)
+
+Stage Summary:
+- Dropdown now shows 22 classes from Siswa table
+- Kehadiran laporan uses Siswa as primary source, matches Absensi records by ID then by name
+- Catatan laporan shows all students in class with their catatan (if any)
+- Both APIs have fallback logic for cross-table compatibility

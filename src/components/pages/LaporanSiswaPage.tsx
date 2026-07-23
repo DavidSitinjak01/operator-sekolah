@@ -285,7 +285,7 @@ export default function LaporanSiswaPage() {
   const { data: rombelList = [], isLoading: rombelLoading } = useQuery({
     queryKey: ["absensi-rombel", tahunPelajaran, semester],
     queryFn: async () => {
-      const res = await fetch(`/api/absensi/rombel?tahunPelajaran=${tahunPelajaran}&semester=${semester}`);
+      const res = await fetch(`/api/siswa/rombel?tahunPelajaran=${tahunPelajaran}&semester=${semester}`);
       if (!res.ok) return [];
       return res.json() as Promise<string[]>;
     },

@@ -17,17 +17,55 @@ export async function GET(req: NextRequest) {
 
     if (!rombel) return NextResponse.json({ error: "rombel wajib" }, { status: 400 });
 
-    // Fetch all students in this rombel
-    const siswaList = await db.absensiSiswa.findMany({
-      where: { tahunPelajaran, semester, rombel },
+    // Fetch all students in this rombel from Siswa table (primary data source)
+    const siswaList = await db.siswa.findMany({
+      where: { tahunPelajaran, semester, rombel, status: "Aktif" },
       orderBy: { nama: "asc" },
+      select: { id: true, nama: true, nisn: true, jenisKelamin: true, rombel: true },
     });
+
+    // Also try from AbsensiSiswa as fallback (in case students are only there)
+    const absensiSiswaList = siswaList.length === 0
+      ? await db.absensiSiswa.findMany({
+          where: { tahunPelajaran, semester, rombel },
+          orderBy: { nama: "asc" },
+        })
+      : [];
+
+    // Use whichever has data
+    const students = siswaList.length > 0
+      ? siswaList.map((s) => ({ id: s.id, nama: s.nama, nisn: s.nisn, jenisKelamin: s.jenisKelamin, rombel: s.rombel }))
+      : absensiSiswaList.map((s) => ({ id: s.id, nama: s.nama, nisn: s.nisn, jenisKelamin: s.jenisKelamin, rombel: s.rombel }));
+
+    // Collect all student IDs and names for matching
+    const studentIds = new Set(students.map((s) => s.id));
+    const studentNames = new Map(students.map((s) => [s.nama.toLowerCase(), s]));
 
     // Fetch all absensi records for this rombel
     const absensiRecords = await db.absensi.findMany({
       where: { tahunPelajaran, semester, rombel },
       orderBy: { tanggal: "asc" },
     });
+
+    // Build a map of siswaId -> records (using ID match)
+    const absensiById = new Map<string, typeof absensiRecords>();
+    // Build a map of nama -> records (using name match as fallback)
+    const absensiByName = new Map<string, typeof absensiRecords>();
+
+    for (const record of absensiRecords) {
+      // Map by siswaId
+      if (!absensiById.has(record.siswaId)) {
+        absensiById.set(record.siswaId, []);
+      }
+      absensiById.get(record.siswaId)!.push(record);
+
+      // Also map by siswaNama for cross-table matching
+      const nameKey = record.siswaNama.toLowerCase();
+      if (!absensiByName.has(nameKey)) {
+        absensiByName.set(nameKey, []);
+      }
+      absensiByName.get(nameKey)!.push(record);
+    }
 
     // Get unique dates sorted
     const allDates = [...new Set(absensiRecords.map((a) => a.tanggal))].sort();
@@ -47,8 +85,14 @@ export async function GET(req: NextRequest) {
       persentase: number;
     }[] = [];
 
-    for (const siswa of siswaList) {
-      const records = absensiRecords.filter((a) => a.siswaId === siswa.id);
+    for (const siswa of students) {
+      // Try matching by ID first, then by name
+      let records = absensiById.get(siswa.id);
+      if (!records || records.length === 0) {
+        records = absensiByName.get(siswa.nama.toLowerCase());
+      }
+      if (!records) records = [];
+
       const H = records.filter((r) => r.kodeAbsensi === "H").length;
       const S = records.filter((r) => r.kodeAbsensi === "S").length;
       const I = records.filter((r) => r.kodeAbsensi === "I").length;
@@ -59,9 +103,9 @@ export async function GET(req: NextRequest) {
       summary.push({
         siswaId: siswa.id,
         siswaNama: siswa.nama,
-        nisn: siswa.nisn,
+        nisn: siswa.nisn || "",
         rombel: siswa.rombel,
-        jenisKelamin: siswa.jenisKelamin,
+        jenisKelamin: siswa.jenisKelamin || "",
         totalHariEfektif,
         H, S, I, A,
         persentase,
@@ -69,9 +113,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Class totals
-    const totalSiswa = siswaList.length;
-    const totalLaki = siswaList.filter((s) => s.jenisKelamin === "L").length;
-    const totalPerempuan = siswaList.filter((s) => s.jenisKelamin === "P").length;
+    const totalSiswa = students.length;
+    const totalLaki = students.filter((s) => s.jenisKelamin === "L").length;
+    const totalPerempuan = students.filter((s) => s.jenisKelamin === "P").length;
     const avgPersentase = totalSiswa > 0
       ? Math.round(summary.reduce((a, b) => a + b.persentase, 0) / totalSiswa)
       : 0;
