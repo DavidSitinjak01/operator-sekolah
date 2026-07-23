@@ -1,0 +1,1429 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import {
+     6→  ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
+     7→  Download, Trash2, Settings2, Loader2, Users, BookOpenCheck,
+     8→  RotateCcw, X, Check, CalendarOff, Plus, Pencil, Upload, UserCheck,
+     9→  CalendarCheck, CalendarDays,
+    10→} from "lucide-react";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    14→import { Badge } from "@/components/ui/badge";
+    15→import { Skeleton } from "@/components/ui/skeleton";
+    16→import {
+    17→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    18→} from "@/components/ui/select";
+    19→import {
+    20→  AlertDialog, AlertDialogAction, AlertDialogCancel,
+    21→  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    22→  AlertDialogHeader, AlertDialogTitle,
+    23→} from "@/components/ui/alert-dialog";
+    24→import {
+    25→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    26→  DialogDescription, DialogFooter,
+    27→} from "@/components/ui/dialog";
+    28→import {
+    29→  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    30→  DropdownMenuTrigger, DropdownMenuSeparator,
+    31→} from "@/components/ui/dropdown-menu";
+    32→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    33→import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+    34→import { Label } from "@/components/ui/label";
+    35→import { useToast } from "@/hooks/use-toast";
+    36→import { useAppStore } from "@/store/app";
+    37→import { cn } from "@/lib/utils";
+    38→
+    39→// ─── Types ─────────────────────────────────────────────────────────────────
+    40→interface SiswaListItem {
+    41→  id: string;
+    42→  no: string;
+    43→  nama: string;
+    44→  nisn: string;
+    45→  rombel: string;
+    46→  jenisKelamin: string;
+    47→}
+    48→
+    49→interface AbsensiItem {
+    50→  id: string;
+    51→  siswaId: string;
+    52→  siswaNama: string;
+    53→  nisn: string;
+    54→  rombel: string;
+    55→  tanggal: string;
+    56→  kodeAbsensi: string;
+    57→  tahunPelajaran: string;
+    58→  semester: string;
+    59→}
+    60→
+    61→interface HariLiburItem {
+    62→  id: string;
+    63→  tanggal: string;
+    64→  label: string;
+    65→  kategori: string;
+    66→  tahunPelajaran: string;
+    67→}
+    68→
+    69→// Color per holiday category — sesuai legend Kalender Pendidikan (10 warna)
+    70→const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+    71→  "Libur Nasional":          { bg: "#FEE2E2", text: "#991B1B", border: "#FECACA" },   // 1. 🔴 Merah — Libur umum & nasional
+    72→  "Libur Semester":          { bg: "#FFF7ED", text: "#9A3412", border: "#FED7AA" },   // 2. 🟠 Oranye Muda — Libur semester
+    73→  "Asesmen":                 { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" },   // 3. 🟢 Hijau — Asesmen / Ujian
+    74→  "Hari Pertama Masuk":      { bg: "#DBEAFE", text: "#1E3A5F", border: "#93C5FD" },   // 4. 🔵 Biru Tua — Hari pertama masuk sekolah
+    75→  "Penyerahan Rapor":        { bg: "#FEF08A", text: "#854D0E", border: "#FDE047" },   // 5. 🟡 Kuning — Penyerahan rapor & kelulusan
+    76→  "Weekend":                 { bg: "#FED7AA", text: "#78350F", border: "#FDBA74" },   // 6. 🟤 Oranye/Coklat — Tidak termasuk 5 hari kerja
+    77→  "Perkiraan TKA":           { bg: "#CFFAFE", text: "#155E75", border: "#67E8F9" },   // 7. 🩵 Cyan/Biru Muda — Perkiraan pelaksanaan TKA
+    78→  "Hari Pendidikan Nasional":{ bg: "#E9D5FF", text: "#581C87", border: "#C084FC" },   // 8. 🟣 Ungu — Hari Pendidikan Nasional
+    79→  "Libur Khusus":            { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },   // 9. 🩷 Pink — Libur khusus
+    80→  "Hari Guru":               { bg: "#FEF9C3", text: "#A16207", border: "#FDE68A" },   // 10. 🟨 Kuning Muda — Hari Guru (tidak libur)
+    81→};
+    82→
+    83→// Kategori yang BLOK input absensi (hari tidak efektif)
+    84→const BLOCK_CATEGORIES = ["Libur Nasional", "Libur Khusus", "Libur Semester", "Penyerahan Rapor", "Hari Pendidikan Nasional", "Weekend"];
+    85→
+    86→// Kategori yang TIDAK BLOK (masih bisa input, tapi ditandai warna khusus)
+    87→const NON_BLOCK_CATEGORIES = ["Asesmen", "Perkiraan TKA", "Hari Pertama Masuk", "Hari Guru"];
+    88→
+    89→// Legend items for display
+    90→const KALENDER_LEGEND: { kategori: string; label: string; colorKey: string }[] = [
+    91→  { kategori: "Libur Nasional", label: "Libur Umum & Nasional", colorKey: "Libur Nasional" },
+    92→  { kategori: "Libur Semester", label: "Libur Semester", colorKey: "Libur Semester" },
+    93→  { kategori: "Asesmen", label: "Asesmen / Ujian", colorKey: "Asesmen" },
+    94→  { kategori: "Hari Pertama Masuk", label: "Hari Pertama Masuk Sekolah", colorKey: "Hari Pertama Masuk" },
+    95→  { kategori: "Penyerahan Rapor", label: "Penyerahan Rapor & Kelulusan", colorKey: "Penyerahan Rapor" },
+    96→  { kategori: "Weekend", label: "Tidak Termasuk 5 Hari Kerja", colorKey: "Weekend" },
+    97→  { kategori: "Perkiraan TKA", label: "Perkiraan Pelaksanaan TKA", colorKey: "Perkiraan TKA" },
+    98→  { kategori: "Hari Pendidikan Nasional", label: "Hari Pendidikan Nasional", colorKey: "Hari Pendidikan Nasional" },
+    99→  { kategori: "Libur Khusus", label: "Libur Khusus", colorKey: "Libur Khusus" },
+   100→  { kategori: "Hari Guru", label: "Hari Guru (Tidak Libur)", colorKey: "Hari Guru" },
+   101→];
+   102→
+   103→function getLiburColor(kategori: string) {
+   104→  return KATEGORI_COLORS[kategori] || { bg: "#F5F3FF", text: "#5B21B6", border: "#DDD6FE" };
+   105→}
+   106→
+   107→function isBlockedCategory(kategori: string): boolean {
+   108→  return BLOCK_CATEGORIES.includes(kategori);
+   109→}
+   110→
+   111→function isNonBlockedCategory(kategori: string): boolean {
+   112→  return NON_BLOCK_CATEGORIES.includes(kategori);
+   113→}
+   114→
+   115→interface KodeAbsensiItem {
+   116→  kode: string;
+   117→  label: string;
+   118→  color: string;
+   119→  bgColor: string;
+   120→}
+   121→
+   122→const DEFAULT_KODE_ABSENSI: KodeAbsensiItem[] = [
+   123→  { kode: "H", label: "Hadir", color: "#16A34A", bgColor: "#F0FDF4" },
+   124→  { kode: "S", label: "Sakit", color: "#D97706", bgColor: "#FFFBEB" },
+   125→  { kode: "I", label: "Izin", color: "#2563EB", bgColor: "#EFF6FF" },
+   126→  { kode: "A", label: "Alpa", color: "#DC2626", bgColor: "#FEF2F2" },
+   127→];
+   128→
+   129→const BULAN_NAMES = [
+   130→  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+   131→  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+   132→];
+   133→
+   134→const HARI_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+   135→
+   136→function getDaysInMonth(year: number, month: number): number {
+   137→  return new Date(year, month, 0).getDate();
+   138→}
+   139→
+   140→function getDayOfWeek(year: number, month: number, day: number): number {
+   141→  return new Date(year, month - 1, day).getDay();
+   142→}
+   143→
+   144→// ═══════════════════════════════════════════════════════════════════════════════
+   145→// MAIN PAGE
+   146→// ═══════════════════════════════════════════════════════════════════════════════
+   147→export default function AbsensiPage() {
+   148→  const { tahunPelajaran, semester } = useAppStore();
+   149→  const { toast } = useToast();
+   150→  const qc = useQueryClient();
+   151→
+   152→  // ─── Month/Year selector (early so queries can use bulanStr) ────────────
+   153→  const now = new Date();
+   154→  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
+   155→  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+   156→  const [selectedRombel, setSelectedRombel] = useState("");
+   157→  const [namaSekolah, setNamaSekolah] = useState("");
+   158→  const bulanStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+   159→
+   160→  // ─── Fetch hari libur for selected month ────────────────────────────────
+   161→  const { data: hariLiburList = [] } = useQuery({
+   162→    queryKey: ["hari-libur", tahunPelajaran, bulanStr],
+   163→    queryFn: async () => {
+   164→      const p = new URLSearchParams({ tahunPelajaran, bulan: bulanStr });
+   165→      const r = await fetch(`/api/absensi/libur?${p}`);
+   166→      if (!r.ok) throw new Error("Gagal");
+   167→      return r.json();
+   168→    },
+   169→    enabled: !!tahunPelajaran && !!bulanStr,
+   170→  });
+   171→
+   172→  const hariLiburMap = useMemo(() => {
+   173→    const map: Record<string, HariLiburItem> = {};
+   174→    for (const h of hariLiburList as HariLiburItem[]) {
+   175→      map[h.tanggal] = h;
+   176→    }
+   177→    return map;
+   178→  }, [hariLiburList]);
+   179→
+   180→  // ─── Libur form state ────────────────────────────────────────────────────
+   181→  const [liburFormOpen, setLiburFormOpen] = useState(false);
+   182→  const [liburTanggal, setLiburTanggal] = useState("");
+   183→  const [liburLabel, setLiburLabel] = useState("");
+   184→  const [liburKategori, setLiburKategori] = useState("Libur Nasional");
+   185→
+   186→  // ─── Seed kalender mutation ─────────────────────────────────────────────
+   187→  const seedKalenderMutation = useMutation({
+   188→    mutationFn: async () => {
+   189→      const r = await fetch("/api/absensi/libur/seed", {
+   190→        method: "POST",
+   191→        headers: { "Content-Type": "application/json" },
+   192→        body: JSON.stringify({ tahunPelajaran }),
+   193→      });
+   194→      const d = await r.json();
+   195→      if (!r.ok) throw new Error(d.error);
+   196→      return d;
+   197→    },
+   198→    onSuccess: (data) => {
+   199→      toast({ title: "Kalender Pendidikan berhasil dimuat", description: data.message });
+   200→      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+   201→    },
+   202→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   203→  });
+   204→
+   205→  const liburMutation = useMutation({
+   206→    mutationFn: async () => {
+   207→      const r = await fetch("/api/absensi/libur", {
+   208→        method: "POST",
+   209→        headers: { "Content-Type": "application/json" },
+   210→        body: JSON.stringify({ tanggal: liburTanggal, label: liburLabel, kategori: liburKategori, tahunPelajaran }),
+   211→      });
+   212→      const d = await r.json();
+   213→      if (!r.ok) throw new Error(d.error);
+   214→      return d;
+   215→    },
+   216→    onSuccess: () => {
+   217→      toast({ title: "Hari libur ditambahkan" });
+   218→      setLiburFormOpen(false);
+   219→      setLiburTanggal("");
+   220→      setLiburLabel("");
+   221→      setLiburKategori("Libur Nasional");
+   222→      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+   223→    },
+   224→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   225→  });
+   226→
+   227→  const deleteLiburMutation = useMutation({
+   228→    mutationFn: async (id: string) => {
+   229→      const r = await fetch(`/api/absensi/libur?id=${id}`, { method: "DELETE" });
+   230→      const d = await r.json();
+   231→      if (!r.ok) throw new Error(d.error);
+   232→      return d;
+   233→    },
+   234→    onSuccess: () => {
+   235→      toast({ title: "Hari libur dihapus" });
+   236→      qc.invalidateQueries({ queryKey: ["hari-libur"] });
+   237→    },
+   238→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   239→  });
+   240→
+   241→  // ─── Attendance Code Config ─────────────────────────────────────────────
+   242→  const [kodeConfig, setKodeConfig] = useState<KodeAbsensiItem[]>(DEFAULT_KODE_ABSENSI);
+   243→  const [configOpen, setConfigOpen] = useState(false);
+   244→
+   245→  // ─── Config mutation ───────────────────────────────────────────────────
+   246→  const kodeMutation = useMutation({
+   247→    mutationFn: async (newConfig: KodeAbsensiItem[]) => {
+   248→      const r = await fetch("/api/pengaturan", {
+   249→        method: "PUT",
+   250→        headers: { "Content-Type": "application/json" },
+   251→        body: JSON.stringify({ kode_absensi: JSON.stringify(newConfig) }),
+   252→      });
+   253→      const d = await r.json();
+   254→      if (!r.ok) throw new Error(d.error);
+   255→      return d;
+   256→    },
+   257→    onSuccess: () => {
+   258→      toast({ title: "Kode absensi disimpan" });
+   259→      setConfigOpen(false);
+   260→      qc.invalidateQueries({ queryKey: ["kode-absensi"] });
+   261→      qc.invalidateQueries({ queryKey: ["pengaturan"] });
+   262→    },
+   263→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   264→  });
+   265→
+   266→  // Load config from pengaturan
+   267→  const { data: savedConfig } = useQuery({
+   268→    queryKey: ["kode-absensi"],
+   269→    queryFn: async () => {
+   270→      const r = await fetch("/api/pengaturan");
+   271→      if (!r.ok) return null;
+   272→      const d = await r.json();
+   273→      setNamaSekolah(d.namaSekolah || "");
+   274→      return d.kode_absensi || null;
+   275→    },
+   276→    onSuccess: (val) => {
+   277→      if (val) {
+   278→        try {
+   279→          const parsed = JSON.parse(val as string);
+   280→          if (Array.isArray(parsed) && parsed.length > 0) {
+   281→            setKodeConfig(parsed);
+   282→          }
+   283→        } catch {}
+   284→      }
+   285→    },
+   286→  });
+   287→
+   288→  // ─── Fetch rombel list (from AbsensiSiswa — INDEPENDEN dari data utama) ─
+   289→  const { data: rombelList = [] } = useQuery({
+   290→    queryKey: ["absensi-rombel", tahunPelajaran, semester],
+   291→    queryFn: async () => {
+   292→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   293→      const r = await fetch(`/api/absensi/rombel?${p}`);
+   294→      if (!r.ok) throw new Error("Gagal");
+   295→      return r.json();
+   296→    },
+   297→    enabled: !!tahunPelajaran,
+   298→  });
+   299→
+   300→  // Set default rombel (computed, not useEffect)
+   301→  const effectiveRombel = selectedRombel || (rombelList.length > 0 ? rombelList[0] as string : "");
+   302→  // Auto-set if user hasn't chosen yet
+   303→  React.useEffect(() => {
+   304→    if (!selectedRombel && rombelList.length > 0) {
+   305→      setSelectedRombel(rombelList[0] as string);
+   306→    }
+   307→  }, [rombelList.length, selectedRombel]);
+   308→
+   309→  // ─── Fetch siswa by rombel (from AbsensiSiswa — INDEPENDEN dari data utama) ─
+   310→  const { data: siswaList = [], isLoading: isLoadingSiswa } = useQuery({
+   311→    queryKey: ["absensi-siswa", tahunPelajaran, semester, selectedRombel],
+   312→    queryFn: async () => {
+   313→      const p = new URLSearchParams({ tahunPelajaran, semester, rombel: selectedRombel });
+   314→      const r = await fetch(`/api/absensi/siswa?${p}`);
+   315→      if (!r.ok) throw new Error("Gagal");
+   316→      const d = await r.json();
+   317→      // Already sorted by numeric no on the server side
+   318→      const list: SiswaListItem[] = Array.isArray(d) ? d : [];
+   319→      return list.sort((a, b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
+   320→    },
+   321→    enabled: !!tahunPelajaran && !!selectedRombel,
+   322→  });
+   323→
+   324→  // ─── Fetch absensi for selected month ───────────────────────────────────
+   325→  const { data: absensiList = [], isLoading: isLoadingAbsensi } = useQuery({
+   326→    queryKey: ["absensi-data", tahunPelajaran, semester, selectedRombel, bulanStr],
+   327→    queryFn: async () => {
+   328→      const p = new URLSearchParams({ tahunPelajaran, semester, rombel: selectedRombel, bulan: bulanStr });
+   329→      const r = await fetch(`/api/absensi?${p}`);
+   330→      if (!r.ok) throw new Error("Gagal");
+   331→      return r.json();
+   332→    },
+   333→    enabled: !!tahunPelajaran && !!selectedRombel && !!bulanStr,
+   334→  });
+   335→
+   336→  // ─── Build absensi lookup map ────────────────────────────────────────────
+   337→  const absensiMap = useMemo(() => {
+   338→    const map: Record<string, AbsensiItem> = {};
+   339→    for (const a of absensiList as AbsensiItem[]) {
+   340→      map[`${a.siswaId}|${a.tanggal}`] = a;
+   341→    }
+   342→    return map;
+   343→  }, [absensiList]);
+   344→
+   345→  // ─── Build days for the month ───────────────────────────────────────────
+   346→  const daysInMonth = useMemo(() => getDaysInMonth(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
+   347→
+   348→  // ─── Local changes state (unsaved) ─────────────────────────────────────
+   349→  // Values: "H", "S", "I", "A" = set kode; "" (empty string) = delete record
+   350→  const [localChanges, setLocalChanges] = useState<Record<string, string>>({});
+   351→
+   352→  const getCellKode = useCallback((siswaId: string, tanggal: string): string => {
+   353→    const localKey = `${siswaId}|${tanggal}`;
+   354→    if (localKey in localChanges) return localChanges[localKey];
+   355→    const existing = absensiMap[localKey];
+   356→    return existing?.kodeAbsensi || "";
+   357→  }, [absensiMap, localChanges]);
+   358→
+   359→  // ─── Cell selection dialog state ──────────────────────────────────────
+   360→  const [selectedCell, setSelectedCell] = useState<{ siswaId: string; siswaNama: string; tanggal: string; currentKode: string } | null>(null);
+   361→
+   362→  const handleCellClick = useCallback((siswaId: string, tanggal: string, currentKode: string) => {
+   363→    const dow = getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2]));
+   364→    if (dow === 0 || dow === 6) return;
+   365→    const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
+   366→    setSelectedCell({
+   367→      siswaId,
+   368→      siswaNama: siswa?.nama || "",
+   369→      tanggal,
+   370→      currentKode,
+   371→    });
+   372→  }, [selectedYear, selectedMonth, siswaList]);
+   373→
+   374→  const handleSelectKode = useCallback((kode: string) => {
+   375→    if (!selectedCell) return;
+   376→    setLocalChanges((prev) => {
+   377→      const next = { ...prev };
+   378→      const localKey = `${selectedCell.siswaId}|${selectedCell.tanggal}`;
+   379→      if (kode === "") {
+   380→        // Mark for deletion: only store "" if there's an existing DB record
+   381→        const existing = absensiMap[localKey];
+   382→        if (existing) {
+   383→          next[localKey] = ""; // signal to delete this record on save
+   384→        } else {
+   385→          delete next[localKey]; // nothing in DB, just remove local override
+   386→        }
+   387→      } else {
+   388→        next[localKey] = kode;
+   389→      }
+   390→      return next;
+   391→    });
+   392→    setSelectedCell(null);
+   393→  }, [selectedCell, absensiMap]);
+   394→
+   395→  // ─── Save mutation (handles both save and delete) ────────────────────
+   396→  const saveMutation = useMutation({
+   397→    mutationFn: async () => {
+   398→      const entries = Object.entries(localChanges);
+   399→      const toUpsert: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
+   400→      const toDelete: { siswaId: string; tanggal: string }[] = [];
+   401→
+   402→      for (const [key, kodeAbsensi] of entries) {
+   403→        const [siswaId, tanggal] = key.split("|");
+   404→        if (kodeAbsensi === "") {
+   405→          toDelete.push({ siswaId, tanggal });
+   406→        } else {
+   407→          const siswa = (siswaList as SiswaListItem[]).find((s) => s.id === siswaId);
+   408→          toUpsert.push({
+   409→            siswaId,
+   410→            siswaNama: siswa?.nama || "",
+   411→            nisn: siswa?.nisn || "",
+   412→            rombel: selectedRombel,
+   413→            tanggal,
+   414→            kodeAbsensi,
+   415→          });
+   416→        }
+   417→      }
+   418→
+   419→      // Upsert items
+   420→      if (toUpsert.length > 0) {
+   421→        const r = await fetch("/api/absensi", {
+   422→          method: "POST",
+   423→          headers: { "Content-Type": "application/json" },
+   424→          body: JSON.stringify({ items: toUpsert, tahunPelajaran, semester }),
+   425→        });
+   426→        const d = await r.json();
+   427→        if (!r.ok) throw new Error(d.error);
+   428→      }
+   429→
+   430→      // Delete items (empty kodeAbsensi)
+   431→      for (const item of toDelete) {
+   432→        await fetch(`/api/absensi?rombel=${selectedRombel}&bulan=${bulanStr}&tahunPelajaran=${tahunPelajaran}&semester=${semester}&siswaId=${item.siswaId}&tanggal=${item.tanggal}`, {
+   433→          method: "DELETE",
+   434→        });
+   435→      }
+   436→
+   437→      return { saved: toUpsert.length, deleted: toDelete.length };
+   438→    },
+   439→    onSuccess: (data) => {
+   440→      const parts: string[] = [];
+   441→      if (data.saved > 0) parts.push(`${data.saved} disimpan`);
+   442→      if (data.deleted > 0) parts.push(`${data.deleted} dihapus`);
+   443→      toast({ title: "Absensi diperbarui", description: parts.join(", ") || "Tidak ada perubahan" });
+   444→      setLocalChanges({});
+   445→      qc.invalidateQueries({ queryKey: ["absensi-data"] });
+   446→    },
+   447→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   448→  });
+   449→
+   450→  // ─── Fill all students Hadir for a specific date (today / tomorrow) ────
+   451→  const fillDayMutation = useMutation({
+   452→    mutationFn: async ({ tanggal, label }: { tanggal: string; label: string }) => {
+   453→      // Check if blocked (weekend or blocked holiday)
+   454→      const dow = getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2]));
+   455→      if (dow === 0 || dow === 6) throw new Error(`Tanggal ${label} jatuh pada hari libur (weekend)`);
+   456→      const liburInfo = hariLiburMap[tanggal];
+   457→      if (liburInfo && isBlockedCategory(liburInfo.kategori)) throw new Error(`Tanggal ${label} adalah hari ${liburInfo.kategori}: ${liburInfo.label}`);
+   458→
+   459→      const items: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
+   460→      for (const siswa of siswaList as SiswaListItem[]) {
+   461→        items.push({
+   462→          siswaId: siswa.id,
+   463→          siswaNama: siswa.nama,
+   464→          nisn: siswa.nisn,
+   465→          rombel: selectedRombel,
+   466→          tanggal,
+   467→          kodeAbsensi: "H",
+   468→        });
+   469→      }
+   470→      const r = await fetch("/api/absensi", {
+   471→        method: "POST",
+   472→        headers: { "Content-Type": "application/json" },
+   473→        body: JSON.stringify({ items, tahunPelajaran, semester }),
+   474→      });
+   475→      const d = await r.json();
+   476→      if (!r.ok) throw new Error(d.error);
+   477→      return d;
+   478→    },
+   479→    onSuccess: (data, vars) => {
+   480→      toast({ title: "Berhasil", description: `${data.count} siswa diisi Hadir untuk ${vars.label}` });
+   481→      setLocalChanges({});
+   482→      qc.invalidateQueries({ queryKey: ["absensi-data"] });
+   483→    },
+   484→    onError: (e: Error) => toast({ title: "Gagal", description: e.message, variant: "destructive" }),
+   485→  });
+   486→
+   487→  // ─── Summary per siswa ─────────────────────────────────────────────────
+   488→  const summaryPerSiswa = useMemo(() => {
+   489→    const summary: Record<string, Record<string, number>> = {};
+   490→    for (const siswa of siswaList as SiswaListItem[]) {
+   491→      summary[siswa.id] = {};
+   492→      for (const k of kodeConfig) {
+   493→        summary[siswa.id][k.kode] = 0;
+   494→      }
+   495→    }
+   496→    for (const a of absensiList as AbsensiItem[]) {
+   497→      if (summary[a.siswaId] && a.kodeAbsensi in summary[a.siswaId]) {
+   498→        summary[a.siswaId][a.kodeAbsensi]++;
+   499→      }
+   500→    }
+   501→    // Also count local changes (including deletions)
+   502→    for (const [key, kode] of Object.entries(localChanges)) {
+   503→      const [siswaId, tanggal] = key.split("|");
+   504→      if (!summary[siswaId]) continue;
+   505→      if (kode === "") {
+   506→        // Deletion: subtract the existing DB value from summary
+   507→        const existing = absensiMap[key];
+   508→        if (existing && existing.kodeAbsensi in summary[siswaId]) {
+   509→          summary[siswaId][existing.kodeAbsensi] = Math.max(0, summary[siswaId][existing.kodeAbsensi] - 1);
+   510→        }
+   511→      } else if (kode in summary[siswaId]) {
+   512→        summary[siswaId][kode]++;
+   513→      }
+   514→    }
+   515→    return summary;
+   516→  }, [absensiList, siswaList, localChanges, kodeConfig]);
+   517→
+   518→  // ─── Student gender counts (for print & info) ─────────────────────────
+   519→  const siswaCounts = useMemo(() => {
+   520→    const list = siswaList as SiswaListItem[];
+   521→    const l = list.filter((s) => s.jenisKelamin === "L").length;
+   522→    const p = list.filter((s) => s.jenisKelamin === "P").length;
+   523→    return { l, p, total: l + p };
+   524→  }, [siswaList]);
+   525→
+   526→  // ─── Print handler ─────────────────────────────────────────────────────
+   527→  const handlePrint = () => window.print();
+   528→
+   529→  // ─── Excel export handler ──────────────────────────────────────────────
+   530→  const [isExporting, setIsExporting] = useState(false);
+   531→  const handleExportExcel = useCallback(async () => {
+   532→    if (!tahunPelajaran || !selectedRombel || !bulanStr) return;
+   533→    setIsExporting(true);
+   534→    try {
+   535→      const p = new URLSearchParams({ tahunPelajaran, semester, rombel: selectedRombel, bulan: bulanStr });
+   536→      const r = await fetch(`/api/absensi/export?${p}`);
+   537→      if (!r.ok) throw new Error("Gagal mengekspor");
+   538→      const blob = await r.blob();
+   539→      const url = window.URL.createObjectURL(blob);
+   540→      const a = document.createElement("a");
+   541→      a.href = url;
+   542→      const cd = r.headers.get("Content-Disposition") || "";
+   543→      const match = cd.match(/filename="(.+?)"/);
+   544→      a.download = match ? match[1] : `Absensi_${selectedRombel}_${bulanStr}.xlsx`;
+   545→      document.body.appendChild(a);
+   546→      a.click();
+   547→      a.remove();
+   548→      window.URL.revokeObjectURL(url);
+   549→      toast({ title: "Excel berhasil diunduh" });
+   550→    } catch (e: unknown) {
+   551→      toast({ title: "Error", description: e instanceof Error ? e.message : "Gagal export", variant: "destructive" });
+   552→    } finally {
+   553→      setIsExporting(false);
+   554→    }
+   555→  }, [tahunPelajaran, semester, selectedRombel, bulanStr, toast]);
+   556→
+   557→  // ─── Upload Excel siswa → AbsensiSiswa (INDEPENDEN dari data utama) ─────
+   558→  const fileInputRef = React.useRef<HTMLInputElement>(null);
+   559→  const [uploadResult, setUploadResult] = useState<{
+   560→    success: boolean;
+   561→    message: string;
+   562→    total: number;
+   563→    matched: number;
+   564→    updated: number;
+   565→    created: number;
+   566→    notFound: string[];
+   567→    errors: string[];
+   568→    kelasList: string[];
+   569→  } | null>(null);
+   570→  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+   571→
+   572→  const uploadMutation = useMutation({
+   573→    mutationFn: async (file: File) => {
+   574→      const fd = new FormData();
+   575→      fd.append("file", file);
+   576→      fd.append("tahunPelajaran", tahunPelajaran);
+   577→      fd.append("semester", semester);
+   578→      const r = await fetch("/api/absensi/upload-siswa", {
+   579→        method: "POST",
+   580→        body: fd,
+   581→      });
+   582→      const d = await r.json();
+   583→      if (!r.ok) throw new Error(d.detail ? `${d.error}: ${d.detail}` : d.error || `Error ${r.status}`);
+   584→      return d;
+   585→    },
+   586→    onSuccess: (data) => {
+   587→      setUploadResult(data);
+   588→      setUploadDialogOpen(true);
+   589→      toast({ title: "Upload siswa absensi selesai", description: data.message });
+   590→      qc.invalidateQueries({ queryKey: ["absensi-siswa"] });
+   591→      qc.invalidateQueries({ queryKey: ["absensi-rombel"] });
+   592→    },
+   593→    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+   594→  });
+   595→
+   596→  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   597→    const file = e.target.files?.[0];
+   598→    if (file) {
+   599→      uploadMutation.mutate(file);
+   600→      e.target.value = "";
+   601→    }
+   602→  };
+   603→
+   604→  const hasChanges = Object.keys(localChanges).length > 0;
+   605→
+   606→  // ─── Auto-save with debounce (3 detik setelah perubahan terakhir) ─────
+   607→  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+   608→  const isAutoSavingRef = useRef(false);
+   609→
+   610→  // Effect: trigger auto-save 3 seconds after last local change
+   611→  useEffect(() => {
+   612→    if (!hasChanges || isAutoSavingRef.current) return;
+   613→    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+   614→    autoSaveTimerRef.current = setTimeout(() => {
+   615→      isAutoSavingRef.current = true;
+   616→      saveMutation.mutate(undefined, {
+   617→        onSuccess: () => { isAutoSavingRef.current = false; },
+   618→        onError: () => { isAutoSavingRef.current = false; },
+   619→      });
+   620→    }, 3000);
+   621→    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+   622→  }, [localChanges]);
+   623→
+   624→  // ─── beforeunload: peringatkan jika ada perubahan yang belum tersimpan ──
+   625→  useEffect(() => {
+   626→    const handler = (e: BeforeUnloadEvent) => {
+   627→      if (hasChanges) {
+   628→        e.preventDefault();
+   629→        e.returnValue = '';
+   630→      }
+   631→    };
+   632→    window.addEventListener('beforeunload', handler);
+   633→    return () => window.removeEventListener('beforeunload', handler);
+   634→  }, [hasChanges]);
+   635→
+   636→  // Status auto-save
+   637→  const autoSaveStatus = hasChanges ? (saveMutation.isPending ? 'Menyimpan...' : 'Auto-save 3 detik') : null;
+   638→
+   639→  if (isLoadingSiswa) return <Skeleton className="h-96 w-full" />;
+   640→  if (!tahunPelajaran) return <div className="text-center py-16 text-muted-foreground">Pilih Tahun Pelajaran terlebih dahulu</div>;
+   641→
+   642→  return (
+   643→    <div className="space-y-4">
+   644→      {/* ─── Header & Controls ────────────────────────────────────────────── */}
+   645→      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
+   646→        <div className="flex items-center gap-3">
+   647→          <div className="flex items-center gap-2">
+   648→            <BookOpenCheck className="h-5 w-5 text-emerald-600" />
+   649→            <h2 className="text-lg font-bold">Lembar Absensi Siswa</h2>
+   650→          </div>
+   651→        </div>
+   652→        <div className="flex items-center gap-2">
+   653→          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfigOpen(true)}>
+   654→            <Settings2 className="h-3.5 w-3.5" /> Kode Absensi
+   655→          </Button>
+   656→          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
+   657→          <Button
+   658→            variant="outline" size="sm" className="gap-1.5 text-blue-600 border-blue-300 hover:bg-blue-50"
+   659→            onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}
+   660→          >
+   661→            {uploadMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+   662→            Upload Siswa
+   663→          </Button>
+   664→          <Button
+   665→            variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+   666→            onClick={handleExportExcel} disabled={isExporting || !selectedRombel}
+   667→          >
+   668→            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+   669→            Excel
+   670→          </Button>
+   671→          <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
+   672→            <Printer className="h-3.5 w-3.5" /> Cetak
+   673→          </Button>
+   674→        </div>
+   675→      </div>
+   676→
+   677→      {/* ─── Filters ─────────────────────────────────────────────────────── */}
+   678→      <Card className="print:hidden">
+   679→        <CardContent className="p-4">
+   680→          <div className="flex items-center gap-4 flex-wrap">
+   681→            {/* Rombel */}
+   682→            <div className="flex items-center gap-2">
+   683→              <Label className="text-sm font-medium whitespace-nowrap">Rombel</Label>
+   684→              <Select value={selectedRombel} onValueChange={(v) => { setSelectedRombel(v); setLocalChanges({}); }}>
+   685→                <SelectTrigger className="w-40 h-9">
+   686→                  <SelectValue placeholder="Pilih Kelas" />
+   687→                </SelectTrigger>
+   688→                <SelectContent>
+   689→                  {(rombelList as string[]).map((r) => (
+   690→                    <SelectItem key={r} value={r}>{r}</SelectItem>
+   691→                  ))}
+   692→                </SelectContent>
+   693→              </Select>
+   694→            </div>
+   695→
+   696→            {/* Month Navigator */}
+   697→            <div className="flex items-center gap-2">
+   698→              <Label className="text-sm font-medium whitespace-nowrap">Bulan</Label>
+   699→              <div className="flex items-center gap-1">
+   700→                <Button
+   701→                  variant="outline" size="icon" className="h-9 w-9"
+   702→                  onClick={() => {
+   703→                    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(selectedYear - 1); }
+   704→                    else setSelectedMonth(selectedMonth - 1);
+   705→                    setLocalChanges({});
+   706→                  }}
+   707→                >
+   708→                  <ChevronLeft className="h-4 w-4" />
+   709→                </Button>
+   710→                <div className="flex items-center gap-1.5 px-3 h-9 border rounded-md bg-background min-w-[180px] justify-center">
+   711→                  <span className="font-semibold text-sm">{BULAN_NAMES[selectedMonth - 1]}</span>
+   712→                  <span className="text-muted-foreground text-sm">{selectedYear}</span>
+   713→                </div>
+   714→                <Button
+   715→                  variant="outline" size="icon" className="h-9 w-9"
+   716→                  onClick={() => {
+   717→                    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(selectedYear + 1); }
+   718→                    else setSelectedMonth(selectedMonth + 1);
+   719→                    setLocalChanges({});
+   720→                  }}
+   721→                >
+   722→                  <ChevronRight className="h-4 w-4" />
+   723→                </Button>
+   724→              </div>
+   725→            </div>
+   726→
+   727→            {/* Quick Year Select */}
+   728→            <div className="flex items-center gap-2">
+   729→              <Label className="text-sm font-medium">Tahun</Label>
+   730→              <Input
+   731→                type="number"
+   732→                min={2020} max={2030}
+   733→                value={selectedYear}
+   734→                onChange={(e) => { setSelectedYear(parseInt(e.target.value) || now.getFullYear()); setLocalChanges({}); }}
+   735→                className="w-24 h-9"
+   736→              />
+   737→            </div>
+   738→
+   739→            <div className="flex-1" />
+   740→
+   741→            {/* Auto-save indicator */}
+   742→            {autoSaveStatus && (
+   743→              <div className={cn(
+   744→                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+   745→                saveMutation.isPending
+   746→                  ? "bg-blue-50 text-blue-600"
+   747→                  : "bg-amber-50 text-amber-600"
+   748→              )}>
+   749→                {saveMutation.isPending ? (
+   750→                  <Loader2 className="h-3 w-3 animate-spin" />
+   751→                ) : (
+   752→                  <Save className="h-3 w-3" />
+   753→                )}
+   754→                {autoSaveStatus}
+   755→              </div>
+   756→            )}
+   757→
+   758→            {/* Actions */}
+   759→            <div className="flex items-center gap-2">
+   760→              <DropdownMenu>
+   761→                <DropdownMenuTrigger asChild>
+   762→                  <Button
+   763→                    variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+   764→                    disabled={fillDayMutation.isPending || !selectedRombel}
+   765→                  >
+   766→                    {fillDayMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarCheck className="h-3.5 w-3.5" />}
+   767→                    Hadir Semua Siswa
+   768→                  </Button>
+   769→                </DropdownMenuTrigger>
+   770→                <DropdownMenuContent align="end">
+   771→                  <DropdownMenuItem
+   772→                    onClick={() => {
+   773→                      const now = new Date();
+   774→                      const tanggal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+   775→                      const label = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+   776→                      fillDayMutation.mutate({ tanggal, label });
+   777→                    }}
+   778→                    disabled={fillDayMutation.isPending}
+   779→                    className="gap-2 text-emerald-600 focus:text-emerald-600"
+   780→                  >
+   781→                    <CalendarCheck className="h-4 w-4" />
+   782→                    <div className="flex flex-col">
+   783→                      <span className="font-medium">Hari Ini</span>
+   784→                      <span className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
+   785→                    </div>
+   786→                  </DropdownMenuItem>
+   787→                  <DropdownMenuSeparator />
+   788→                  <DropdownMenuItem
+   789→                    onClick={() => {
+   790→                      const tomorrow = new Date();
+   791→                      tomorrow.setDate(tomorrow.getDate() + 1);
+   792→                      const tanggal = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+   793→                      const label = tomorrow.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+   794→                      fillDayMutation.mutate({ tanggal, label });
+   795→                    }}
+   796→                    disabled={fillDayMutation.isPending}
+   797→                    className="gap-2 text-blue-600 focus:text-blue-600"
+   798→                  >
+   799→                    <CalendarDays className="h-4 w-4" />
+   800→                    <div className="flex flex-col">
+   801→                      <span className="font-medium">Besok</span>
+   802→                      <span className="text-[10px] text-muted-foreground">{(() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" }); })()}</span>
+   803→                    </div>
+   804→                  </DropdownMenuItem>
+   805→                </DropdownMenuContent>
+   806→              </DropdownMenu>
+   807→              {hasChanges && (
+   808→                <Button size="sm" className="gap-1.5" onClick={() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); saveMutation.mutate(); }} disabled={saveMutation.isPending}>
+   809→                  {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+   810→                  Simpan Sekarang ({Object.keys(localChanges).length})
+   811→                </Button>
+   812→              )}
+   813→            </div>
+   814→          </div>
+   815→        </CardContent>
+   816→      </Card>
+   817→
+   818→      {/* ─── Attendance Legend ────────────────────────────────────────────── */}
+   819→      <div className="flex flex-wrap gap-2 print:hidden">
+   820→        {kodeConfig.map((k) => (
+   821→          <div
+   822→            key={k.kode}
+   823→            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium"
+   824→            style={{ backgroundColor: k.bgColor, color: k.color, borderColor: k.color + "40" }}
+   825→          >
+   826→            <span className="font-bold">{k.kode}</span>
+   827→            <span className="opacity-70">= {k.label}</span>
+   828→          </div>
+   829→        ))}
+   830→        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-200 text-xs text-slate-400">
+   831→          <span className="font-bold">-</span>
+   832→          <span>= Belum diisi</span>
+   833→        </div>
+   834→      </div>
+   835→
+   836→      {/* ─── Kalender Pendidikan Legend (10 warna) ────────────────────────── */}
+   837→      <Card className="print:hidden">
+   838→        <CardContent className="p-4">
+   839→          <div className="flex items-center gap-2 mb-2.5">
+   840→            <BookOpenCheck className="h-4 w-4 text-slate-500" />
+   841→            <span className="text-xs font-semibold text-slate-600">Keterangan Kalender Pendidikan</span>
+   842→          </div>
+   843→          <div className="flex flex-wrap gap-1.5">
+   844→            {KALENDER_LEGEND.map((item) => {
+   845→              const c = KATEGORI_COLORS[item.colorKey];
+   846→              return (
+   847→                <div
+   848→                  key={item.kategori}
+   849→                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-medium"
+   850→                  style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+   851→                >
+   852→                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.text }} />
+   853→                  <span>{item.label}</span>
+   854→                </div>
+   855→              );
+   856→            })}
+   857→          </div>
+   858→        </CardContent>
+   859→      </Card>
+   860→
+   861→      {/* ─── Print Header (visible only on print) ──────────────────────────── */}
+   862→      <div className="hidden print:block print:mb-2">
+   863→        <div className="text-center mb-3">
+   864→          <h2 className="text-sm font-bold uppercase tracking-wide">{namaSekolah || "Nama Sekolah"}</h2>
+   865→          <p className="text-[11px] mt-0.5">LEMBAR ABSENSI SISWA</p>
+   866→        </div>
+   867→        <div className="flex justify-between text-[10px] mb-1">
+   868→          <div className="space-y-0.5">
+   869→            <p><span className="font-semibold">Kelas</span> : {selectedRombel}</p>
+   870→            <p><span className="font-semibold">Tahun Pelajaran</span> : {tahunPelajaran} — Semester {semester}</p>
+   871→            <p><span className="font-semibold">Bulan</span> : {BULAN_NAMES[selectedMonth - 1]} {selectedYear}</p>
+   872→          </div>
+   873→          <div className="text-right space-y-0.5">
+   874→            <p>Jumlah Siswa : <span className="font-semibold">{siswaCounts.total}</span> orang</p>
+   875→            <p>Laki-laki : <span className="font-semibold">{siswaCounts.l}</span> orang</p>
+   876→            <p>Perempuan : <span className="font-semibold">{siswaCounts.p}</span> orang</p>
+   877→          </div>
+   878→        </div>
+   879→        <hr className="border-t-2 border-black/60 mt-2" />
+   880→      </div>
+   881→
+   882→      {/* ─── Attendance Spreadsheet ───────────────────────────────────────── */}
+   883→      {selectedRombel && (siswaList as SiswaListItem[]).length > 0 ? (
+   884→        <>
+   885→        <div className="border rounded-lg bg-white print:overflow-visible print:border-none print:rounded-none overflow-x-auto">
+   886→            <div className="min-w-max">
+   887→              <table className="w-full border-collapse text-xs">
+   888→                {/* ── Header Row 1: Day names ── */}
+   889→                <thead>
+   890→                  <tr className="bg-gradient-to-b from-slate-100 to-slate-50 print:bg-gray-200">
+   891→                    <th
+   892→                      rowSpan={3}
+   893→                      className="border border-slate-200 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700 min-w-[50px] sticky left-0 z-20 print:sticky print:left-0 print:bg-gray-200"
+   894→                      style={{ top: 0 }}
+   895→                    >
+   896→                      No
+   897→                    </th>
+   898→                    <th
+   899→                      rowSpan={3}
+   900→                      className="border border-slate-200 bg-slate-100 px-3 py-1 text-left font-bold text-slate-700 min-w-[160px] sticky left-[50px] z-20 print:sticky print:left-[50px] print:bg-gray-200"
+   901→                      style={{ top: 0 }}
+   902→                    >
+   903→                      Nama Siswa
+   904→                    </th>
+   905→                    {kodeConfig.map((k, ki) => (
+   906→                      <th
+   907→                        key={k.kode}
+   908→                        colSpan={1}
+   909→                        className="border border-slate-200 px-2 py-1 text-center font-bold print:hidden"
+   910→                        style={{ backgroundColor: k.bgColor, color: k.color }}
+   911→                      >
+   912→                        {k.label}
+   913→                      </th>
+   914→                    ))}
+   915→
+   916→                  </tr>
+   917→                  {/* ── Header Row 2: Dates ── */}
+   918→                  <tr className="bg-slate-50 print:bg-gray-100">
+   919→                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+   920→                      const dow = getDayOfWeek(selectedYear, selectedMonth, day);
+   921→                      const isWeekend = dow === 0 || dow === 6;
+   922→                      const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+   923→                      const liburInfo = hariLiburMap[tanggal];
+   924→                      const wkndColor = KATEGORI_COLORS["Weekend"];
+   925→                      const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
+   926→                      const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
+   927→                      const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
+   928→                      const isNormalDay = !isWeekend && !liburInfo;
+   929→                      return (
+   930→                        <th
+   931→                          key={day}
+   932→                          className={cn(
+   933→                            "border border-slate-200 px-0.5 py-0.5 text-center font-medium min-w-[28px]",
+   934→                            isNormalDay && "bg-white text-slate-700"
+   935→                          )}
+   936→                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : undefined}
+   937→                        >
+   938→                          <span className={isWeekend || liburInfo ? "line-through opacity-80" : ""}>{day}</span>
+   939→                        </th>
+   940→                      );
+   941→                    })}
+   942→                  </tr>
+   943→                  {/* ── Header Row 3: Day names ── */}
+   944→                  <tr className="bg-slate-50 print:bg-gray-100">
+   945→                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+   946→                      const dow = getDayOfWeek(selectedYear, selectedMonth, day);
+   947→                      const isWeekend = dow === 0 || dow === 6;
+   948→                      const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+   949→                      const liburInfo = hariLiburMap[tanggal];
+   950→                      const wkndColor = KATEGORI_COLORS["Weekend"];
+   951→                      const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
+   952→                      const headerBg = isWeekend ? wkndColor.bg : liburColor ? liburColor.bg : "";
+   953→                      const headerText = isWeekend ? wkndColor.text : liburColor ? liburColor.text : "";
+   954→                      const isNormalDay = !isWeekend && !liburInfo;
+   955→                      return (
+   956→                        <th
+   957→                          key={day}
+   958→                          className={cn(
+   959→                            "border border-slate-200 px-0.5 py-0 text-[9px] text-center",
+   960→                            isNormalDay && "bg-white text-slate-700"
+   961→                          )}
+   962→                          style={headerBg ? { backgroundColor: headerBg, color: headerText } : undefined}
+   963→                        >
+   964→                          {liburInfo && !isWeekend ? (
+   965→                            <span className="truncate" title={liburInfo.label}>{liburInfo.label.length > 3 ? liburInfo.label.slice(0, 3) : liburInfo.label}</span>
+   966→                          ) : (
+   967→                            HARI_NAMES[dow]
+   968→                          )}
+   969→                        </th>
+   970→                      );
+   971→                    })}
+   972→                  </tr>
+   973→                </thead>
+   974→
+   975→                {/* ── Body ── */}
+   976→                <tbody>
+   977→                  {(siswaList as SiswaListItem[]).map((siswa, rowIdx) => {
+   978→                    const summary = summaryPerSiswa[siswa.id] || {};
+   979→                    const isRowSelected = selectedCell?.siswaId === siswa.id;
+   980→                    return (
+   981→                      <tr
+   982→                        key={siswa.id}
+   983→                        className={cn(
+   984→                          rowIdx % 2 === 1 ? "bg-slate-50/30" : "",
+   985→                          isRowSelected && "bg-blue-50/80 ring-1 ring-blue-300/50"
+   986→                        )}
+   987→                      >
+   988→                        <td className={cn(
+   989→                          "border border-slate-200 px-2 py-0.5 text-center text-slate-500 sticky left-0 z-10 print:sticky print:left-0",
+   990→                          isRowSelected ? "bg-blue-50/80 text-blue-700 font-semibold" : "bg-white print:bg-white"
+   991→                        )}>
+   992→                          {rowIdx + 1}
+   993→                        </td>
+   994→                        <td className={cn(
+   995→                          "border border-slate-200 px-3 py-0.5 font-medium sticky left-[50px] z-10 print:sticky print:left-[50px] text-xs whitespace-nowrap",
+   996→                          isRowSelected ? "bg-blue-100/90 text-blue-900 font-bold" : "text-slate-700 bg-white print:bg-white"
+   997→                        )}>
+   998→                          {siswa.nama}
+   999→                        </td>
+  1000→                        {/* Date cells */}
+  1001→                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+  1002→                          const dow = getDayOfWeek(selectedYear, selectedMonth, day);
+  1003→                          const isWeekend = dow === 0 || dow === 6;
+  1004→                          const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  1005→                          const liburInfo = hariLiburMap[tanggal];
+  1006→                          const isLibur = !!liburInfo;
+  1007→                          const isBlockedLibur = isLibur && isBlockedCategory(liburInfo.kategori);
+  1008→                          const isSpecialLibur = isLibur && isNonBlockedCategory(liburInfo.kategori);
+  1009→                          const wkndColor = KATEGORI_COLORS["Weekend"];
+  1010→                          const liburColor = liburInfo ? getLiburColor(liburInfo.kategori) : null;
+  1011→                          const kode = getCellKode(siswa.id, tanggal);
+  1012→                          const isLocalChanged = `${siswa.id}|${tanggal}` in localChanges;
+  1013→                          const kodeInfo = kode ? kodeConfig.find((k) => k.kode === kode) : null;
+  1014→                          const isBlocked = isWeekend || isBlockedLibur;
+  1015→
+  1016→                          return (
+  1017→                            <td
+  1018→                              key={day}
+  1019→                              className={`border text-center select-none transition-colors print:cursor-default ${
+  1020→                                isBlocked ? "" : isSpecialLibur ? "cursor-pointer hover:opacity-80" : isLocalChanged ? "cursor-pointer hover:bg-slate-50" : "cursor-pointer hover:bg-slate-50"
+  1021→                              }`}
+  1022→                              style={{
+  1023→                                backgroundColor: isWeekend ? wkndColor.bg
+  1024→                                  : isBlockedLibur && liburColor ? liburColor.bg
+  1025→                                  : isSpecialLibur && liburColor ? liburColor.bg
+  1026→                                  : kodeInfo && isLocalChanged ? kodeInfo.bgColor
+  1027→                                  : undefined,
+  1028→                                borderColor: isBlockedLibur && liburColor ? liburColor.border
+  1029→                                  : isSpecialLibur && liburColor ? liburColor.border
+  1030→                                  : undefined,
+  1031→                              }}
+  1032→                              onClick={() => {
+  1033→                                if (isBlocked) return;
+  1034→                                handleCellClick(siswa.id, tanggal, kode);
+  1035→                              }}
+  1036→                              title={liburInfo ? `${liburInfo.label} (${liburInfo.kategori})` : isWeekend ? "Weekend" : undefined}
+  1037→                            >
+  1038→                              <span
+  1039→                                className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none ${
+  1040→                                  isWeekend ? "" : isBlockedLibur && liburColor ? "" : isSpecialLibur && liburColor ? "" : kodeInfo ? "" : "text-slate-200"
+  1041→                                }`}
+  1042→                                style={{
+  1043→                                  color: isWeekend ? wkndColor.text
+  1044→                                    : isBlockedLibur && liburColor ? liburColor.text
+  1045→                                    : isSpecialLibur && liburColor ? liburColor.text
+  1046→                                    : kodeInfo ? kodeInfo.color
+  1047→                                    : undefined,
+  1048→                                }}
+  1049→                              >
+  1050→                                {isWeekend ? (
+  1051→                                  <span className="opacity-40 text-[9px]">✕</span>
+  1052→                                ) : isBlockedLibur && liburColor ? (
+  1053→                                  <span className="text-[7px] font-medium leading-tight opacity-70" title={liburInfo.label}>{liburInfo.label.length > 3 ? liburInfo.label.slice(0, 2) + "…" : liburInfo.label}</span>
+  1054→                                ) : isSpecialLibur && liburColor ? (
+  1055→                                  <span className="relative">
+  1056→                                    {kode ? (
+  1057→                                      <span className="font-bold">{kode}</span>
+  1058→                                    ) : null}
+  1059→                                    <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: liburColor.text }} title={liburInfo.label} />
+  1060→                                  </span>
+  1061→                                ) : kode || ""}
+  1062→                              </span>
+  1063→                            </td>
+  1064→                          );
+  1065→                        })}
+  1066→                        {/* Summary cells */}
+  1067→                        {kodeConfig.map((k) => (
+  1068→                          <td
+  1069→                            key={k.kode}
+  1070→                            className="border border-slate-200 text-center print:hidden"
+  1071→                            style={{ backgroundColor: k.bgColor }}
+  1072→                          >
+  1073→                            <span className="font-bold text-xs" style={{ color: k.color }}>
+  1074→                              {summary[k.kode] || 0}
+  1075→                            </span>
+  1076→                          </td>
+  1077→                        ))}
+  1078→                      </tr>
+  1079→                    );
+  1080→                  })}
+  1081→                </tbody>
+  1082→              </table>
+  1083→            </div>
+  1084→        </div>
+  1085→
+  1086→        {/* ─── Print-only Signature Block ──────────────────────────────────── */}
+  1087→        <div className="hidden print:block print:mt-8 print:mb-4">
+  1088→          <div className="flex justify-between text-[10px]">
+  1089→            <div className="text-center">
+  1090→              <p className="font-semibold">Mengetahui,</p>
+  1091→              <p className="mb-1">Kepala Sekolah</p>
+  1092→              <div className="h-16 border-b border-black/40"></div>
+  1093→              <p className="font-semibold mt-1">{namaSekolah ? namaSekolah.split(" ").slice(-1).join(" ") : ".............................."}</p>
+  1094→              <p>NIP. ................................</p>
+  1095→            </div>
+  1096→            <div className="text-center">
+  1097→              <p className="font-semibold">........................, ........................ {selectedYear}</p>
+  1098→              <p className="mb-1">Wali Kelas</p>
+  1099→              <div className="h-16 border-b border-black/40"></div>
+  1100→              <p className="font-semibold mt-1">........................................</p>
+  1101→              <p>NIP. ................................</p>
+  1102→            </div>
+  1103→          </div>
+  1104→        </div>
+  1105→        </>
+  1106→      ) : selectedRombel ? (
+  1107→        <Card>
+  1108→          <CardContent className="py-16 text-center text-muted-foreground">
+  1109→            <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+  1110→            <p className="mb-1">Belum ada siswa di rombel ini</p>
+  1111→            <p className="text-xs opacity-70">Upload file Excel untuk menambahkan daftar siswa ke absensi</p>
+  1112→          </CardContent>
+  1113→        </Card>
+  1114→      ) : (
+  1115→        <Card>
+  1116→          <CardContent className="py-16 text-center text-muted-foreground">
+  1117→            <ClipboardCheck className="h-10 w-10 mx-auto mb-2 opacity-30" />
+  1118→            <p className="mb-1">Belum ada data rombel</p>
+  1119→            <p className="text-xs opacity-70">Upload file Excel yang berisi kolom KELAS terlebih dahulu</p>
+  1120→          </CardContent>
+  1121→        </Card>
+  1122→      )}
+  1123→
+  1124→      {/* ─── Hari Libur Management ────────────────────────────────────────── */}
+  1125→      <Card className="print:hidden mb-4">
+  1126→        <CardHeader className="pb-3 pt-4 px-4">
+  1127→          <div className="flex items-center justify-between">
+  1128→            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+  1129→              <CalendarOff className="h-4 w-4 text-orange-500" />
+  1130→              Hari Libur & Non-Efektif — {BULAN_NAMES[selectedMonth - 1]} {selectedYear}
+  1131→            </CardTitle>
+  1132→            <div className="flex items-center gap-2">
+  1133→              <Button
+  1134→                variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+  1135→                onClick={() => seedKalenderMutation.mutate()}
+  1136→                disabled={seedKalenderMutation.isPending}
+  1137→              >
+  1138→                {seedKalenderMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookOpenCheck className="h-3 w-3" />}
+  1139→                Muat Kalender Pendidikan
+  1140→              </Button>
+  1141→              <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setLiburFormOpen(true)}>
+  1142→                <Plus className="h-3 w-3" /> Tambah
+  1143→              </Button>
+  1144→            </div>
+  1145→          </div>
+  1146→        </CardHeader>
+  1147→        <CardContent className="px-4 pb-4 pt-0">
+  1148→          {(hariLiburList as HariLiburItem[]).length === 0 ? (
+  1149→            <p className="text-xs text-muted-foreground py-3 text-center">Belum ada hari libur untuk bulan ini</p>
+  1150→          ) : (
+  1151→            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+  1152→              {(hariLiburList as HariLiburItem[]).map((h) => {
+  1153→                const c = getLiburColor(h.kategori);
+  1154→                return (
+  1155→                  <div
+  1156→                    key={h.id}
+  1157→                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium"
+  1158→                    style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+  1159→                  >
+  1160→                    <span className="font-mono font-bold">{h.tanggal.split("-")[2]}</span>
+  1161→                    <span className="opacity-80">{h.label}</span>
+  1162→                    <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-0.5">{h.kategori}</Badge>
+  1163→                    <button
+  1164→                      className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
+  1165→                      onClick={() => deleteLiburMutation.mutate(h.id)}
+  1166→                    >
+  1167→                      <X className="h-3 w-3" />
+  1168→                    </button>
+  1169→                  </div>
+  1170→                );
+  1171→              })}
+  1172→            </div>
+  1173→          )}
+  1174→        </CardContent>
+  1175→      </Card>
+  1176→
+  1177→      {/* ─── Libur Form Dialog ────────────────────────────────────────────── */}
+  1178→      <Dialog open={liburFormOpen} onOpenChange={setLiburFormOpen}>
+  1179→        <DialogContent className="sm:max-w-sm">
+  1180→          <DialogHeader>
+  1181→            <DialogTitle>Tambah Hari Libur</DialogTitle>
+  1182→            <DialogDescription>Tambah hari libur atau non-efektif di bulan ini</DialogDescription>
+  1183→          </DialogHeader>
+  1184→          <div className="grid gap-3 py-3">
+  1185→            <div className="grid gap-1.5">
+  1186→              <Label className="text-xs">Tanggal</Label>
+  1187→              <Input type="date" value={liburTanggal} onChange={(e) => setLiburTanggal(e.target.value)} className="h-9" />
+  1188→            </div>
+  1189→            <div className="grid gap-1.5">
+  1190→              <Label className="text-xs">Keterangan</Label>
+  1191→              <Input placeholder="cth: Kemerdekaan RI" value={liburLabel} onChange={(e) => setLiburLabel(e.target.value)} className="h-9" />
+  1192→            </div>
+  1193→            <div className="grid gap-1.5">
+  1194→              <Label className="text-xs">Kategori</Label>
+  1195→              <Select value={liburKategori} onValueChange={setLiburKategori}>
+  1196→                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+  1197→                <SelectContent>
+  1198→                  <SelectItem value="Libur Nasional">🔴 Libur Nasional</SelectItem>
+  1199→                  <SelectItem value="Libur Semester">🟠 Libur Semester</SelectItem>
+  1200→                  <SelectItem value="Asesmen">🟢 Asesmen / Ujian</SelectItem>
+  1201→                  <SelectItem value="Hari Pertama Masuk">🔵 Hari Pertama Masuk Sekolah</SelectItem>
+  1202→                  <SelectItem value="Penyerahan Rapor">🟡 Penyerahan Rapor & Kelulusan</SelectItem>
+  1203→                  <SelectItem value="Perkiraan TKA">🩵 Perkiraan Pelaksanaan TKA</SelectItem>
+  1204→                  <SelectItem value="Hari Pendidikan Nasional">🟣 Hari Pendidikan Nasional</SelectItem>
+  1205→                  <SelectItem value="Libur Khusus">🩷 Libur Khusus</SelectItem>
+  1206→                  <SelectItem value="Hari Guru">🟨 Hari Guru (Tidak Libur)</SelectItem>
+  1207→                </SelectContent>
+  1208→              </Select>
+  1209→            </div>
+  1210→          </div>
+  1211→          <DialogFooter className="gap-2">
+  1212→            <Button variant="outline" size="sm" onClick={() => setLiburFormOpen(false)}>Batal</Button>
+  1213→            <Button size="sm" onClick={() => liburMutation.mutate()} disabled={liburMutation.isPending || !liburTanggal}>
+  1214→              {liburMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+  1215→              Simpan
+  1216→            </Button>
+  1217→          </DialogFooter>
+  1218→        </DialogContent>
+  1219→      </Dialog>
+  1220→
+  1221→      {/* ─── Cell Kode Picker Dialog ──────────────────────────────────────── */}
+  1222→      <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
+  1223→        <DialogContent className="sm:max-w-xs">
+  1224→          <DialogHeader>
+  1225→            <DialogTitle className="text-base">Pilih Keterangan Absensi</DialogTitle>
+  1226→            <DialogDescription className="text-xs">
+  1227→              {selectedCell?.siswaNama} — {selectedCell?.tanggal}
+  1228→            </DialogDescription>
+  1229→          </DialogHeader>
+  1230→          <div className="grid grid-cols-2 gap-2 py-2">
+  1231→            {/* Hapus / Kosongkan */}
+  1232→            <button
+  1233→              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 ${
+  1234→                !selectedCell?.currentKode
+  1235→                  ? "border-slate-400 bg-slate-100 text-slate-600 ring-2 ring-slate-300"
+  1236→                  : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:bg-slate-50"
+  1237→              }`}
+  1238→              onClick={() => handleSelectKode("")}
+  1239→            >
+  1240→              <span className="text-lg">—</span>
+  1241→              <span>Kosong</span>
+  1242→            </button>
+  1243→            {/* Kode options */}
+  1244→            {kodeConfig.map((k) => {
+  1245→              const isSelected = selectedCell?.currentKode === k.kode;
+  1246→              const isExisting = absensiMap[`${selectedCell?.siswaId}|${selectedCell?.tanggal}`]?.kodeAbsensi === k.kode;
+  1247→              const isActive = isSelected || (!selectedCell?.currentKode && isExisting);
+  1248→              return (
+  1249→                <button
+  1250→                  key={k.kode}
+  1251→                  className={`flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 ${
+  1252→                    isActive
+  1253→                      ? "ring-2"
+  1254→                      : "hover:opacity-90"
+  1255→                  }`}
+  1256→                  style={{
+  1257→                    backgroundColor: isActive ? k.bgColor : "white",
+  1258→                    borderColor: k.color,
+  1259→                    color: k.color,
+  1260→                    ringColor: k.color,
+  1261→                    boxShadow: isActive ? `0 0 0 2px ${k.color}40` : undefined,
+  1262→                  }}
+  1263→                  onClick={() => handleSelectKode(k.kode)}
+  1264→                >
+  1265→                  <span className="text-xl leading-none">{k.kode}</span>
+  1266→                  <span className="text-[10px] font-medium opacity-80">{k.label}</span>
+  1267→                </button>
+  1268→              );
+  1269→            })}
+  1270→          </div>
+  1271→        </DialogContent>
+  1272→      </Dialog>
+  1273→
+  1274→      {/* ─── Kode Absensi Config Dialog ────────────────────────────────────── */}
+  1275→      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
+  1276→        <DialogContent className="sm:max-w-lg">
+  1277→          <DialogHeader>
+  1278→            <DialogTitle>Konfigurasi Kode Absensi</DialogTitle>
+  1279→            <DialogDescription>Atur kode dan label untuk status kehadiran siswa</DialogDescription>
+  1280→          </DialogHeader>
+  1281→          <div className="grid gap-3 py-2">
+  1282→            {kodeConfig.map((k, idx) => (
+  1283→              <div key={k.kode} className="flex items-center gap-2">
+  1284→                <div
+  1285→                  className="w-8 h-8 rounded-md border-2 flex items-center justify-center text-sm font-bold flex-shrink-0"
+  1286→                  style={{ backgroundColor: k.bgColor, borderColor: k.color, color: k.color }}
+  1287→                >
+  1288→                  {k.kode}
+  1289→                </div>
+  1290→                <Input
+  1291→                  value={k.kode}
+  1292→                  onChange={(e) => {
+  1293→                    const next = [...kodeConfig];
+  1294→                    next[idx] = { ...next[idx], kode: e.target.value.toUpperCase() };
+  1295→                    setKodeConfig(next);
+  1296→                  }}
+  1297→                  className="w-16 h-9 text-center font-bold uppercase"
+  1298→                  maxLength={2}
+  1299→                  placeholder="K"
+  1300→                />
+  1301→                <Input
+  1302→                  value={k.label}
+  1303→                  onChange={(e) => {
+  1304→                    const next = [...kodeConfig];
+  1305→                    next[idx] = { ...next[idx], label: e.target.value };
+  1306→                    setKodeConfig(next);
+  1307→                  }}
+  1308→                  className="flex-1 h-9"
+  1309→                  placeholder="Label"
+  1310→                />
+  1311→                <Input
+  1312→                  type="color"
+  1313→                  value={k.color}
+  1314→                  onChange={(e) => {
+  1315→                    const next = [...kodeConfig];
+  1316→                    // Generate lighter bg
+  1317→                    const hex = e.target.value;
+  1318→                    const r = parseInt(hex.slice(1, 3), 16);
+  1319→                    const g = parseInt(hex.slice(3, 5), 16);
+  1320→                    const b = parseInt(hex.slice(5, 7), 16);
+  1321→                    const bgColor = `rgba(${r},${g},${b},0.08)`;
+  1322→                    next[idx] = { ...next[idx], color: hex, bgColor };
+  1323→                    setKodeConfig(next);
+  1324→                  }}
+  1325→                  className="w-10 h-9 p-1 cursor-pointer"
+  1326→                />
+  1327→                <Button
+  1328→                  variant="ghost" size="icon" className="h-9 w-9 text-destructive flex-shrink-0"
+  1329→                  onClick={() => {
+  1330→                    if (kodeConfig.length > 1) {
+  1331→                      setKodeConfig(kodeConfig.filter((_, i) => i !== idx));
+  1332→                    }
+  1333→                  }}
+  1334→                  disabled={kodeConfig.length <= 1}
+  1335→                >
+  1336→                  <Trash2 className="h-4 w-4" />
+  1337→                </Button>
+  1338→              </div>
+  1339→            ))}
+  1340→            <Button
+  1341→              variant="outline" size="sm" className="gap-1.5 mt-1"
+  1342→              onClick={() => {
+  1343→                const codes = ["H", "S", "I", "A", "T", "DL"];
+  1344→                const nextCode = codes.find((c) => !kodeConfig.some((k) => k.kode === c)) || String(kodeConfig.length + 1);
+  1345→                setKodeConfig([
+  1346→                  ...kodeConfig,
+  1347→                  { kode: nextCode, label: "Baru", color: "#6B7280", bgColor: "#F9FAFB" },
+  1348→                ]);
+  1349→              }}
+  1350→            >
+  1351→              <RotateCcw className="h-3.5 w-3.5" /> Tambah Kode
+  1352→            </Button>
+  1353→          </div>
+  1354→          <DialogFooter className="gap-2">
+  1355→            <Button variant="outline" onClick={() => setConfigOpen(false)}>Batal</Button>
+  1356→            <Button onClick={() => kodeMutation.mutate(kodeConfig)} disabled={kodeMutation.isPending}>
+  1357→              {kodeMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+  1358→              Simpan Konfigurasi
+  1359→            </Button>
+  1360→          </DialogFooter>
+  1361→        </DialogContent>
+  1362→      </Dialog>
+  1363→
+  1364→      {/* ─── Upload Siswa Result Dialog ───────────────────────────────────── */}
+  1365→      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+  1366→        <DialogContent className="sm:max-w-md">
+  1367→          <DialogHeader>
+  1368→            <DialogTitle className="flex items-center gap-2">
+  1369→              <UserCheck className="h-5 w-5 text-blue-600" />
+  1370→              Hasil Upload Siswa Absensi
+  1371→            </DialogTitle>
+  1372→            <DialogDescription>Data siswa absensi diperbarui (tidak mengubah data utama siswa)</DialogDescription>
+  1373→          </DialogHeader>
+  1374→          {uploadResult && (
+  1375→            <div className="space-y-4 py-2">
+  1376→              {/* Summary */}
+  1377→              <div className="grid grid-cols-2 gap-3">
+  1378→                <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
+  1379→                  <p className="text-2xl font-bold text-blue-700">{uploadResult.total}</p>
+  1380→                  <p className="text-[10px] text-blue-600 font-medium">Total Data</p>
+  1381→                </div>
+  1382→                <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+  1383→                  <p className="text-2xl font-bold text-emerald-700">{uploadResult.matched}</p>
+  1384→                  <p className="text-[10px] text-emerald-600 font-medium">Cocok (NISN/Nama)</p>
+  1385→                </div>
+  1386→                <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
+  1387→                  <p className="text-2xl font-bold text-amber-700">{uploadResult.updated}</p>
+  1388→                  <p className="text-[10px] text-amber-600 font-medium">Diperbarui</p>
+  1389→                </div>
+  1390→                <div className="text-center p-3 rounded-lg bg-violet-50 border border-violet-200">
+  1391→                  <p className="text-2xl font-bold text-violet-700">{uploadResult.created}</p>
+  1392→                  <p className="text-[10px] text-violet-600 font-medium">Siswa Baru Ditambahkan</p>
+  1393→                </div>
+  1394→              </div>
+  1395→
+  1396→              {/* Kelas detected */}
+  1397→              {uploadResult.kelasList.length > 0 && (
+  1398→                <div>
+  1399→                  <p className="text-xs font-semibold text-slate-600 mb-1.5">Kelas Terdeteksi:</p>
+  1400→                  <div className="flex flex-wrap gap-1.5">
+  1401→                    {uploadResult.kelasList.map((k) => (
+  1402→                      <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
+  1403→                    ))}
+  1404→                  </div>
+  1405→                </div>
+  1406→              )}
+  1407→
+  1408→              {/* Errors */}
+  1409→              {uploadResult.errors.length > 0 && (
+  1410→                <div>
+  1411→                  <p className="text-xs font-semibold text-orange-600 mb-1.5">Error ({uploadResult.errors.length})</p>
+  1412→                  <div className="max-h-24 overflow-y-auto rounded-md border border-orange-200 bg-orange-50/50 p-2 space-y-0.5">
+  1413→                    {uploadResult.errors.map((err, i) => (
+  1414→                      <p key={i} className="text-[10px] text-orange-700">{err}</p>
+  1415→                    ))}
+  1416→                  </div>
+  1417→                </div>
+  1418→              )}
+  1419→            </div>
+  1420→          )}
+  1421→          <DialogFooter>
+  1422→            <Button onClick={() => setUploadDialogOpen(false)}>Tutup</Button>
+  1423→          </DialogFooter>
+  1424→        </DialogContent>
+  1425→      </Dialog>
+  1426→    </div>
+  1427→  );
+  1428→}
+  1429→

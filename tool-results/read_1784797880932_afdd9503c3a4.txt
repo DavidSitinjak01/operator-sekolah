@@ -1,0 +1,797 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useMemo } from "react";
+     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import {
+     6→  FileText, Plus, Pencil, Trash2, Search, Loader2,
+     7→  User, Calendar, AlertTriangle, ClipboardList,
+     8→} from "lucide-react";
+     9→import { Button } from "@/components/ui/button";
+    10→import { Input } from "@/components/ui/input";
+    11→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    12→import { Badge } from "@/components/ui/badge";
+    13→import { Skeleton } from "@/components/ui/skeleton";
+    14→import { Textarea } from "@/components/ui/textarea";
+    15→import { Label } from "@/components/ui/label";
+    16→import { ScrollArea } from "@/components/ui/scroll-area";
+    17→import {
+    18→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    19→} from "@/components/ui/select";
+    20→import {
+    21→  AlertDialog, AlertDialogAction, AlertDialogCancel,
+    22→  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    23→  AlertDialogHeader, AlertDialogTitle,
+    24→} from "@/components/ui/alert-dialog";
+    25→import {
+    26→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    27→  DialogDescription, DialogFooter,
+    28→} from "@/components/ui/dialog";
+    29→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    30→import { useToast } from "@/hooks/use-toast";
+    31→import { useAppStore } from "@/store/app";
+    32→import { cn } from "@/lib/utils";
+    33→
+    34→// ─── Types ─────────────────────────────────────────────────────────────────
+    35→interface CatatanSiswaItem {
+    36→  id: string;
+    37→  siswaId: string;
+    38→  siswaNama: string;
+    39→  nisn: string;
+    40→  rombel: string;
+    41→  tanggal: string;
+    42→  kategori: string;
+    43→  catatan: string;
+    44→  tindakan: string;
+    45→  tahunPelajaran: string;
+    46→  semester: string;
+    47→  dibuatOleh: string;
+    48→  createdAt: string;
+    49→  updatedAt: string;
+    50→}
+    51→
+    52→interface SiswaOption {
+    53→  id: string;
+    54→  nama: string;
+    55→  nisn: string;
+    56→  rombel: string;
+    57→}
+    58→
+    59→// ─── Category config ───────────────────────────────────────────────────────
+    60→const KATEGORI_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
+    61→  "Perilaku Positif": { label: "Perilaku Positif", color: "#16A34A", bgColor: "#F0FDF4", icon: "\u{1F44D}" },
+    62→  "Perilaku Negatif": { label: "Perilaku Negatif", color: "#DC2626", bgColor: "#FEF2F2", icon: "\u{1F44E}" },
+    63→  "Akademik":          { label: "Akademik",          color: "#2563EB", bgColor: "#EFF6FF", icon: "\u{1F4D6}" },
+    64→  "Kedisiplinan":      { label: "Kedisiplinan",      color: "#D97706", bgColor: "#FFFBEB", icon: "\u26A0\uFE0F" },
+    65→  "Prestasi":          { label: "Prestasi",          color: "#7C3AED", bgColor: "#FAF5FF", icon: "\u{1F3C6}" },
+    66→  "Lainnya":           { label: "Lainnya",           color: "#6B7280", bgColor: "#F9FAFB", icon: "\u{1F4DD}" },
+    67→};
+    68→
+    69→const KATEGORI_KEYS = Object.keys(KATEGORI_CONFIG);
+    70→
+    71→const TAB_ITEMS = [
+    72→  { key: "", label: "Semua" },
+    73→  { key: "Perilaku Positif", label: "Perilaku Positif" },
+    74→  { key: "Perilaku Negatif", label: "Perilaku Negatif" },
+    75→  { key: "Akademik", label: "Akademik" },
+    76→  { key: "Kedisiplinan", label: "Kedisiplinan" },
+    77→  { key: "Prestasi", label: "Prestasi" },
+    78→  { key: "Lainnya", label: "Lainnya" },
+    79→];
+    80→
+    81→// ─── Helpers ───────────────────────────────────────────────────────────────
+    82→function formatTanggal(dateStr: string): string {
+    83→  if (!dateStr) return "";
+    84→  const d = new Date(dateStr + "T00:00:00");
+    85→  const hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    86→  const bulan = [
+    87→    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    88→    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    89→  ];
+    90→  return `${hari[d.getDay()]}, ${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
+    91→}
+    92→
+    93→function getKategoriConfig(kategori: string) {
+    94→  return KATEGORI_CONFIG[kategori] || KATEGORI_CONFIG["Lainnya"];
+    95→}
+    96→
+    97→function getTabColor(key: string): { activeColor: string; countBg: string } {
+    98→  switch (key) {
+    99→    case "Perilaku Positif": return { activeColor: "#16A34A", countBg: "#F0FDF4" };
+   100→    case "Perilaku Negatif": return { activeColor: "#DC2626", countBg: "#FEF2F2" };
+   101→    case "Akademik":          return { activeColor: "#2563EB", countBg: "#EFF6FF" };
+   102→    case "Kedisiplinan":      return { activeColor: "#D97706", countBg: "#FFFBEB" };
+   103→    case "Prestasi":          return { activeColor: "#7C3AED", countBg: "#FAF5FF" };
+   104→    case "Lainnya":           return { activeColor: "#6B7280", countBg: "#F9FAFB" };
+   105→    default:                  return { activeColor: "#0F172A", countBg: "#F1F5F9" };
+   106→  }
+   107→}
+   108→
+   109→// ═══════════════════════════════════════════════════════════════════════════════
+   110→// MAIN PAGE
+   111→// ═══════════════════════════════════════════════════════════════════════════════
+   112→export default function CatatanSiswaPage() {
+   113→  const { tahunPelajaran, semester } = useAppStore();
+   114→  const { toast } = useToast();
+   115→  const qc = useQueryClient();
+   116→
+   117→  // ─── State ──────────────────────────────────────────────────────────────
+   118→  const [selectedRombel, setSelectedRombel] = useState("");
+   119→  const [searchQuery, setSearchQuery] = useState("");
+   120→  const [activeKategori, setActiveKategori] = useState("");
+   121→
+   122→  // Dialog states
+   123→  const [formOpen, setFormOpen] = useState(false);
+   124→  const [deleteOpen, setDeleteOpen] = useState(false);
+   125→  const [editingId, setEditingId] = useState<string | null>(null);
+   126→  const [deletingId, setDeletingId] = useState<string | null>(null);
+   127→
+   128→  // Form states
+   129→  const [formRombel, setFormRombel] = useState("");
+   130→  const [formSiswaId, setFormSiswaId] = useState("");
+   131→  const [formTanggal, setFormTanggal] = useState("");
+   132→  const [formKategori, setFormKategori] = useState("Lainnya");
+   133→  const [formCatatan, setFormCatatan] = useState("");
+   134→  const [formTindakan, setFormTindakan] = useState("");
+   135→
+   136→  // ─── Fetch rombel list ──────────────────────────────────────────────────
+   137→  const { data: rombelList = [] } = useQuery({
+   138→    queryKey: ["catatan-rombel", tahunPelajaran, semester],
+   139→    queryFn: async () => {
+   140→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   141→      const r = await fetch(`/api/absensi/rombel?${p}`);
+   142→      if (!r.ok) throw new Error("Gagal");
+   143→      return r.json();
+   144→    },
+   145→    enabled: !!tahunPelajaran,
+   146→  });
+   147→
+   148→  // Compute effective rombel (user selection or first available)
+   149→  const userHasSelectedRombel = useRef(false);
+   150→  const effectiveRombel = selectedRombel || (rombelList.length > 0 ? rombelList[0] as string : "");
+   151→
+   152→  // ─── Fetch catatan siswa ────────────────────────────────────────────────
+   153→  const { data: catatanList = [], isLoading: isLoadingCatatan } = useQuery({
+   154→    queryKey: ["catatan-siswa", tahunPelajaran, semester, effectiveRombel, activeKategori, searchQuery],
+   155→    queryFn: async () => {
+   156→      const p = new URLSearchParams({ tahunPelajaran, semester });
+   157→      if (effectiveRombel) p.set("rombel", effectiveRombel);
+   158→      if (activeKategori) p.set("kategori", activeKategori);
+   159→      if (searchQuery) p.set("search", searchQuery);
+   160→      const r = await fetch(`/api/catatan-siswa?${p}`);
+   161→      if (!r.ok) throw new Error("Gagal");
+   162→      return r.json();
+   163→    },
+   164→    enabled: !!tahunPelajaran,
+   165→  });
+   166→
+   167→  // ─── Fetch siswa per rombel (for form dropdown) ─────────────────────────
+   168→  const { data: siswaOptions = [] } = useQuery({
+   169→    queryKey: ["catatan-siswa-list", tahunPelajaran, semester, formRombel],
+   170→    queryFn: async () => {
+   171→      const p = new URLSearchParams({ tahunPelajaran, semester, rombel: formRombel });
+   172→      const r = await fetch(`/api/absensi/siswa?${p}`);
+   173→      if (!r.ok) throw new Error("Gagal");
+   174→      return r.json();
+   175→    },
+   176→    enabled: !!formRombel && !!tahunPelajaran,
+   177→  });
+   178→
+   179→  // ─── Category counts ────────────────────────────────────────────────────
+   180→  const categoryCounts = useMemo(() => {
+   181→    const counts: Record<string, number> = { "": (catatanList as CatatanSiswaItem[]).length };
+   182→    for (const item of catatanList as CatatanSiswaItem[]) {
+   183→      counts[item.kategori] = (counts[item.kategori] || 0) + 1;
+   184→    }
+   185→    return counts;
+   186→  }, [catatanList]);
+   187→
+   188→  // ─── Mutations ──────────────────────────────────────────────────────────
+   189→  const saveMutation = useMutation({
+   190→    mutationFn: async () => {
+   191→      const isEdit = !!editingId;
+   192→      const selectedSiswa = (siswaOptions as SiswaOption[]).find(s => s.id === formSiswaId);
+   193→
+   194→      if (isEdit) {
+   195→        const r = await fetch("/api/catatan-siswa", {
+   196→          method: "PUT",
+   197→          headers: { "Content-Type": "application/json" },
+   198→          body: JSON.stringify({
+   199→            id: editingId,
+   200→            tanggal: formTanggal,
+   201→            kategori: formKategori,
+   202→            catatan: formCatatan,
+   203→            tindakan: formTindakan,
+   204→          }),
+   205→        });
+   206→        const d = await r.json();
+   207→        if (!r.ok) throw new Error(d.error);
+   208→        return d;
+   209→      } else {
+   210→        const r = await fetch("/api/catatan-siswa", {
+   211→          method: "POST",
+   212→          headers: { "Content-Type": "application/json" },
+   213→          body: JSON.stringify({
+   214→            siswaId: formSiswaId,
+   215→            siswaNama: selectedSiswa?.nama || "",
+   216→            nisn: selectedSiswa?.nisn || "",
+   217→            rombel: formRombel,
+   218→            tanggal: formTanggal,
+   219→            kategori: formKategori,
+   220→            catatan: formCatatan,
+   221→            tindakan: formTindakan,
+   222→            tahunPelajaran,
+   223→            semester,
+   224→          }),
+   225→        });
+   226→        const d = await r.json();
+   227→        if (!r.ok) throw new Error(d.error);
+   228→        return d;
+   229→      }
+   230→    },
+   231→    onSuccess: () => {
+   232→      toast({
+   233→        title: editingId ? "Catatan diperbarui" : "Catatan ditambahkan",
+   234→        description: editingId ? "Catatan siswa berhasil diperbarui." : "Catatan siswa baru berhasil disimpan.",
+   235→      });
+   236→      closeForm();
+   237→      qc.invalidateQueries({ queryKey: ["catatan-siswa"] });
+   238→    },
+   239→    onError: (e: Error) => {
+   240→      toast({ title: "Error", description: e.message, variant: "destructive" });
+   241→    },
+   242→  });
+   243→
+   244→  const deleteMutation = useMutation({
+   245→    mutationFn: async (id: string) => {
+   246→      const r = await fetch(`/api/catatan-siswa?id=${id}`, { method: "DELETE" });
+   247→      const d = await r.json();
+   248→      if (!r.ok) throw new Error(d.error);
+   249→      return d;
+   250→    },
+   251→    onSuccess: () => {
+   252→      toast({ title: "Catatan dihapus", description: "Catatan siswa berhasil dihapus." });
+   253→      setDeleteOpen(false);
+   254→      setDeletingId(null);
+   255→      qc.invalidateQueries({ queryKey: ["catatan-siswa"] });
+   256→    },
+   257→    onError: (e: Error) => {
+   258→      toast({ title: "Error", description: e.message, variant: "destructive" });
+   259→    },
+   260→  });
+   261→
+   262→  // ─── Form helpers ───────────────────────────────────────────────────────
+   263→  function openAddForm() {
+   264→    setEditingId(null);
+   265→    setFormRombel(effectiveRombel);
+   266→    setFormSiswaId("");
+   267→    setFormTanggal(new Date().toISOString().split("T")[0]);
+   268→    setFormKategori("Lainnya");
+   269→    setFormCatatan("");
+   270→    setFormTindakan("");
+   271→    setFormOpen(true);
+   272→  }
+   273→
+   274→  function openEditForm(item: CatatanSiswaItem) {
+   275→    setEditingId(item.id);
+   276→    setFormRombel(item.rombel);
+   277→    setFormSiswaId(item.siswaId);
+   278→    setFormTanggal(item.tanggal);
+   279→    setFormKategori(item.kategori);
+   280→    setFormCatatan(item.catatan);
+   281→    setFormTindakan(item.tindakan || "");
+   282→    setFormOpen(true);
+   283→  }
+   284→
+   285→  function closeForm() {
+   286→    setFormOpen(false);
+   287→    setEditingId(null);
+   288→    setFormSiswaId("");
+   289→    setFormCatatan("");
+   290→    setFormTindakan("");
+   291→  }
+   292→
+   293→  function handleSave() {
+   294→    if (!editingId && !formSiswaId) {
+   295→      toast({ title: "Perhatian", description: "Pilih siswa terlebih dahulu.", variant: "destructive" });
+   296→      return;
+   297→    }
+   298→    if (!formCatatan.trim()) {
+   299→      toast({ title: "Perhatian", description: "Catatan wajib diisi.", variant: "destructive" });
+   300→      return;
+   301→    }
+   302→    if (!formTanggal) {
+   303→      toast({ title: "Perhatian", description: "Tanggal wajib diisi.", variant: "destructive" });
+   304→      return;
+   305→    }
+   306→    saveMutation.mutate();
+   307→  }
+   308→
+   309→  function handleDelete() {
+   310→    if (deletingId) deleteMutation.mutate(deletingId);
+   311→  }
+   312→
+   313→  // ─── Selected siswa info ────────────────────────────────────────────────
+   314→  const selectedSiswaInfo = useMemo(() => {
+   315→    return (siswaOptions as SiswaOption[]).find(s => s.id === formSiswaId) || null;
+   316→  }, [formSiswaId, siswaOptions]);
+   317→
+   318→  // ─── Custom scrollbar style ─────────────────────────────────────────────
+   319→  const scrollbarStyle = `
+   320→    .catatan-scroll::-webkit-scrollbar { width: 6px; }
+   321→    .catatan-scroll::-webkit-scrollbar-track { background: transparent; }
+   322→    .catatan-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+   323→    .catatan-scroll::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+   324→  `;
+   325→
+   326→  // ═══════════════════════════════════════════════════════════════════════════
+   327→  // RENDER
+   328→  // ═══════════════════════════════════════════════════════════════════════════
+   329→  return (
+   330→    <div className="space-y-4">
+   331→      <style>{scrollbarStyle}</style>
+   332→
+   333→      {/* ─── Header Card ──────────────────────────────────────────────── */}
+   334→      <Card className="shadow-sm">
+   335→        <CardHeader className="pb-4">
+   336→          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   337→            <div className="flex items-center gap-3">
+   338→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+   339→                <FileText className="h-5 w-5 text-primary" />
+   340→              </div>
+   341→              <CardTitle className="text-xl">Catatan Siswa</CardTitle>
+   342→            </div>
+   343→            <Button onClick={openAddForm} className="gap-2">
+   344→              <Plus className="h-4 w-4" />
+   345→              <span className="hidden sm:inline">Tambah Catatan</span>
+   346→              <span className="sm:hidden">Tambah</span>
+   347→            </Button>
+   348→          </div>
+   349→        </CardHeader>
+   350→        <CardContent className="pt-0">
+   351→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+   352→            {/* Rombel filter */}
+   353→            <div className="w-full sm:w-56">
+   354→              <Select value={effectiveRombel} onValueChange={setSelectedRombel}>
+   355→                <SelectTrigger className="w-full">
+   356→                  <SelectValue placeholder={rombelList.length === 0 ? "Tidak ada rombel" : "Pilih Rombel"} />
+   357→                </SelectTrigger>
+   358→                <SelectContent>
+   359→                  {(rombelList as string[]).map((r) => (
+   360→                    <SelectItem key={r} value={r}>{r}</SelectItem>
+   361→                  ))}
+   362→                </SelectContent>
+   363→              </Select>
+   364→            </div>
+   365→            {/* Search */}
+   366→            <div className="relative flex-1">
+   367→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   368→              <Input
+   369→                placeholder="Cari nama, NISN, atau catatan..."
+   370→                className="pl-9"
+   371→                value={searchQuery}
+   372→                onChange={(e) => setSearchQuery(e.target.value)}
+   373→              />
+   374→            </div>
+   375→          </div>
+   376→        </CardContent>
+   377→      </Card>
+   378→
+   379→      {/* ─── Category Filter Tabs ─────────────────────────────────────── */}
+   380→      <Card className="shadow-sm">
+   381→        <CardContent className="p-4">
+   382→          <Tabs value={activeKategori} onValueChange={setActiveKategori}>
+   383→            <TabsList className="w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
+   384→              {TAB_ITEMS.map((tab) => {
+   385→                const tc = getTabColor(tab.key);
+   386→                const count = categoryCounts[tab.key] || 0;
+   387→                const isActive = activeKategori === tab.key;
+   388→                return (
+   389→                  <TabsTrigger
+   390→                    key={tab.key || "all"}
+   391→                    value={tab.key || ""}
+   392→                    className={cn(
+   393→                      "gap-1.5 text-xs sm:text-sm px-3 py-1.5 data-[state=active]:shadow-sm transition-all",
+   394→                      isActive && tab.key && "text-white"
+   395→                    )}
+   396→                    style={
+   397→                      isActive && tab.key
+   398→                        ? { backgroundColor: tc.activeColor, color: "white" }
+   399→                        : undefined
+   400→                    }
+   401→                  >
+   402→                    {tab.key && <span>{getKategoriConfig(tab.key).icon}</span>}
+   403→                    {!tab.key && <ClipboardList className="h-3.5 w-3.5" />}
+   404→                    <span className="hidden sm:inline">{tab.label}</span>
+   405→                    <span
+   406→                      className={cn(
+   407→                        "ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+   408→                        isActive && !tab.key && "bg-primary-foreground/20"
+   409→                      )}
+   410→                      style={
+   411→                        isActive && tab.key
+   412→                          ? { backgroundColor: "rgba(255,255,255,0.25)", color: "white" }
+   413→                          : !isActive && tab.key
+   414→                            ? { backgroundColor: tc.countBg, color: tc.activeColor }
+   415→                            : undefined
+   416→                      }
+   417→                    >
+   418→                      {count}
+   419→                    </span>
+   420→                  </TabsTrigger>
+   421→                );
+   422→              })}
+   423→            </TabsList>
+   424→          </Tabs>
+   425→        </CardContent>
+   426→      </Card>
+   427→
+   428→      {/* ─── Notes List ────────────────────────────────────────────────── */}
+   429→      <Card className="shadow-sm">
+   430→        <CardContent className="p-4">
+   431→          {isLoadingCatatan ? (
+   432→            <div className="space-y-4">
+   433→              {Array.from({ length: 3 }).map((_, i) => (
+   434→                <div key={i} className="rounded-lg border p-4 space-y-3">
+   435→                  <div className="flex items-center justify-between">
+   436→                    <Skeleton className="h-5 w-40" />
+   437→                    <Skeleton className="h-6 w-24 rounded-full" />
+   438→                  </div>
+   439→                  <Skeleton className="h-4 w-28" />
+   440→                  <Skeleton className="h-4 w-full" />
+   441→                  <Skeleton className="h-4 w-3/4" />
+   442→                  <div className="flex justify-end gap-2">
+   443→                    <Skeleton className="h-8 w-8" />
+   444→                    <Skeleton className="h-8 w-8" />
+   445→                  </div>
+   446→                </div>
+   447→              ))}
+   448→            </div>
+   449→          ) : (catatanList as CatatanSiswaItem[]).length === 0 ? (
+   450→            <div className="flex flex-col items-center justify-center py-16 text-center">
+   451→              <div className="mb-4 rounded-full bg-muted p-4">
+   452→                <FileText className="h-10 w-10 text-muted-foreground" />
+   453→              </div>
+   454→              <h3 className="text-lg font-semibold text-muted-foreground">
+   455→                Belum Ada Catatan
+   456→              </h3>
+   457→              <p className="mt-1 max-w-sm text-sm text-muted-foreground/70">
+   458→                {searchQuery || activeKategori
+   459→                  ? "Tidak ada catatan yang cocok dengan filter saat ini."
+   460→                  : "Catatan siswa akan tampil di sini setelah ditambahkan."}
+   461→              </p>
+   462→              {!searchQuery && !activeKategori && (
+   463→                <Button
+   464→                  variant="outline"
+   465→                  className="mt-4 gap-2"
+   466→                  onClick={openAddForm}
+   467→                >
+   468→                  <Plus className="h-4 w-4" />
+   469→                  Tambah Catatan Pertama
+   470→                </Button>
+   471→              )}
+   472→            </div>
+   473→          ) : (
+   474→            <ScrollArea className="max-h-[640px] catatan-scroll">
+   475→              <div className="space-y-3">
+   476→                {(catatanList as CatatanSiswaItem[]).map((item) => {
+   477→                  const kConfig = getKategoriConfig(item.kategori);
+   478→                  return (
+   479→                    <div
+   480→                      key={item.id}
+   481→                      className="group rounded-lg border bg-card p-4 transition-all hover:shadow-md"
+   482→                      style={{ borderLeftWidth: "4px", borderLeftColor: kConfig.color }}
+   483→                    >
+   484→                      {/* Top row: name + badge + actions */}
+   485→                      <div className="flex items-start justify-between gap-2">
+   486→                        <div className="flex items-center gap-2 min-w-0">
+   487→                          <div
+   488→                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+   489→                            style={{ backgroundColor: kConfig.color }}
+   490→                          >
+   491→                            {item.siswaNama?.charAt(0)?.toUpperCase() || "?"}
+   492→                          </div>
+   493→                          <div className="min-w-0">
+   494→                            <p className="font-semibold text-sm truncate">
+   495→                              {item.siswaNama || "-"}
+   496→                            </p>
+   497→                            <p className="text-xs text-muted-foreground">
+   498→                              {item.rombel}{item.nisn ? ` \u00B7 NISN ${item.nisn}` : ""}
+   499→                            </p>
+   500→                          </div>
+   501→                        </div>
+   502→                        <div className="flex items-center gap-2 shrink-0">
+   503→                          <Badge
+   504→                            variant="outline"
+   505→                            className="text-xs font-medium gap-1"
+   506→                            style={{
+   507→                              borderColor: kConfig.color,
+   508→                              color: kConfig.color,
+   509→                              backgroundColor: kConfig.bgColor,
+   510→                            }}
+   511→                          >
+   512→                            <span>{kConfig.icon}</span>
+   513→                            {kConfig.label}
+   514→                          </Badge>
+   515→                          {/* Desktop actions: show on hover */}
+   516→                          <div className="hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+   517→                            <Button
+   518→                              variant="ghost"
+   519→                              size="icon"
+   520→                              className="h-8 w-8"
+   521→                              onClick={() => openEditForm(item)}
+   522→                            >
+   523→                              <Pencil className="h-3.5 w-3.5" />
+   524→                            </Button>
+   525→                            <Button
+   526→                              variant="ghost"
+   527→                              size="icon"
+   528→                              className="h-8 w-8 text-destructive hover:text-destructive"
+   529→                              onClick={() => {
+   530→                                setDeletingId(item.id);
+   531→                                setDeleteOpen(true);
+   532→                              }}
+   533→                            >
+   534→                              <Trash2 className="h-3.5 w-3.5" />
+   535→                            </Button>
+   536→                          </div>
+   537→                          {/* Mobile actions: always visible */}
+   538→                          <div className="flex gap-1 sm:hidden">
+   539→                            <Button
+   540→                              variant="ghost"
+   541→                              size="icon"
+   542→                              className="h-8 w-8"
+   543→                              onClick={() => openEditForm(item)}
+   544→                            >
+   545→                              <Pencil className="h-3.5 w-3.5" />
+   546→                            </Button>
+   547→                            <Button
+   548→                              variant="ghost"
+   549→                              size="icon"
+   550→                              className="h-8 w-8 text-destructive hover:text-destructive"
+   551→                              onClick={() => {
+   552→                                setDeletingId(item.id);
+   553→                                setDeleteOpen(true);
+   554→                              }}
+   555→                            >
+   556→                              <Trash2 className="h-3.5 w-3.5" />
+   557→                            </Button>
+   558→                          </div>
+   559→                        </div>
+   560→                      </div>
+   561→
+   562→                      {/* Date */}
+   563→                      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+   564→                        <Calendar className="h-3.5 w-3.5" />
+   565→                        <span>{formatTanggal(item.tanggal)}</span>
+   566→                      </div>
+   567→
+   568→                      {/* Catatan */}
+   569→                      <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+   570→                        {item.catatan}
+   571→                      </p>
+   572→
+   573→                      {/* Tindakan */}
+   574→                      {item.tindakan && (
+   575→                        <div className="mt-3 rounded-md bg-muted/50 border border-border/50 p-3">
+   576→                          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
+   577→                            <AlertTriangle className="h-3.5 w-3.5" />
+   578→                            Tindak Lanjut
+   579→                          </div>
+   580→                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+   581→                            {item.tindakan}
+   582→                          </p>
+   583→                        </div>
+   584→                      )}
+   585→
+   586→                      {/* Footer: dibuat oleh */}
+   587→                      <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2">
+   588→                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   589→                          <User className="h-3 w-3" />
+   590→                          <span>{item.dibuatOleh || "-"}</span>
+   591→                        </div>
+   592→                        <span className="text-[10px] text-muted-foreground/60">
+   593→                          {item.updatedAt
+   594→                            ? `diperbarui ${new Date(item.updatedAt).toLocaleDateString("id-ID")}`
+   595→                            : item.createdAt
+   596→                              ? `dibuat ${new Date(item.createdAt).toLocaleDateString("id-ID")}`
+   597→                              : ""}
+   598→                        </span>
+   599→                      </div>
+   600→                    </div>
+   601→                  );
+   602→                })}
+   603→              </div>
+   604→            </ScrollArea>
+   605→          )}
+   606→        </CardContent>
+   607→      </Card>
+   608→
+   609→      {/* ─── Add/Edit Dialog ───────────────────────────────────────────── */}
+   610→      <Dialog open={formOpen} onOpenChange={(open) => { if (!open) closeForm(); else setFormOpen(true); }}>
+   611→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   612→          <DialogHeader>
+   613→            <DialogTitle className="flex items-center gap-2">
+   614→              {editingId ? (
+   615→                <>
+   616→                  <Pencil className="h-5 w-5" />
+   617→                  Edit Catatan
+   618→                </>
+   619→              ) : (
+   620→                <>
+   621→                  <Plus className="h-5 w-5" />
+   622→                  Tambah Catatan
+   623→                </>
+   624→              )}
+   625→            </DialogTitle>
+   626→            <DialogDescription>
+   627→              {editingId
+   628→                ? "Perbarui catatan siswa berikut."
+   629→                : "Isi data catatan siswa yang ingin ditambahkan."}
+   630→            </DialogDescription>
+   631→          </DialogHeader>
+   632→
+   633→          <div className="grid gap-4 py-2">
+   634→            {/* Rombel (add mode only) */}
+   635→            {!editingId && (
+   636→              <div className="space-y-2">
+   637→                <Label htmlFor="form-rombel">Rombel</Label>
+   638→                <Select
+   639→                  value={formRombel}
+   640→                  onValueChange={(val) => {
+   641→                    setFormRombel(val);
+   642→                    setFormSiswaId("");
+   643→                  }}
+   644→                >
+   645→                  <SelectTrigger id="form-rombel">
+   646→                    <SelectValue placeholder="Pilih Rombel" />
+   647→                  </SelectTrigger>
+   648→                  <SelectContent>
+   649→                    {(rombelList as string[]).map((r) => (
+   650→                      <SelectItem key={r} value={r}>{r}</SelectItem>
+   651→                    ))}
+   652→                  </SelectContent>
+   653→                </Select>
+   654→              </div>
+   655→            )}
+   656→
+   657→            {/* Siswa (add mode only) */}
+   658→            {!editingId && (
+   659→              <div className="space-y-2">
+   660→                <Label htmlFor="form-siswa">Siswa</Label>
+   661→                <Select value={formSiswaId} onValueChange={setFormSiswaId}>
+   662→                  <SelectTrigger id="form-siswa">
+   663→                    <SelectValue placeholder={formRombel ? "Pilih Siswa" : "Pilih rombel terlebih dahulu"} />
+   664→                  </SelectTrigger>
+   665→                  <SelectContent>
+   666→                    {(siswaOptions as SiswaOption[]).map((s) => (
+   667→                      <SelectItem key={s.id} value={s.id}>
+   668→                        {s.nama} — {s.nisn}
+   669→                      </SelectItem>
+   670→                    ))}
+   671→                  </SelectContent>
+   672→                </Select>
+   673→                {selectedSiswaInfo && (
+   674→                  <p className="text-xs text-muted-foreground">
+   675→                    {selectedSiswaInfo.nama} \u00B7 NISN {selectedSiswaInfo.nisn} \u00B7 {selectedSiswaInfo.rombel}
+   676→                  </p>
+   677→                )}
+   678→              </div>
+   679→            )}
+   680→
+   681→            {/* Siswa info (edit mode — read-only) */}
+   682→            {editingId && (
+   683→              <div className="space-y-2">
+   684→                <Label>Siswa</Label>
+   685→                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+   686→                  <User className="h-4 w-4 text-muted-foreground" />
+   687→                  <span className="text-sm font-medium">{selectedSiswaInfo?.nama || "Memuat..."}</span>
+   688→                  {selectedSiswaInfo?.nisn && (
+   689→                    <span className="text-xs text-muted-foreground">\u00B7 NISN {selectedSiswaInfo.nisn}</span>
+   690→                  )}
+   691→                </div>
+   692→              </div>
+   693→            )}
+   694→
+   695→            {/* Tanggal */}
+   696→            <div className="space-y-2">
+   697→              <Label htmlFor="form-tanggal">Tanggal</Label>
+   698→              <Input
+   699→                id="form-tanggal"
+   700→                type="date"
+   701→                value={formTanggal}
+   702→                onChange={(e) => setFormTanggal(e.target.value)}
+   703→              />
+   704→            </div>
+   705→
+   706→            {/* Kategori */}
+   707→            <div className="space-y-2">
+   708→              <Label htmlFor="form-kategori">Kategori</Label>
+   709→              <Select value={formKategori} onValueChange={setFormKategori}>
+   710→                <SelectTrigger id="form-kategori">
+   711→                  <SelectValue />
+   712→                </SelectTrigger>
+   713→                <SelectContent>
+   714→                  {KATEGORI_KEYS.map((k) => (
+   715→                    <SelectItem key={k} value={k}>
+   716→                      <span className="mr-2">{KATEGORI_CONFIG[k].icon}</span>
+   717→                      {KATEGORI_CONFIG[k].label}
+   718→                    </SelectItem>
+   719→                  ))}
+   720→                </SelectContent>
+   721→              </Select>
+   722→            </div>
+   723→
+   724→            {/* Catatan */}
+   725→            <div className="space-y-2">
+   726→              <Label htmlFor="form-catatan">
+   727→                Catatan <span className="text-destructive">*</span>
+   728→              </Label>
+   729→              <Textarea
+   730→                id="form-catatan"
+   731→                placeholder="Tuliskan catatan tentang siswa..."
+   732→                rows={4}
+   733→                value={formCatatan}
+   734→                onChange={(e) => setFormCatatan(e.target.value)}
+   735→              />
+   736→            </div>
+   737→
+   738→            {/* Tindakan */}
+   739→            <div className="space-y-2">
+   740→              <Label htmlFor="form-tindakan">
+   741→                Tindak Lanjut {" "}
+   742→                <span className="text-muted-foreground font-normal">(opsional)</span>
+   743→              </Label>
+   744→              <Textarea
+   745→                id="form-tindakan"
+   746→                placeholder="Tuliskan tindak lanjut yang akan dilakukan..."
+   747→                rows={3}
+   748→                value={formTindakan}
+   749→                onChange={(e) => setFormTindakan(e.target.value)}
+   750→              />
+   751→            </div>
+   752→          </div>
+   753→
+   754→          <DialogFooter className="gap-2 sm:gap-0">
+   755→            <Button variant="outline" onClick={closeForm}>
+   756→              Batal
+   757→            </Button>
+   758→            <Button
+   759→              onClick={handleSave}
+   760→              disabled={saveMutation.isPending}
+   761→              className="gap-2"
+   762→            >
+   763→              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+   764→              {editingId ? "Simpan Perubahan" : "Simpan"}
+   765→            </Button>
+   766→          </DialogFooter>
+   767→        </DialogContent>
+   768→      </Dialog>
+   769→
+   770→      {/* ─── Delete AlertDialog ─────────────────────────────────────────── */}
+   771→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+   772→        <AlertDialogContent>
+   773→          <AlertDialogHeader>
+   774→            <AlertDialogTitle>Hapus Catatan?</AlertDialogTitle>
+   775→            <AlertDialogDescription>
+   776→              Tindakan ini tidak dapat dibatalkan. Catatan siswa yang dihapus tidak dapat dikembalikan.
+   777→            </AlertDialogDescription>
+   778→          </AlertDialogHeader>
+   779→          <AlertDialogFooter>
+   780→            <AlertDialogCancel disabled={deleteMutation.isPending}>
+   781→              Batal
+   782→            </AlertDialogCancel>
+   783→            <AlertDialogAction
+   784→              onClick={handleDelete}
+   785→              disabled={deleteMutation.isPending}
+   786→              className="bg-destructive text-white hover:bg-destructive/90 gap-2"
+   787→            >
+   788→              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+   789→              Hapus
+   790→            </AlertDialogAction>
+   791→          </AlertDialogFooter>
+   792→        </AlertDialogContent>
+   793→      </AlertDialog>
+   794→    </div>
+   795→  );
+   796→}
+   797→

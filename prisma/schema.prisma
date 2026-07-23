@@ -344,3 +344,28 @@ model JadwalAkses {
   @@index([userId])
   @@index([tahunPelajaran, semester])
 }
+
+// ─── Catatan Siswa ────────────────────────────────────────────────────────
+
+model CatatanSiswa {
+  id              String   @id @default(cuid())
+  siswaId         String
+  siswaNama       String   @default("")
+  nisn            String   @default("")
+  rombel          String   @default("")
+  tanggal         String   // format: YYYY-MM-DD
+  kategori        String   @default("Lainnya") // Perilaku Positif, Perilaku Negatif, Akademik, Kedisiplinan, Prestasi, Lainnya
+  catatan         String
+  tindakan        String   @default("") // sanksi / tindak lanjut (opsional)
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  dibuatOleh      String   @default("") // username pembuat catatan
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
+  @@index([siswaId])
+  @@index([tanggal])
+  @@index([kategori])
+}
