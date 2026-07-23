@@ -6,6 +6,7 @@ import {
   ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
   Download, Trash2, Settings2, Loader2, Users, BookOpenCheck,
   RotateCcw, X, Check, CalendarOff, Plus, Pencil, Upload, UserCheck,
+  CalendarCheck, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
@@ -442,28 +447,25 @@ export default function AbsensiPage() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  // ─── Fill all visible as "H" ─────────────────────────────────────────────
-  const fillAllMutation = useMutation({
-    mutationFn: async (kode: string) => {
+  // ─── Fill all students Hadir for a specific date (today / tomorrow) ────
+  const fillDayMutation = useMutation({
+    mutationFn: async ({ tanggal, label }: { tanggal: string; label: string }) => {
+      // Check if blocked (weekend or blocked holiday)
+      const dow = getDayOfWeek(selectedYear, selectedMonth, parseInt(tanggal.split("-")[2]));
+      if (dow === 0 || dow === 6) throw new Error(`Tanggal ${label} jatuh pada hari libur (weekend)`);
+      const liburInfo = hariLiburMap[tanggal];
+      if (liburInfo && isBlockedCategory(liburInfo.kategori)) throw new Error(`Tanggal ${label} adalah hari ${liburInfo.kategori}: ${liburInfo.label}`);
+
       const items: { siswaId: string; siswaNama: string; nisn: string; rombel: string; tanggal: string; kodeAbsensi: string }[] = [];
       for (const siswa of siswaList as SiswaListItem[]) {
-        for (let d = 1; d <= daysInMonth; d++) {
-          const tanggal = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          // Skip Sundays (0) and Saturdays (6)
-          const dowFill = getDayOfWeek(selectedYear, selectedMonth, d);
-          if (dowFill === 0 || dowFill === 6) continue;
-          // Skip blocked holiday categories
-          const liburInfo = hariLiburMap[tanggal];
-          if (liburInfo && isBlockedCategory(liburInfo.kategori)) continue;
-          items.push({
-            siswaId: siswa.id,
-            siswaNama: siswa.nama,
-            nisn: siswa.nisn,
-            rombel: selectedRombel,
-            tanggal,
-            kodeAbsensi: kode,
-          });
-        }
+        items.push({
+          siswaId: siswa.id,
+          siswaNama: siswa.nama,
+          nisn: siswa.nisn,
+          rombel: selectedRombel,
+          tanggal,
+          kodeAbsensi: "H",
+        });
       }
       const r = await fetch("/api/absensi", {
         method: "POST",
@@ -474,12 +476,12 @@ export default function AbsensiPage() {
       if (!r.ok) throw new Error(d.error);
       return d;
     },
-    onSuccess: (data) => {
-      toast({ title: "Semua diisi Hadir", description: `${data.count} data disimpan` });
+    onSuccess: (data, vars) => {
+      toast({ title: "Berhasil", description: `${data.count} siswa diisi Hadir untuk ${vars.label}` });
       setLocalChanges({});
       qc.invalidateQueries({ queryKey: ["absensi-data"] });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Gagal", description: e.message, variant: "destructive" }),
   });
 
   // ─── Summary per siswa ─────────────────────────────────────────────────
@@ -755,14 +757,53 @@ export default function AbsensiPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                onClick={() => fillAllMutation.mutate("H")}
-                disabled={fillAllMutation.isPending || !selectedRombel}
-              >
-                {fillAllMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Isi Semua H
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                    disabled={fillDayMutation.isPending || !selectedRombel}
+                  >
+                    {fillDayMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarCheck className="h-3.5 w-3.5" />}
+                    Hadir Semua Siswa
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const now = new Date();
+                      const tanggal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                      const label = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                      fillDayMutation.mutate({ tanggal, label });
+                    }}
+                    disabled={fillDayMutation.isPending}
+                    className="gap-2 text-emerald-600 focus:text-emerald-600"
+                  >
+                    <CalendarCheck className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">Hari Ini</span>
+                      <span className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const tanggal = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+                      const label = tomorrow.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                      fillDayMutation.mutate({ tanggal, label });
+                    }}
+                    disabled={fillDayMutation.isPending}
+                    className="gap-2 text-blue-600 focus:text-blue-600"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="font-medium">Besok</span>
+                      <span className="text-[10px] text-muted-foreground">{(() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" }); })()}</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {hasChanges && (
                 <Button size="sm" className="gap-1.5" onClick={() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); saveMutation.mutate(); }} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
