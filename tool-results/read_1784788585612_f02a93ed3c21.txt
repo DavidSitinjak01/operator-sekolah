@@ -1,0 +1,803 @@
+     1→'use client';
+     2→
+     3→import { useQuery } from '@tanstack/react-query';
+     4→import {
+     5→  Users, GraduationCap, LogIn, LogOut, TrendingUp,
+     6→  School, UserRound, UserRoundPen, Activity, ArrowUpRight,
+     7→  ArrowDownRight, Minus, ClipboardCheck, CalendarCheck,
+     8→  AlertTriangle, Clock, ChevronRight, CheckCircle2,
+     9→  XCircle,
+    10→} from 'lucide-react';
+    11→import {
+    12→  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
+    13→  CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+    14→} from 'recharts';
+    15→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    16→import { Badge } from '@/components/ui/badge';
+    17→import {
+    18→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    19→} from '@/components/ui/table';
+    20→import { Skeleton } from '@/components/ui/skeleton';
+    21→import { useAppStore } from '@/store/app';
+    22→import { cn } from '@/lib/utils';
+    23→
+    24→// ── Types ────────────────────────────────────────────────────────────────────
+    25→
+    26→interface DashboardData {
+    27→  totalSiswa: number;
+    28→  totalGuru: number;
+    29→  totalMutasiMasuk: number;
+    30→  totalMutasiKeluar: number;
+    31→  genderDistribution: { jenisKelamin: string; jumlah: number }[];
+    32→  statusDistribution: { status: string; jumlah: number }[];
+    33→  siswaPerRombel: { kelas: string; jumlah: number }[];
+    34→  tahunPelajaranOverview: { tahunPelajaran: string; semester: string; jumlahSiswa: number }[];
+    35→  recentMutasiMasuk: { id: string; nama: string; nis: string; asalSekolah: string; tanggalMasuk: string }[];
+    36→  recentMutasiKeluar: { id: string; tujuanSekolah: string; tanggalKeluar: string; siswa: { nama: string; nipd: string; nisn: string; rombel: string } | null }[];
+    37→  // Absensi enrichment
+    38→  tanggalHariIni: string;
+    39→  bulanIni: string;
+    40→  hariIni: { hadir: number; sakit: number; izin: number; alpa: number; total: number };
+    41→  bulanIniSummary: { hadir: number; sakit: number; izin: number; alpa: number; total: number };
+    42→  totalAbsensiRecords: number;
+    43→  perRombelAbsensi: {
+    44→    rombel: string; totalSiswa: number;
+    45→    todayHadir: number; todaySakit: number; todayIzin: number; todayAlpa: number; todayFilled: number;
+    46→    monthHadir: number; monthSakit: number; monthIzin: number; monthAlpa: number; monthFilled: number;
+    47→  }[];
+    48→  totalRombelAbsensi: number;
+    49→}
+    50→
+    51→// ── Helpers ──────────────────────────────────────────────────────────────────
+    52→
+    53→function formatTanggal(dateStr: string): string {
+    54→  if (!dateStr) return '-';
+    55→  try {
+    56→    return new Date(dateStr).toLocaleDateString('id-ID', {
+    57→      day: 'numeric', month: 'short', year: 'numeric',
+    58→    });
+    59→  } catch {
+    60→    return dateStr;
+    61→  }
+    62→}
+    63→
+    64→function formatHariIni(dateStr: string): string {
+    65→  if (!dateStr) return '-';
+    66→  try {
+    67→    return new Date(dateStr).toLocaleDateString('id-ID', {
+    68→      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    69→    });
+    70→  } catch {
+    71→    return dateStr;
+    72→  }
+    73→}
+    74→
+    75→const C = {
+    76→  emerald: '#10b981', blue: '#3b82f6', amber: '#f59e0b', rose: '#f43f5e',
+    77→  violet: '#8b5cf6', pink: '#ec4899', cyan: '#06b6d4', orange: '#f97316',
+    78→};
+    79→
+    80→const tooltipStyle = {
+    81→  borderRadius: '12px',
+    82→  border: '1px solid hsl(var(--border))',
+    83→  boxShadow: '0 8px 30px rgb(0 0 0 / 0.08)',
+    84→  fontSize: 13,
+    85→  padding: '10px 14px',
+    86→};
+    87→
+    88→// ── Stat Card ────────────────────────────────────────────────────────────────
+    89→
+    90→interface StatCardProps {
+    91→  title: string;
+    92→  value: number | string | undefined;
+    93→  icon: React.ReactNode;
+    94→  gradient: string;
+    95→  iconRing: string;
+    96→  description?: string;
+    97→  trend?: 'up' | 'down' | 'neutral';
+    98→  subValue?: string;
+    99→}
+   100→
+   101→function StatCard({ title, value, icon, gradient, iconRing, description, trend, subValue }: StatCardProps) {
+   102→  return (
+   103→    <Card className={cn(
+   104→      "border-0 overflow-hidden",
+   105→      "bg-gradient-to-br from-white to-muted/30",
+   106→      "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]"
+   107→    )}>
+   108→      <CardContent className="relative p-4 pb-4">
+   109→        <div className={cn(
+   110→          "absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.07] blur-xl",
+   111→          gradient
+   112→        )} />
+   113→        <div className="flex items-start justify-between">
+   114→          <div className="flex-1 min-w-0">
+   115→            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest leading-none">{title}</p>
+   116→            <p className="text-2xl font-extrabold tracking-tight mt-2 leading-none text-foreground">
+   117→              {typeof value === 'number' ? value.toLocaleString('id-ID') : value ?? 0}
+   118→            </p>
+   119→            <div className="flex items-center gap-1.5 mt-2">
+   120→              {trend && (
+   121→                <span className={cn(
+   122→                  "inline-flex items-center gap-0.5 text-[11px] font-semibold leading-none px-1.5 py-0.5 rounded-md",
+   123→                  trend === 'up' && "bg-emerald-50 text-emerald-600",
+   124→                  trend === 'down' && "bg-rose-50 text-rose-500",
+   125→                  trend === 'neutral' && "bg-slate-100 text-slate-400",
+   126→                )}>
+   127→                  {trend === 'up' && <ArrowUpRight className="h-3 w-3" />}
+   128→                  {trend === 'down' && <ArrowDownRight className="h-3 w-3" />}
+   129→                  {trend === 'neutral' && <Minus className="h-3 w-3" />}
+   130→                </span>
+   131→              )}
+   132→              {description && (
+   133→                <span className="text-[11px] text-muted-foreground/70 truncate leading-none">{description}</span>
+   134→              )}
+   135→            </div>
+   136→            {subValue && (
+   137→              <p className="text-[11px] text-muted-foreground/60 mt-1 leading-none">{subValue}</p>
+   138→            )}
+   139→          </div>
+   140→          <div className={cn(
+   141→            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+   142→            gradient, iconRing
+   143→          )}>
+   144→            <div className="text-white drop-shadow-sm">{icon}</div>
+   145→          </div>
+   146→        </div>
+   147→      </CardContent>
+   148→    </Card>
+   149→  );
+   150→}
+   151→
+   152→function StatCards({ data }: { data: DashboardData }) {
+   153→  const aktif = data.statusDistribution.find((s) => s.status === 'Aktif')?.jumlah ?? 0;
+   154→  const laki = data.genderDistribution.find((g) => g.jenisKelamin === 'L')?.jumlah ?? 0;
+   155→  const perempuan = data.genderDistribution.find((g) => g.jenisKelamin === 'P')?.jumlah ?? 0;
+   156→  const rasioGuru = data.totalSiswa > 0
+   157→    ? (data.totalSiswa / Math.max(data.totalGuru, 1)).toFixed(1)
+   158→    : '-';
+   159→
+   160→  return (
+   161→    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+   162→      {/* ── Attendance Today ── */}
+   163→      <StatCard
+   164→        title="Hadir Hari Ini"
+   165→        value={data.hariIni.hadir}
+   166→        icon={<CheckCircle2 className="h-5 w-5" />}
+   167→        gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+   168→        iconRing="shadow-lg shadow-emerald-500/25"
+   169→        description={data.hariIni.total > 0 ? `${((data.hariIni.hadir / data.hariIni.total) * 100).toFixed(0)}% kehadiran` : 'Belum ada data'}
+   170→        trend="neutral"
+   171→        subValue={`Total ${data.hariIni.total} record`}
+   172→      />
+   173→      <StatCard
+   174→        title="Sakit Hari Ini"
+   175→        value={data.hariIni.sakit}
+   176→        icon={<AlertTriangle className="h-5 w-5" />}
+   177→        gradient="bg-gradient-to-br from-amber-400 to-orange-500"
+   178→        iconRing="shadow-lg shadow-amber-400/25"
+   179→        trend="neutral"
+   180→      />
+   181→      <StatCard
+   182→        title="Izin Hari Ini"
+   183→        value={data.hariIni.izin}
+   184→        icon={<Clock className="h-5 w-5" />}
+   185→        gradient="bg-gradient-to-br from-blue-400 to-blue-500"
+   186→        iconRing="shadow-lg shadow-blue-400/25"
+   187→        trend="neutral"
+   188→      />
+   189→      <StatCard
+   190→        title="Alpa Hari Ini"
+   191→        value={data.hariIni.alpa}
+   192→        icon={<XCircle className="h-5 w-5" />}
+   193→        gradient="bg-gradient-to-br from-rose-400 to-rose-500"
+   194→        iconRing="shadow-lg shadow-rose-400/25"
+   195→        trend="down"
+   196→      />
+   197→      {/* ── General Stats ── */}
+   198→      <StatCard
+   199→        title="Siswa Aktif"
+   200→        value={aktif}
+   201→        icon={<Users className="h-5 w-5" />}
+   202→        gradient="bg-gradient-to-br from-cyan-400 to-cyan-500"
+   203→        iconRing="shadow-lg shadow-cyan-400/25"
+   204→        description={`${laki} L · ${perempuan} P`}
+   205→        trend="neutral"
+   206→      />
+   207→      <StatCard
+   208→        title="Total Guru"
+   209→        value={data.totalGuru}
+   210→        icon={<GraduationCap className="h-5 w-5" />}
+   211→        gradient="bg-gradient-to-br from-violet-500 to-purple-600"
+   212→        iconRing="shadow-lg shadow-violet-500/25"
+   213→        description={`Rasio 1:${rasioGuru}`}
+   214→      />
+   215→      <StatCard
+   216→        title="Mutasi Masuk"
+   217→        value={data.totalMutasiMasuk}
+   218→        icon={<LogIn className="h-5 w-5" />}
+   219→        gradient="bg-gradient-to-br from-emerald-400 to-teal-500"
+   220→        iconRing="shadow-lg shadow-emerald-400/25"
+   221→        trend={data.totalMutasiMasuk > 0 ? 'up' : 'neutral'}
+   222→      />
+   223→      <StatCard
+   224→        title="Mutasi Keluar"
+   225→        value={data.totalMutasiKeluar}
+   226→        icon={<LogOut className="h-5 w-5" />}
+   227→        gradient="bg-gradient-to-br from-pink-400 to-rose-500"
+   228→        iconRing="shadow-lg shadow-pink-400/25"
+   229→        trend="down"
+   230→      />
+   231→    </div>
+   232→  );
+   233→}
+   234→
+   235→// ── Skeletons ────────────────────────────────────────────────────────────────
+   236→
+   237→function StatCardsSkeleton() {
+   238→  return (
+   239→    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+   240→      {Array.from({ length: 8 }).map((_, i) => (
+   241→        <Card key={i} className="border-0 shadow-sm">
+   242→          <CardContent className="p-4">
+   243→            <Skeleton className="h-3 w-16 mb-3" />
+   244→            <div className="flex justify-between items-start">
+   245→              <div className="space-y-2">
+   246→                <Skeleton className="h-7 w-12" />
+   247→                <Skeleton className="h-3 w-20" />
+   248→              </div>
+   249→              <Skeleton className="h-11 w-11 rounded-2xl" />
+   250→            </div>
+   251→          </CardContent>
+   252→        </Card>
+   253→      ))}
+   254→    </div>
+   255→  );
+   256→}
+   257→
+   258→function ChartSkeleton({ className }: { className?: string }) {
+   259→  return (
+   260→    <Card className={cn(
+   261→      "border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
+   262→      className
+   263→    )}>
+   264→      <CardHeader className="pb-2">
+   265→        <Skeleton className="h-5 w-48" />
+   266→      </CardHeader>
+   267→      <CardContent>
+   268→        <Skeleton className="h-[260px] w-full rounded-xl" />
+   269→      </CardContent>
+   270→    </Card>
+   271→  );
+   272→}
+   273→
+   274→function TableSkeleton() {
+   275→  return (
+   276→    <Card className="border-0 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]">
+   277→      <CardHeader className="pb-2">
+   278→        <Skeleton className="h-5 w-44" />
+   279→      </CardHeader>
+   280→      <CardContent>
+   281→        <div className="space-y-2">
+   282→          <Skeleton className="h-9 w-full rounded-lg" />
+   283→          {Array.from({ length: 4 }).map((_, i) => (
+   284→            <Skeleton key={i} className="h-9 w-full rounded-lg" />
+   285→          ))}
+   286→        </div>
+   287→      </CardContent>
+   288→    </Card>
+   289→  );
+   290→}
+   291→
+   292→// ── Kehadiran Chart (Stacked Bar) ──────────────────────────────────────────
+   293→
+   294→function KehadiranChart({ data }: { data: DashboardData }) {
+   295→  const chartData = data.perRombelAbsensi.map((r) => ({
+   296→    name: r.rombel,
+   297→    Hadir: r.monthHadir,
+   298→    Sakit: r.monthSakit,
+   299→    Izin: r.monthIzin,
+   300→    Alpa: r.monthAlpa,
+   301→  }));
+   302→
+   303→  if (chartData.length === 0) {
+   304→    return (
+   305→      <Card className={cn(
+   306→        "border-0 overflow-hidden",
+   307→        "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
+   308→        "bg-gradient-to-br from-white to-muted/20"
+   309→      )}>
+   310→        <CardHeader className="pb-2">
+   311→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   312→            <ClipboardCheck className="h-4 w-4 text-primary" />
+   313→            Rekap Kehadiran Bulan Ini per Rombel
+   314→          </CardTitle>
+   315→        </CardHeader>
+   316→        <CardContent className="flex items-center justify-center h-[280px]">
+   317→          <div className="text-center">
+   318→            <ClipboardCheck className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+   319→            <p className="text-sm text-muted-foreground">Belum ada data absensi</p>
+   320→            <p className="text-xs text-muted-foreground/60 mt-1">Mulai input absensi di menu Absensi Siswa</p>
+   321→          </div>
+   322→        </CardContent>
+   323→      </Card>
+   324→    );
+   325→  }
+   326→
+   327→  return (
+   328→    <Card className={cn(
+   329→      "border-0 overflow-hidden",
+   330→      "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
+   331→      "bg-gradient-to-br from-white to-muted/20"
+   332→    )}>
+   333→      <CardHeader className="pb-2">
+   334→        <div className="flex items-center justify-between">
+   335→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   336→            <ClipboardCheck className="h-4 w-4 text-primary" />
+   337→            Rekap Kehadiran Bulan Ini
+   338→          </CardTitle>
+   339→          <Badge variant="secondary" className="text-[10px] font-medium">
+   340→            {data.bulanIni} · {data.totalAbsensiRecords.toLocaleString('id-ID')} record
+   341→          </Badge>
+   342→        </div>
+   343→      </CardHeader>
+   344→      <CardContent>
+   345→        <div className="h-[300px] w-full">
+   346→          <ResponsiveContainer width="100%" height="100%">
+   347→            <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+   348→              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
+   349→              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} angle={-30} textAnchor="end" height={50} />
+   350→              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} allowDecimals={false} />
+   351→              <Tooltip contentStyle={tooltipStyle} />
+   352→              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+   353→              <Bar dataKey="Hadir" stackId="a" fill={C.emerald} radius={[0, 0, 0, 0]} maxBarSize={32} />
+   354→              <Bar dataKey="Sakit" stackId="a" fill={C.amber} maxBarSize={32} />
+   355→              <Bar dataKey="Izin" stackId="a" fill={C.blue} maxBarSize={32} />
+   356→              <Bar dataKey="Alpa" stackId="a" fill={C.rose} radius={[4, 4, 0, 0]} maxBarSize={32} />
+   357→            </BarChart>
+   358→          </ResponsiveContainer>
+   359→        </div>
+   360→      </CardContent>
+   361→    </Card>
+   362→  );
+   363→}
+   364→
+   365→// ── Siswa Per Rombel Bar Chart ─────────────────────────────────────────────
+   366→
+   367→function SiswaPerKelasChart({ data }: { data: DashboardData }) {
+   368→  return (
+   369→    <Card className={cn(
+   370→      "border-0 overflow-hidden",
+   371→      "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
+   372→      "bg-gradient-to-br from-white to-muted/20"
+   373→    )}>
+   374→      <CardHeader className="pb-2">
+   375→        <CardTitle className="text-base font-semibold flex items-center gap-2">
+   376→          <Users className="h-4 w-4 text-primary" />
+   377→          Distribusi Siswa per Rombel
+   378→        </CardTitle>
+   379→      </CardHeader>
+   380→      <CardContent>
+   381→        <div className="h-[260px] w-full">
+   382→          <ResponsiveContainer width="100%" height="100%">
+   383→            <BarChart data={data.siswaPerRombel} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+   384→              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
+   385→              <XAxis dataKey="kelas" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+   386→              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} allowDecimals={false} />
+   387→              <Tooltip contentStyle={tooltipStyle} />
+   388→              <Bar dataKey="jumlah" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+   389→              <defs>
+   390→                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+   391→                  <stop offset="0%" stopColor={C.emerald} stopOpacity={1} />
+   392→                  <stop offset="100%" stopColor={C.emerald} stopOpacity={0.6} />
+   393→                </linearGradient>
+   394→              </defs>
+   395→            </BarChart>
+   396→          </ResponsiveContainer>
+   397→        </div>
+   398→      </CardContent>
+   399→    </Card>
+   400→  );
+   401→}
+   402→
+   403→// ── Gender Pie Chart ──────────────────────────────────────────────────────
+   404→
+   405→function GenderPieChart({ data }: { data: DashboardData }) {
+   406→  const genderData = data.genderDistribution
+   407→    .filter((g) => g.jenisKelamin === 'L' || g.jenisKelamin === 'P')
+   408→    .map((g) => ({
+   409→      name: g.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+   410→      value: g.jumlah,
+   411→    }));
+   412→
+   413→  if (genderData.length === 0 || genderData.every((d) => d.value === 0)) {
+   414→    return (
+   415→      <Card className={cn("border-0", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   416→        <CardHeader className="pb-2">
+   417→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   418→            <UserRound className="h-4 w-4 text-primary" /> Rasio Jenis Kelamin
+   419→          </CardTitle>
+   420→        </CardHeader>
+   421→        <CardContent className="flex items-center justify-center h-[260px]">
+   422→          <p className="text-sm text-muted-foreground">Belum ada data</p>
+   423→        </CardContent>
+   424→      </Card>
+   425→    );
+   426→  }
+   427→
+   428→  return (
+   429→    <Card className={cn("border-0 overflow-hidden", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   430→      <CardHeader className="pb-2">
+   431→        <CardTitle className="text-base font-semibold flex items-center gap-2">
+   432→          <UserRound className="h-4 w-4 text-primary" /> Rasio Jenis Kelamin
+   433→        </CardTitle>
+   434→      </CardHeader>
+   435→      <CardContent>
+   436→        <div className="h-[260px] w-full">
+   437→          <ResponsiveContainer width="100%" height="100%">
+   438→            <PieChart>
+   439→              <Pie data={genderData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value"
+   440→                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} strokeWidth={0}>
+   441→                {genderData.map((_, index) => (
+   442→                  <Cell key={`cell-${index}`} fill={index === 0 ? C.blue : C.pink} />
+   443→                ))}
+   444→              </Pie>
+   445→              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value} siswa`, 'Jumlah']} />
+   446→              <Legend verticalAlign="bottom" iconType="circle" iconSize={8}
+   447→                formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>} />
+   448→            </PieChart>
+   449→          </ResponsiveContainer>
+   450→        </div>
+   451→      </CardContent>
+   452→    </Card>
+   453→  );
+   454→}
+   455→
+   456→// ── Kehadiran Bulan Ini Pie ──────────────────────────────────────────────
+   457→
+   458→function KehadiranPieChart({ data }: { data: DashboardData }) {
+   459→  const pieData = [
+   460→    { name: 'Hadir', value: data.bulanIniSummary.hadir },
+   461→    { name: 'Sakit', value: data.bulanIniSummary.sakit },
+   462→    { name: 'Izin', value: data.bulanIniSummary.izin },
+   463→    { name: 'Alpa', value: data.bulanIniSummary.alpa },
+   464→  ].filter((d) => d.value > 0);
+   465→
+   466→  if (pieData.length === 0) {
+   467→    return (
+   468→      <Card className={cn("border-0", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   469→        <CardHeader className="pb-2">
+   470→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   471→            <CalendarCheck className="h-4 w-4 text-primary" /> Distribusi Kehadiran Bulan Ini
+   472→          </CardTitle>
+   473→        </CardHeader>
+   474→        <CardContent className="flex items-center justify-center h-[260px]">
+   475→          <p className="text-sm text-muted-foreground">Belum ada data</p>
+   476→        </CardContent>
+   477→      </Card>
+   478→    );
+   479→  }
+   480→
+   481→  const pieColors = [C.emerald, C.amber, C.blue, C.rose];
+   482→
+   483→  return (
+   484→    <Card className={cn("border-0 overflow-hidden", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   485→      <CardHeader className="pb-2">
+   486→        <CardTitle className="text-base font-semibold flex items-center gap-2">
+   487→          <CalendarCheck className="h-4 w-4 text-primary" /> Distribusi Kehadiran Bulan Ini
+   488→        </CardTitle>
+   489→      </CardHeader>
+   490→      <CardContent>
+   491→        <div className="h-[260px] w-full">
+   492→          <ResponsiveContainer width="100%" height="100%">
+   493→            <PieChart>
+   494→              <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={3} dataKey="value"
+   495→                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} strokeWidth={0}>
+   496→                {pieData.map((_, index) => (
+   497→                  <Cell key={`kehadiran-${index}`} fill={pieColors[index] || '#888'} />
+   498→                ))}
+   499→              </Pie>
+   500→              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toLocaleString('id-ID')}`, 'Jumlah']} />
+   501→              <Legend verticalAlign="bottom" iconType="circle" iconSize={8}
+   502→                formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>} />
+   503→            </PieChart>
+   504→          </ResponsiveContainer>
+   505→        </div>
+   506→      </CardContent>
+   507→    </Card>
+   508→  );
+   509→}
+   510→
+   511→// ── Tahun Pelajaran Table ──────────────────────────────────────────────────
+   512→
+   513→function TahunPelajaranOverview({ data, activeTP, activeSem }: {
+   514→  data: DashboardData['tahunPelajaranOverview'];
+   515→  activeTP: string;
+   516→  activeSem: string;
+   517→}) {
+   518→  if (!data || data.length === 0) return null;
+   519→
+   520→  return (
+   521→    <Card className={cn("border-0 overflow-hidden", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   522→      <CardHeader className="pb-2">
+   523→        <CardTitle className="text-base font-semibold flex items-center gap-2">
+   524→          <School className="h-4 w-4 text-primary" /> Ringkasan per Tahun Pelajaran
+   525→        </CardTitle>
+   526→      </CardHeader>
+   527→      <CardContent className="max-h-[280px] overflow-y-auto">
+   528→        <Table>
+   529→          <TableHeader>
+   530→            <TableRow className="border-b border-border/60 hover:bg-transparent">
+   531→              <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Tahun Pelajaran</TableHead>
+   532→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">Semester</TableHead>
+   533→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">Siswa</TableHead>
+   534→            </TableRow>
+   535→          </TableHeader>
+   536→          <TableBody>
+   537→            {data.map((item, idx) => {
+   538→              const isActive = item.tahunPelajaran === activeTP && item.semester === activeSem;
+   539→              return (
+   540→                <TableRow key={`${item.tahunPelajaran}-${item.semester}-${idx}`} className={cn(
+   541→                  "transition-colors",
+   542→                  isActive ? "bg-primary/5" : "hover:bg-muted/40"
+   543→                )}>
+   544→                  <TableCell className="font-medium whitespace-nowrap">
+   545→                    {item.tahunPelajaran}
+   546→                    {isActive && (
+   547→                      <Badge className="ml-2 text-[10px] px-1.5 py-0 bg-primary text-primary-foreground font-semibold">Aktif</Badge>
+   548→                    )}
+   549→                  </TableCell>
+   550→                  <TableCell className="text-center">{item.semester}</TableCell>
+   551→                  <TableCell className="text-center font-bold">{item.jumlahSiswa.toLocaleString('id-ID')}</TableCell>
+   552→                </TableRow>
+   553→              );
+   554→            })}
+   555→          </TableBody>
+   556→        </Table>
+   557→      </CardContent>
+   558→    </Card>
+   559→  );
+   560→}
+   561→
+   562→// ── Per-Rombel Absensi Table ────────────────────────────────────────────────
+   563→
+   564→function PerRombelAbsensiTable({ data, todayStr }: { data: DashboardData; todayStr: string }) {
+   565→  if (!data.perRombelAbsensi || data.perRombelAbsensi.length === 0) return null;
+   566→
+   567→  return (
+   568→    <Card className={cn("border-0 overflow-hidden", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   569→      <CardHeader className="pb-2">
+   570→        <div className="flex items-center justify-between">
+   571→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   572→            <ClipboardCheck className="h-4 w-4 text-primary" />
+   573→            Kehadiran per Rombel
+   574→          </CardTitle>
+   575→          <Badge variant="outline" className="text-[10px] font-medium gap-1">
+   576→            <CalendarCheck className="h-3 w-3" />
+   577→            {todayStr}
+   578→          </Badge>
+   579→        </div>
+   580→      </CardHeader>
+   581→      <CardContent className="max-h-[340px] overflow-y-auto">
+   582→        <Table>
+   583→          <TableHeader>
+   584→            <TableRow className="border-b border-border/60 hover:bg-transparent">
+   585→              <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Rombel</TableHead>
+   586→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">Siswa</TableHead>
+   587→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.emerald }}>H</TableHead>
+   588→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.amber }}>S</TableHead>
+   589→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.blue }}>I</TableHead>
+   590→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.rose }}>A</TableHead>
+   591→              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">% Hadir</TableHead>
+   592→            </TableRow>
+   593→          </TableHeader>
+   594→          <TableBody>
+   595→            {data.perRombelAbsensi.map((r, idx) => {
+   596→              const pct = r.todayFilled > 0 ? ((r.todayHadir / r.todayFilled) * 100).toFixed(0) : '-';
+   597→              return (
+   598→                <TableRow key={r.rombel} className={cn(
+   599→                  idx % 2 === 1 && "bg-muted/20",
+   600→                  "hover:bg-muted/40 transition-colors"
+   601→                )}>
+   602→                  <TableCell className="font-medium whitespace-nowrap">
+   603→                    <div className="flex items-center gap-1.5">
+   604→                      <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
+   605→                      {r.rombel}
+   606→                    </div>
+   607→                  </TableCell>
+   608→                  <TableCell className="text-center text-muted-foreground">{r.totalSiswa}</TableCell>
+   609→                  <TableCell className="text-center font-semibold" style={{ color: r.todayHadir > 0 ? C.emerald : undefined }}>{r.todayHadir}</TableCell>
+   610→                  <TableCell className="text-center" style={{ color: r.todaySakit > 0 ? C.amber : undefined }}>{r.todaySakit}</TableCell>
+   611→                  <TableCell className="text-center" style={{ color: r.todayIzin > 0 ? C.blue : undefined }}>{r.todayIzin}</TableCell>
+   612→                  <TableCell className="text-center" style={{ color: r.todayAlpa > 0 ? C.rose : undefined }}>{r.todayAlpa}</TableCell>
+   613→                  <TableCell className="text-center">
+   614→                    <Badge variant={pct === '-' ? 'secondary' : Number(pct) >= 80 ? 'default' : Number(pct) >= 60 ? 'secondary' : 'destructive'}
+   615→                      className={cn("text-[10px] px-1.5 py-0 font-semibold",
+   616→                        Number(pct) >= 80 && "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+   617→                        Number(pct) >= 60 && Number(pct) < 80 && "bg-amber-100 text-amber-700 hover:bg-amber-100",
+   618→                        Number(pct) < 60 && Number(pct) > 0 && "bg-rose-100 text-rose-700 hover:bg-rose-100",
+   619→                        pct === '-' && "bg-muted text-muted-foreground hover:bg-muted",
+   620→                      )}>
+   621→                      {pct === '-' ? '-' : `${pct}%`}
+   622→                    </Badge>
+   623→                  </TableCell>
+   624→                </TableRow>
+   625→              );
+   626→            })}
+   627→          </TableBody>
+   628→        </Table>
+   629→      </CardContent>
+   630→    </Card>
+   631→  );
+   632→}
+   633→
+   634→// ── Recent Mutasi Table ─────────────────────────────────────────────────────
+   635→
+   636→function RecentMutasiTable({ data, type }: { data: DashboardData['recentMutasiMasuk'] | DashboardData['recentMutasiKeluar']; type: 'masuk' | 'keluar' }) {
+   637→  if (!data || data.length === 0) return null;
+   638→  const isMasuk = type === 'masuk';
+   639→
+   640→  return (
+   641→    <Card className={cn("border-0 overflow-hidden", "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]", "bg-gradient-to-br from-white to-muted/20")}>
+   642→      <CardHeader className="pb-2">
+   643→        <CardTitle className="text-base font-semibold flex items-center gap-2">
+   644→          <div className={cn(
+   645→            "flex h-7 w-7 items-center justify-center rounded-lg",
+   646→            isMasuk ? "bg-amber-100 text-amber-600" : "bg-rose-100 text-rose-500"
+   647→          )}>
+   648→            {isMasuk ? <LogIn className="h-3.5 w-3.5" /> : <LogOut className="h-3.5 w-3.5" />}
+   649→          </div>
+   650→          Mutasi {isMasuk ? 'Masuk' : 'Keluar'} Terbaru
+   651→        </CardTitle>
+   652→      </CardHeader>
+   653→      <CardContent>
+   654→        <Table>
+   655→          <TableHeader>
+   656→            <TableRow className="border-b border-border/60 hover:bg-transparent">
+   657→              <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Nama</TableHead>
+   658→              {isMasuk ? (
+   659→                <TableHead className="hidden sm:table-cell text-muted-foreground font-semibold text-xs uppercase tracking-wider">Sekolah Asal</TableHead>
+   660→              ) : (
+   661→                <>
+   662→                  <TableHead className="hidden sm:table-cell text-muted-foreground font-semibold text-xs uppercase tracking-wider">Rombel</TableHead>
+   663→                  <TableHead className="hidden sm:table-cell text-muted-foreground font-semibold text-xs uppercase tracking-wider">Tujuan</TableHead>
+   664→                </>
+   665→              )}
+   666→              <TableHead className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">Tanggal</TableHead>
+   667→            </TableRow>
+   668→          </TableHeader>
+   669→          <TableBody>
+   670→            {data.slice(0, 5).map((item) => {
+   671→              if (isMasuk) {
+   672→                const m = item as DashboardData['recentMutasiMasuk'][number];
+   673→                return (
+   674→                  <TableRow key={m.id} className="hover:bg-muted/40 transition-colors">
+   675→                    <TableCell className="font-medium whitespace-nowrap">{m.nama}</TableCell>
+   676→                    <TableCell className="hidden sm:table-cell max-w-[160px] truncate text-muted-foreground">{m.asalSekolah || '-'}</TableCell>
+   677→                    <TableCell className="whitespace-nowrap text-muted-foreground text-xs">{formatTanggal(m.tanggalMasuk)}</TableCell>
+   678→                  </TableRow>
+   679→                );
+   680→              } else {
+   681→                const k = item as DashboardData['recentMutasiKeluar'][number];
+   682→                return (
+   683→                  <TableRow key={k.id} className="hover:bg-muted/40 transition-colors">
+   684→                    <TableCell className="font-medium whitespace-nowrap">{k.siswa?.nama || '-'}</TableCell>
+   685→                    <TableCell className="hidden sm:table-cell">{k.siswa?.rombel || '-'}</TableCell>
+   686→                    <TableCell className="hidden sm:table-cell max-w-[140px] truncate text-muted-foreground">{k.tujuanSekolah || '-'}</TableCell>
+   687→                    <TableCell className="whitespace-nowrap text-muted-foreground text-xs">{formatTanggal(k.tanggalKeluar)}</TableCell>
+   688→                  </TableRow>
+   689→                );
+   690→              }
+   691→            })}
+   692→          </TableBody>
+   693→        </Table>
+   694→      </CardContent>
+   695→    </Card>
+   696→  );
+   697→}
+   698→
+   699→// ── Main Dashboard ────────────────────────────────────────────────────────
+   700→
+   701→export default function DashboardPage() {
+   702→  const { tahunPelajaran, semester } = useAppStore();
+   703→
+   704→  const { data, isLoading, isError } = useQuery<DashboardData>({
+   705→    queryKey: ['dashboard', tahunPelajaran, semester],
+   706→    queryFn: async () => {
+   707→      const params = new URLSearchParams();
+   708→      params.set('tahunPelajaran', tahunPelajaran);
+   709→      params.set('semester', semester);
+   710→      const res = await fetch(`/api/dashboard?${params.toString()}`);
+   711→      if (!res.ok) throw new Error('Gagal memuat data dashboard');
+   712→      return res.json();
+   713→    },
+   714→  });
+   715→
+   716→  if (isError) {
+   717→    return (
+   718→      <div className="flex flex-col items-center justify-center py-20 text-center">
+   719→        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 mb-4">
+   720→          <Activity className="h-8 w-8 text-rose-500" />
+   721→        </div>
+   722→        <p className="text-lg font-bold text-destructive">Gagal memuat data dashboard</p>
+   723→        <p className="mt-1 text-sm text-muted-foreground">Silakan coba lagi nanti.</p>
+   724→      </div>
+   725→    );
+   726→  }
+   727→
+   728→  return (
+   729→    <div className="space-y-6">
+   730→      {/* ── Header ── */}
+   731→      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+   732→        <div>
+   733→          <h1 className="text-2xl font-extrabold tracking-tight">Dashboard</h1>
+   734→          <p className="text-sm text-muted-foreground mt-0.5">
+   735→            TP <span className="font-semibold text-foreground">{tahunPelajaran}</span> — Semester <span className="font-semibold text-foreground">{semester}</span>
+   736→          </p>
+   737→        </div>
+   738→        <div className="flex items-center gap-3">
+   739→          {data && (
+   740→            <>
+   741→              <div className="text-right">
+   742→                <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider">Hari ini</p>
+   743→                <p className="text-xs font-medium text-foreground">{formatHariIni(data.tanggalHariIni)}</p>
+   744→              </div>
+   745→              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-lg">
+   746→                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+   747→                {data.totalSiswa.toLocaleString('id-ID')} siswa · {data.totalGuru} guru
+   748→              </div>
+   749→            </>
+   750→          )}
+   751→        </div>
+   752→      </div>
+   753→
+   754→      {/* ── Stat Cards ── */}
+   755→      {isLoading ? <StatCardsSkeleton /> : data ? <StatCards data={data} /> : null}
+   756→
+   757→      {/* ── Row 1: Kehadiran Bulan Ini (stacked bar) + Kehadiran Pie + Gender Pie ── */}
+   758→      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+   759→        <div className="lg:col-span-5">
+   760→          {isLoading ? <ChartSkeleton /> : data ? <KehadiranPieChart data={data} /> : null}
+   761→        </div>
+   762→        <div className="lg:col-span-4">
+   763→          {isLoading ? <ChartSkeleton /> : data ? <GenderPieChart data={data} /> : null}
+   764→        </div>
+   765→        <div className="lg:col-span-3">
+   766→          {isLoading ? <ChartSkeleton /> : data ? <SiswaPerKelasChart data={data} /> : null}
+   767→        </div>
+   768→      </div>
+   769→
+   770→      {/* ── Row 2: Rekap Kehadiran per Rombel (wide chart) + Per-Rombel Detail Table ── */}
+   771→      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+   772→        <div className="lg:col-span-7">
+   773→          {isLoading ? <ChartSkeleton /> : data ? <KehadiranChart data={data} /> : null}
+   774→        </div>
+   775→        <div className="lg:col-span-5">
+   776→          {isLoading ? <TableSkeleton /> : data ? (
+   777→            <PerRombelAbsensiTable data={data} todayStr={data.tanggalHariIni} />
+   778→          ) : null}
+   779→        </div>
+   780→      </div>
+   781→
+   782→      {/* ── Row 3: Tahun Pelajaran + Recent Mutasi ── */}
+   783→      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+   784→        <div className="lg:col-span-4">
+   785→          {isLoading ? <TableSkeleton /> : data ? (
+   786→            <TahunPelajaranOverview data={data.tahunPelajaranOverview} activeTP={tahunPelajaran} activeSem={semester} />
+   787→          ) : null}
+   788→        </div>
+   789→        <div className="lg:col-span-4">
+   790→          {isLoading ? <TableSkeleton /> : data ? (
+   791→            <RecentMutasiTable data={data.recentMutasiKeluar} type="keluar" />
+   792→          ) : null}
+   793→        </div>
+   794→        <div className="lg:col-span-4">
+   795→          {isLoading ? <TableSkeleton /> : data ? (
+   796→            <RecentMutasiTable data={data.recentMutasiMasuk} type="masuk" />
+   797→          ) : null}
+   798→        </div>
+   799→      </div>
+   800→    </div>
+   801→  );
+   802→}
+   803→

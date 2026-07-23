@@ -475,3 +475,27 @@ Stage Summary:
 - File modified: `src/components/pages/DashboardPage.tsx`, `src/app/page.tsx`
 - Commit: `fix: perbaiki layout dashboard & tambah fitur collapse sidebar`
 - Push: `0b1117d..64618a1 main -> main`
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix absensi data disappearing when navigating to another menu + sync to dashboard
+
+Work Log:
+- Investigated root cause: localChanges key uses '-' separator (siswaId-tanggal) but tanggal is YYYY-MM-DD format
+- When saveMutation parses key with split("-"), tanggal gets truncated to just the year (e.g., "2025" instead of "2025-07-08")
+- This means saved data has wrong tanggal and is never found when page reloads/fetches for specific month
+- Fixed by changing separator from '-' to '|' in all 7 locations in AbsensiPage.tsx
+- Added auto-save with 3-second debounce (useRef timer, useEffect on localChanges)
+- Added beforeunload event listener to warn when navigating with unsaved changes
+- Added visual auto-save indicator (amber "Auto-save 3 detik" / blue "Menyimpan...")
+- Verified dashboard API already reads from same Absensi table - data syncs automatically
+- Cleaned DB: no corrupted records found (database was clean)
+- Verified both Dashboard and Absensi pages render correctly in browser
+- Pushed to GitHub successfully
+
+Stage Summary:
+- Root cause: Key separator collision between siswaId-tanggal and tanggal format YYYY-MM-DD
+- Fix: Changed separator from '-' to '|' in localChanges keys
+- New features: Auto-save (3s debounce), beforeunload warning, visual save indicator
+- Dashboard sync: Already working via /api/dashboard API reading from Absensi table
+- Commit: d951978 pushed to main
