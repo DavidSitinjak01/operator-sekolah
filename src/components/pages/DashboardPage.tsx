@@ -37,7 +37,7 @@ interface DashboardData {
   // Absensi enrichment
   tanggalHariIni: string;
   bulanIni: string;
-  hariIni: { hadir: number; sakit: number; izin: number; alpa: number; total: number };
+  hariIni: { hadir: number; sakit: number; izin: number; alpa: number; total: number; totalSiswa: number };
   bulanIniSummary: { hadir: number; sakit: number; izin: number; alpa: number; total: number };
   totalAbsensiRecords: number;
   perRombelAbsensi: {
@@ -166,9 +166,9 @@ function StatCards({ data }: { data: DashboardData }) {
         icon={<CheckCircle2 className="h-5 w-5" />}
         gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
         iconRing="shadow-lg shadow-emerald-500/25"
-        description={data.hariIni.total > 0 ? `${((data.hariIni.hadir / data.hariIni.total) * 100).toFixed(0)}% kehadiran` : 'Belum ada data'}
+        description={data.hariIni.totalSiswa > 0 ? `${data.hariIni.hadir}/${data.hariIni.totalSiswa} siswa (${((data.hariIni.hadir / data.hariIni.totalSiswa) * 100).toFixed(0)}%)` : 'Belum ada data'}
         trend="neutral"
-        subValue={`Total ${data.hariIni.total} record`}
+        subValue={data.hariIni.total > 0 ? `${data.hariIni.total} record diisi` : 'Belum ada absensi hari ini'}
       />
       <StatCard
         title="Sakit Hari Ini"
@@ -588,12 +588,14 @@ function PerRombelAbsensiTable({ data, todayStr }: { data: DashboardData; todayS
               <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.amber }}>S</TableHead>
               <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.blue }}>I</TableHead>
               <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider" style={{ color: C.rose }}>A</TableHead>
+              <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">Diisi</TableHead>
               <TableHead className="text-center text-muted-foreground font-semibold text-xs uppercase tracking-wider">% Hadir</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.perRombelAbsensi.map((r, idx) => {
-              const pct = r.todayFilled > 0 ? ((r.todayHadir / r.todayFilled) * 100).toFixed(0) : '-';
+              const pct = r.totalSiswa > 0 ? ((r.todayHadir / r.totalSiswa) * 100).toFixed(0) : '-';
+              const filledInfo = r.todayFilled > 0 ? `${r.todayFilled}/${r.totalSiswa}` : '-';
               return (
                 <TableRow key={r.rombel} className={cn(
                   idx % 2 === 1 && "bg-muted/20",
@@ -610,6 +612,9 @@ function PerRombelAbsensiTable({ data, todayStr }: { data: DashboardData; todayS
                   <TableCell className="text-center" style={{ color: r.todaySakit > 0 ? C.amber : undefined }}>{r.todaySakit}</TableCell>
                   <TableCell className="text-center" style={{ color: r.todayIzin > 0 ? C.blue : undefined }}>{r.todayIzin}</TableCell>
                   <TableCell className="text-center" style={{ color: r.todayAlpa > 0 ? C.rose : undefined }}>{r.todayAlpa}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">
+                    <span className="text-[10px]">{filledInfo}</span>
+                  </TableCell>
                   <TableCell className="text-center">
                     <Badge variant={pct === '-' ? 'secondary' : Number(pct) >= 80 ? 'default' : Number(pct) >= 60 ? 'secondary' : 'destructive'}
                       className={cn("text-[10px] px-1.5 py-0 font-semibold",

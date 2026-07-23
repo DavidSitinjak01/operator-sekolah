@@ -207,6 +207,7 @@ export async function GET(request: NextRequest) {
         izin: todaySummary['I'] || 0,
         alpa: todaySummary['A'] || 0,
         total: Object.values(todaySummary).reduce((a, b) => a + b, 0),
+        totalSiswa,
       },
       bulanIniSummary: {
         hadir: monthSummary['H'] || 0,
