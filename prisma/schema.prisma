@@ -383,3 +383,57 @@ model CatatanSiswa {
   @@index([tanggal])
   @@index([kategori])
 }
+
+// ─── Tes Minat Bakat (RIASEC) ──────────────────────────────────────────
+
+model SoalTesMinatBakat {
+  id              String   @id @default(cuid())
+  nomor           Int
+  pertanyaan      String
+  dimensi         String   // R, I, A, S, E, C
+  poinA           String   @default("") // label pilihan A
+  poinB           String   @default("") // label pilihan B
+  skorA           String   @default("") // dimensi yang dapat poin jika jawab A (misal "R")
+  skorB           String   @default("") // dimensi yang dapat poin jika jawab B (misal "I")
+  tahunPelajaran  String   @default("2025/2026")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([nomor, tahunPelajaran])
+  @@index([tahunPelajaran])
+  @@index([dimensi])
+}
+
+model HasilTesMinatBakat {
+  id              String   @id @default(cuid())
+  siswaId         String
+  siswaNama       String   @default("")
+  nisn            String   @default("")
+  rombel          String   @default("")
+  jenisKelamin    String   @default("")
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  skorR           Int      @default(0)
+  skorI           Int      @default(0)
+  skorA           Int      @default(0)
+  skorS           Int      @default(0)
+  skorE           Int      @default(0)
+  skorC           Int      @default(0)
+  dominan1        String   @default("") // dimensi tertinggi
+  dominan2        String   @default("") // dimensi kedua
+  dominan3        String   @default("") // dimensi ketiga
+  kodeRIASEC      String   @default("") // contoh: "RIS"
+  rekomendasiJurusan String @default("")
+  deskripsi       String   @default("") // deskripsi kepribadian
+  totalPoin       Int      @default(0)
+  totalSoal       Int      @default(0)
+  waktuKerja      Int      @default(0) // waktu pengerjaan dalam detik
+  dibuatOleh      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([siswaId, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
+  @@index([siswaId])
+}
