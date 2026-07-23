@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   FileText, Plus, Pencil, Trash2, Search, Loader2,
-  User, Calendar, AlertTriangle, ClipboardList,
+  User, Calendar, AlertTriangle, ClipboardList, Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
+import LaporanSiswaPrintPage from "@/components/LaporanSiswaPrintPage";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface CatatanSiswaItem {
@@ -116,6 +117,7 @@ export default function CatatanSiswaPage() {
 
   // ─── State ──────────────────────────────────────────────────────────────
   const [selectedRombel, setSelectedRombel] = useState("");
+  const [laporanOpen, setLaporanOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeKategori, setActiveKategori] = useState("");
 
@@ -343,6 +345,15 @@ export default function CatatanSiswaPage() {
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Tambah Catatan</span>
               <span className="sm:hidden">Tambah</span>
+            </Button>
+            <Button
+              variant="outline" size="sm" className="gap-1.5 print:hidden"
+              onClick={() => setLaporanOpen(true)}
+              disabled={!effectiveRombel}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Cetak Laporan</span>
+              <span className="sm:hidden">Cetak</span>
             </Button>
           </div>
         </CardHeader>
@@ -790,6 +801,16 @@ export default function CatatanSiswaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ─── Laporan Print Dialog ────────────────────────────────────────── */}
+      <LaporanSiswaPrintPage
+        open={laporanOpen}
+        onClose={() => setLaporanOpen(false)}
+        rombel={effectiveRombel}
+        tahunPelajaran={tahunPelajaran}
+        semester={semester}
+        mode="catatan"
+      />
     </div>
   );
 }

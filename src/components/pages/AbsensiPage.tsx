@@ -6,7 +6,7 @@ import {
   ClipboardCheck, ChevronLeft, ChevronRight, Save, Printer,
   Download, Trash2, Settings2, Loader2, Users, BookOpenCheck,
   RotateCcw, X, Check, CalendarOff, Plus, Pencil, Upload, UserCheck,
-  CalendarCheck, CalendarDays,
+  CalendarCheck, CalendarDays, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
+import LaporanSiswaPrintPage from "@/components/LaporanSiswaPrintPage";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface SiswaListItem {
@@ -526,6 +527,10 @@ export default function AbsensiPage() {
   // ─── Print handler ─────────────────────────────────────────────────────
   const handlePrint = () => window.print();
 
+  // ─── Laporan print dialog state ─────────────────────────────────────────
+  const [laporanOpen, setLaporanOpen] = useState(false);
+  const [laporanMode, setLaporanMode] = useState<"kehadiran" | "catatan" | "lengkap">("kehadiran");
+
   // ─── Excel export handler ──────────────────────────────────────────────
   const [isExporting, setIsExporting] = useState(false);
   const handleExportExcel = useCallback(async () => {
@@ -668,9 +673,38 @@ export default function AbsensiPage() {
             {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             Excel
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
-            <Printer className="h-3.5 w-3.5" /> Cetak
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5" disabled={!selectedRombel}>
+                <Printer className="h-3.5 w-3.5" /> Cetak Laporan
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setLaporanMode("kehadiran"); setLaporanOpen(true); }} className="gap-2">
+                <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Laporan Kehadiran</span>
+                  <span className="text-[10px] text-muted-foreground">Rekap H, S, I, A per siswa</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setLaporanMode("catatan"); setLaporanOpen(true); }} className="gap-2">
+                <FileText className="h-4 w-4 text-blue-600" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Laporan Catatan Siswa</span>
+                  <span className="text-[10px] text-muted-foreground">Perilaku, akademik, kedisiplinan</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setLaporanMode("lengkap"); setLaporanOpen(true); }} className="gap-2">
+                <BookOpenCheck className="h-4 w-4 text-purple-600" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Laporan Kenaikan Kelas</span>
+                  <span className="text-[10px] text-muted-foreground">Kehadiran + Catatan lengkap</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1423,6 +1457,16 @@ export default function AbsensiPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Laporan Print Dialog ────────────────────────────────────────── */}
+      <LaporanSiswaPrintPage
+        open={laporanOpen}
+        onClose={() => setLaporanOpen(false)}
+        rombel={effectiveRombel}
+        tahunPelajaran={tahunPelajaran}
+        semester={semester}
+        mode={laporanMode}
+      />
     </div>
   );
 }
