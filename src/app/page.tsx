@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock, ClipboardCheck, FileText } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock, ClipboardCheck, FileText, BookOpenCheck } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ import ManajemenUserPage from "@/components/pages/ManajemenUserPage";
 import JadwalPelajaranPage from "@/components/pages/JadwalPelajaranPage";
 import AbsensiPage from "@/components/pages/AbsensiPage";
 import CatatanSiswaPage from "@/components/pages/CatatanSiswaPage";
+import LaporanSiswaPage from "@/components/pages/LaporanSiswaPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +71,7 @@ const navItems = [
   { key: "jadwal-pelajaran" as const, label: "Jadwal Pelajaran", icon: CalendarClock },
   { key: "absensi" as const, label: "Absensi Siswa", icon: ClipboardCheck, adminOrOperator: true },
   { key: "catatan-siswa" as const, label: "Catatan Siswa", icon: FileText, adminOrOperator: true },
+  { key: "laporan-siswa" as const, label: "Laporan Siswa", icon: BookOpenCheck, adminOrOperator: true },
   { key: "pengaturan" as const, label: "Pengaturan", icon: Settings, adminOrOperator: true },
   { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOrOperator: true },
 ];
@@ -415,7 +417,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse, className }: { op
             .map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.key;
-            const showSeparator = item.key === 'pengaturan' || item.key === 'manajemen-user';
+            const showSeparator = item.key === 'laporan-siswa' || item.key === 'pengaturan' || item.key === 'manajemen-user';
             return (
               <div key={item.key}>
                 {showSeparator && <div className="my-2.5 border-t border-white/8" />}
@@ -612,6 +614,8 @@ function PageContent() {
       return <AbsensiPage />;
     case "catatan-siswa":
       return <CatatanSiswaPage />;
+    case "laporan-siswa":
+      return <LaporanSiswaPage />;
     case "pengaturan":
       return <PengaturanPage />;
     case "manajemen-user":

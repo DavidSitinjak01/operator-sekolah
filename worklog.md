@@ -548,3 +548,32 @@ Stage Summary:
 - Per-row reset column removed (RotateCcw column at right edge of table)
 - Admin can only reset individual cells: click cell → picker dialog → "Kosong" button
 - All changes compile successfully, no lint errors
+---
+Task ID: 1
+Agent: main
+Task: Create Laporan Siswa page (combined attendance + notes report for class promotion)
+
+Work Log:
+- Analyzed existing codebase: found LaporanSiswaPrintPage.tsx already exists with 3 modes (kehadiran, catatan, lengkap)
+- Found existing API endpoints: /api/catatan-siswa/laporan (kehadiran) and /api/laporan-catatan (catatan)
+- Updated src/store/app.ts to add 'laporan-siswa' page type
+- Created src/components/pages/LaporanSiswaPage.tsx with:
+  - Rombel/class selector
+  - Report type selector (Kehadiran, Catatan Siswa, Laporan Kenaikan Kelas)
+  - Preview cards showing kehadiran summary (H/S/I/A per siswa with color-coded percentages)
+  - Preview cards showing catatan summary (grouped by student, categorized)
+  - Cetak Laporan button that opens LaporanSiswaPrintPage dialog
+  - Empty state, loading state, error state handling
+  - Percentage legend (Sangat Baik >= 90%, Baik >= 75%, Cukup >= 50%, Kurang < 50%)
+- Updated src/app/page.tsx:
+  - Added BookOpenCheck icon import
+  - Added LaporanSiswaPage import
+  - Added "Laporan Siswa" nav item (adminOrOperator: true, with separator)
+  - Added route case for "laporan-siswa"
+- Verified with Agent Browser: all checks passed
+
+Stage Summary:
+- Created standalone "Laporan Siswa" menu page that combines attendance and student notes into one assessment report
+- Default mode is "Laporan Kenaikan Kelas" (lengkap) which shows both kehadiran and catatan
+- Print dialog generates formal A4 report with kop surat, tables, and signature area
+- No new API endpoints needed — reuses existing /api/catatan-siswa/laporan and /api/laporan-catatan
