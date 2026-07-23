@@ -29,6 +29,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/app";
+import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface SiswaListItem {
@@ -840,12 +841,25 @@ export default function AbsensiPage() {
                 <tbody>
                   {(siswaList as SiswaListItem[]).map((siswa, rowIdx) => {
                     const summary = summaryPerSiswa[siswa.id] || {};
+                    const isRowSelected = selectedCell?.siswaId === siswa.id;
                     return (
-                      <tr key={siswa.id} className={rowIdx % 2 === 1 ? "bg-slate-50/30" : ""}>
-                        <td className="border border-slate-200 px-2 py-0.5 text-center text-slate-500 sticky left-0 z-10 bg-white print:bg-white print:sticky print:left-0">
+                      <tr
+                        key={siswa.id}
+                        className={cn(
+                          rowIdx % 2 === 1 ? "bg-slate-50/30" : "",
+                          isRowSelected && "bg-blue-50/80 ring-1 ring-blue-300/50"
+                        )}
+                      >
+                        <td className={cn(
+                          "border border-slate-200 px-2 py-0.5 text-center text-slate-500 sticky left-0 z-10 print:sticky print:left-0",
+                          isRowSelected ? "bg-blue-50/80 text-blue-700 font-semibold" : "bg-white print:bg-white"
+                        )}>
                           {rowIdx + 1}
                         </td>
-                        <td className="border border-slate-200 px-3 py-0.5 font-medium text-slate-700 sticky left-[50px] z-10 bg-white print:bg-white print:sticky print:left-[50px] text-xs truncate max-w-[200px]">
+                        <td className={cn(
+                          "border border-slate-200 px-3 py-0.5 font-medium sticky left-[50px] z-10 print:sticky print:left-[50px] text-xs whitespace-nowrap",
+                          isRowSelected ? "bg-blue-100/90 text-blue-900 font-bold" : "text-slate-700 bg-white print:bg-white"
+                        )}>
                           {siswa.nama}
                         </td>
                         {/* Date cells */}
