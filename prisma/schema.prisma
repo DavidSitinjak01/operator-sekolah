@@ -345,6 +345,20 @@ model JadwalAkses {
   @@index([tahunPelajaran, semester])
 }
 
+// ─── Link Penting ────────────────────────────────────────────────────────
+
+model LinkPenting {
+  id              String   @id @default(cuid())
+  judul           String
+  url             String
+  deskripsi       String   @default("")
+  kategori        String   @default("Lainnya") // Dapodik, Kemdikbud, Lainnya
+  icon            String   @default("Link")
+  dibuatOleh      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 // ─── Catatan Siswa ────────────────────────────────────────────────────────
 
 model CatatanSiswa {
