@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -141,7 +140,7 @@ function DaftarSiswaCard({
         </p>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="max-h-96">
+        <div className="max-h-96 overflow-y-auto">
           <div className="space-y-1">
             {kehadiranData.summary.map((siswa, idx) => {
               const catatanCount = catatanCountMap.get(siswa.siswaId) || 0;
@@ -184,7 +183,7 @@ function DaftarSiswaCard({
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
@@ -224,7 +223,7 @@ function KehadiranSummaryCard({ data }: { data: KehadiranResponse | null }) {
           </div>
         </div>
 
-        <ScrollArea className="max-h-72">
+        <div className="max-h-72 overflow-y-auto">
           <div className="space-y-1.5">
             {data.summary.map((siswa, idx) => (
               <div
@@ -252,7 +251,7 @@ function KehadiranSummaryCard({ data }: { data: KehadiranResponse | null }) {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
@@ -294,7 +293,7 @@ function CatatanSummaryCard({ data }: { data: CatatanResponse | null }) {
           </div>
         </div>
 
-        <ScrollArea className="max-h-72">
+        <div className="max-h-72 overflow-y-auto">
           <div className="space-y-2">
             {data.summary.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
@@ -336,7 +335,7 @@ function CatatanSummaryCard({ data }: { data: CatatanResponse | null }) {
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
