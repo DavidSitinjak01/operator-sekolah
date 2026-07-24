@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "next-auth/react";
-import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock, ClipboardCheck, FileText, BookOpenCheck, Link as LinkIcon, Brain } from "lucide-react";
+import { LayoutDashboard, Users, LogIn, LogOut, GraduationCap, Menu, X, School, CalendarDays, Settings, Plus, Trash2, Loader2, Shield, UserCog, KeyRound, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, CalendarClock, ClipboardCheck, FileText, BookOpenCheck, Link as LinkIcon, Brain, Palette } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ import CatatanSiswaPage from "@/components/pages/CatatanSiswaPage";
 import LaporanSiswaPage from "@/components/pages/LaporanSiswaPage";
 import LinkPentingPage from "@/components/pages/LinkPentingPage";
 import TesMinatBakatPage from "@/components/pages/TesMinatBakatPage";
+import GayaBelajarPage from "@/components/pages/GayaBelajarPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +77,7 @@ const navItems = [
   { key: "laporan-siswa" as const, label: "Laporan Siswa", icon: BookOpenCheck, adminOrOperator: true },
   { key: "link-penting" as const, label: "Link Penting", icon: LinkIcon, adminOrOperator: true },
   { key: "tes-minat-bakat" as const, label: "Tes Minat Bakat", icon: Brain, adminOrOperator: true },
+  { key: "gaya-belajar" as const, label: "Gaya Belajar", icon: Palette, adminOrOperator: true },
   { key: "pengaturan" as const, label: "Pengaturan", icon: Settings, adminOrOperator: true },
   { key: "manajemen-user" as const, label: "Manajemen User", icon: UserCog, adminOrOperator: true },
 ];
@@ -421,7 +423,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapse, className }: { op
             .map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.key;
-            const showSeparator = item.key === 'laporan-siswa' || item.key === 'link-penting' || item.key === 'tes-minat-bakat' || item.key === 'pengaturan' || item.key === 'manajemen-user';
+            const showSeparator = item.key === 'laporan-siswa' || item.key === 'link-penting' || item.key === 'tes-minat-bakat' || item.key === 'gaya-belajar' || item.key === 'pengaturan' || item.key === 'manajemen-user';
             return (
               <div key={item.key}>
                 {showSeparator && <div className="my-2.5 border-t border-white/8" />}
@@ -624,6 +626,8 @@ function PageContent() {
       return <LinkPentingPage />;
     case "tes-minat-bakat":
       return <TesMinatBakatPage />;
+    case "gaya-belajar":
+      return <GayaBelajarPage />;
     case "pengaturan":
       return <PengaturanPage />;
     case "manajemen-user":

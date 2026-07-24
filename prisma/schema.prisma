@@ -437,3 +437,52 @@ model HasilTesMinatBakat {
   @@index([rombel])
   @@index([siswaId])
 }
+// ─── Tes Gaya Belajar (VARK) ─────────────────────────────────────────
+
+model SoalGayaBelajar {
+  id              String   @id @default(cuid())
+  nomor           Int
+  pertanyaan      String
+  dimensi         String   // V, A, R, K
+  poinA           String   @default("")
+  poinB           String   @default("")
+  skorA           String   @default("")
+  skorB           String   @default("")
+  tahunPelajaran  String   @default("2025/2026")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([nomor, tahunPelajaran])
+  @@index([tahunPelajaran])
+  @@index([dimensi])
+}
+
+model HasilGayaBelajar {
+  id              String   @id @default(cuid())
+  siswaId         String
+  siswaNama       String   @default("")
+  nisn            String   @default("")
+  rombel          String   @default("")
+  jenisKelamin    String   @default("")
+  tahunPelajaran  String   @default("2025/2026")
+  semester        String   @default("Ganjil")
+  skorV           Int      @default(0)
+  skorA           Int      @default(0)
+  skorR           Int      @default(0)
+  skorK           Int      @default(0)
+  dominan         String   @default("") // V, A, R, or K
+  kodeVARK        String   @default("") // e.g. "VARK" sorted by score desc
+  deskripsi       String   @default("")
+  saranBelajar    String   @default("")
+  totalPoin       Int      @default(0)
+  totalSoal       Int      @default(0)
+  waktuKerja      Int      @default(0)
+  dibuatOleh      String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([siswaId, tahunPelajaran, semester])
+  @@index([tahunPelajaran, semester])
+  @@index([rombel])
+  @@index([siswaId])
+}

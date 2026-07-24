@@ -1,0 +1,404 @@
+    70→   119→   608→   608→                      </Button>
+    71→   120→   609→   609→                    </div>
+    72→   121→   610→   610→                    {sudahTesSet.has(selectedSiswa.id) && (
+    73→   122→   611→   611→                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-700">
+    74→   123→   612→   612→                        <strong>Perhatian:</strong> Siswa ini sudah pernah mengerjakan tes. Jika dilanjutkan, hasil sebelumnya akan ditimpa.
+    75→   124→   613→   613→                      </div>
+    76→   125→   614→   614→                    )}
+    77→   126→   615→   615→                  </div>
+    78→   127→   616→   616→                )}
+    79→   128→   617→   617→              </CardContent>
+    80→   129→   618→   618→            </Card>
+    81→   130→   619→   619→          )}
+    82→   131→   620→   620→        </div>
+    83→   132→   621→   621→      )}
+    84→   133→   622→   622→
+    85→   134→   623→   623→      {/* ── Active Test (soal per soal) ──────────────────────────────────── */}
+    86→   135→   624→   624→      {testActive && soalList.length > 0 && (
+    87→   136→   625→   625→        <div className="space-y-4">
+    88→   137→   626→   626→          {/* Progress */}
+    89→   138→   627→   627→          <div className="space-y-2">
+    90→   139→   628→   628→            <div className="flex items-center justify-between text-sm">
+    91→   140→   629→   629→              <span className="font-medium">Soal {currentQ + 1} dari {totalSoal}</span>
+    92→   141→   630→   630→              <span className="text-muted-foreground">{jawabanCount} / {totalSoal} dijawab</span>
+    93→   142→   631→   631→            </div>
+    94→   143→   632→   632→            <Progress value={(jawabanCount / totalSoal) * 100} className="h-2" />
+    95→   144→   633→   633→          </div>
+    96→   145→   634→   634→
+    97→   146→   635→   635→          {/* Question Card */}
+    98→   147→   636→   636→          <Card className="max-w-2xl mx-auto">
+    99→   148→   637→   637→            <CardContent className="p-6 space-y-6">
+   100→   149→   638→   638→              {/* Soal nomor + dimensi badge */}
+   101→   150→   639→   639→              <div className="flex items-center gap-2">
+   102→   151→   640→   640→                <span className="text-xs font-medium text-muted-foreground bg-gray-100 rounded-full px-2.5 py-1">
+   103→   152→   641→   641→                  Soal #{currentQ + 1}
+   104→   153→   642→   642→                </span>
+   105→   154→   643→   643→                <Badge variant="outline" className={cn("text-xs", RIASEC_LABELS[soalList[currentQ].dimensi]?.color)}>
+   106→   155→   644→   644→                  {RIASEC_LABELS[soalList[currentQ].dimensi]?.short}
+   107→   156→   645→   645→                </Badge>
+   108→   157→   646→   646→              </div>
+   109→   158→   647→   647→
+   110→   159→   648→   648→              {/* Pertanyaan */}
+   111→   160→   649→   649→              <p className="text-lg font-semibold leading-relaxed">
+   112→   161→   650→   650→                {soalList[currentQ].pertanyaan}
+   113→   162→   651→   651→              </p>
+   114→   163→   652→   652→
+   115→   164→   653→   653→              {/* Pilihan */}
+   116→   165→   654→   654→              <div className="space-y-3">
+   117→   166→   655→   655→                {(["A", "B"] as const).map(pilihan => {
+   118→   167→   656→   656→                  const label = pilihan === "A" ? soalList[currentQ].poinA : soalList[currentQ].poinB;
+   119→   168→   657→   657→                  const selected = jawaban[soalList[currentQ].nomor] === pilihan;
+   120→   169→   658→   658→                  return (
+   121→   170→   659→   659→                    <button
+   122→   171→   660→   660→                      key={pilihan}
+   123→   172→   661→   661→                      onClick={() => handleJawab(soalList[currentQ].nomor, pilihan)}
+   124→   173→   662→   662→                      className={cn(
+   125→   174→   663→   663→                        "w-full text-left rounded-xl border-2 p-4 transition-all",
+   126→   175→   664→   664→                        selected
+   127→   176→   665→   665→                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+   128→   177→   666→   666→                          : "border-border hover:border-primary/30 hover:bg-accent"
+   129→   178→   667→   667→                      )}
+   130→   179→   668→   668→                    >
+   131→   180→   669→   669→                      <div className="flex items-start gap-3">
+   132→   181→   670→   670→                        <div className={cn(
+   133→   182→   671→   671→                          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
+   134→   183→   672→   672→                          selected
+   135→   184→   673→   673→                            ? "bg-primary text-primary-foreground"
+   136→   185→   674→   674→                            : "bg-gray-100 text-gray-500"
+   137→   186→   675→   675→                        )}>
+   138→   187→   676→   676→                          {pilihan}
+   139→   188→   677→   677→                        </div>
+   140→   189→   678→   678→                        <p className={cn("text-sm leading-relaxed pt-1", selected && "font-medium")}>
+   141→   190→   679→   679→                          {label}
+   142→   191→   680→   680→                        </p>
+   143→   192→   681→   681→                      </div>
+   144→   193→   682→   682→                    </button>
+   145→   194→   683→   683→                  );
+   146→   195→   684→   684→                })}
+   147→   196→   685→   685→              </div>
+   148→   197→   686→   686→            </CardContent>
+   149→   198→   687→   687→          </Card>
+   150→   199→   688→   688→
+   151→   200→   689→   689→          {/* Navigation */}
+   152→   201→   690→   690→          <div className="flex items-center justify-between max-w-2xl mx-auto">
+   153→   202→   691→   691→            <Button
+   154→   203→   692→   692→              variant="outline"
+   155→   204→   693→   693→              onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
+   156→   205→   694→   694→              disabled={currentQ === 0}
+   157→   206→   695→   695→            >
+   158→   207→   696→   696→              <ChevronLeft className="h-4 w-4 mr-1" /> Sebelumnya
+   159→   208→   697→   697→            </Button>
+   160→   209→   698→   698→
+   161→   210→   699→   699→            {currentQ < totalSoal - 1 ? (
+   162→   211→   700→   700→              <Button onClick={() => setCurrentQ(currentQ + 1)}>
+   163→   212→   701→   701→                Selanjutnya <ChevronRight className="h-4 w-4 ml-1" />
+   164→   213→   702→   702→              </Button>
+   165→   214→   703→   703→            ) : (
+   166→   215→   704→   704→              <Button
+   167→   216→   705→   705→                onClick={finishTest}
+   168→   217→   706→   706→                disabled={jawabanCount < totalSoal || submitMutation.isPending}
+   169→   218→   707→   707→                className="bg-emerald-600 hover:bg-emerald-700"
+   170→   219→   708→   708→              >
+   171→   220→   709→   709→                {submitMutation.isPending ? (
+   172→   221→   710→   710→                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Menyimpan...</>
+   173→   222→   711→   711→                ) : (
+   174→   223→   712→   712→                  <><CheckCircle2 className="h-4 w-4 mr-2" /> Selesai & Simpan</>
+   175→   224→   713→   713→                )}
+   176→   225→   714→   714→              </Button>
+   177→   226→   715→   715→            )}
+   178→   227→   716→   716→          </div>
+   179→   228→   717→   717→
+   180→   229→   718→   718→          {/* Quick jump soal */}
+   181→   230→   719→   719→          <div className="max-w-2xl mx-auto">
+   182→   231→   720→   720→            <p className="text-xs text-muted-foreground mb-2">Navigasi cepat:</p>
+   183→   232→   721→   721→            <div className="flex flex-wrap gap-1.5">
+   184→   233→   722→   722→              {soalList.map((s, i) => {
+   185→   234→   723→   723→                const answered = jawaban[s.nomor] !== undefined;
+   186→   235→   724→   724→                const isCurrent = i === currentQ;
+   187→   236→   725→   725→                return (
+   188→   237→   726→   726→                  <button
+   189→   238→   727→   727→                    key={s.nomor}
+   190→   239→   728→   728→                    onClick={() => setCurrentQ(i)}
+   191→   240→   729→   729→                    className={cn(
+   192→   241→   730→   730→                      "w-8 h-8 rounded-md text-xs font-medium transition-colors",
+   193→   242→   731→   731→                      isCurrent && "bg-primary text-primary-foreground",
+   194→   243→   732→   732→                      !isCurrent && answered && "bg-primary/10 text-primary",
+   195→   244→   733→   733→                      !isCurrent && !answered && "bg-gray-100 text-muted-foreground hover:bg-gray-200"
+   196→   245→   734→   734→                    )}
+   197→   246→   735→   735→                  >
+   198→   247→   736→   736→                    {i + 1}
+   199→   248→   737→   737→                  </button>
+   200→   249→   738→   738→                );
+   201→   250→   739→   739→              })}
+   202→   251→   740→   740→            </div>
+   203→   252→   741→   741→          </div>
+   204→   253→   742→   742→
+   205→   254→   743→   743→          {/* Cancel */}
+   206→   255→   744→   744→          <div className="text-center">
+   207→   256→   745→   745→            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={cancelTest}>
+   208→   257→   746→   746→              Batal Mengerjakan
+   209→   258→   747→   747→            </Button>
+   210→   259→   748→   748→          </div>
+   211→   260→   749→   749→        </div>
+   212→   261→   750→   750→      )}
+   213→   262→   751→   751→
+   214→   263→   752→   752→      {/* ── Result after test ───────────────────────────────────────────── */}
+   215→   264→   753→   753→      {showResult && viewResult && (
+   216→   265→   754→   754→        <div className="space-y-6 print:space-y-4">
+   217→   266→   755→   755→          <Card className="print:shadow-none print:border-none">
+   218→   267→   756→   756→            <CardHeader>
+   219→   268→   757→   757→              <div className="flex items-center justify-between">
+   220→   269→   758→   758→                <div>
+   221→   270→   759→   759→                  <CardTitle className="flex items-center gap-2">
+   222→   271→   760→   760→                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+   223→   272→   761→   761→                    Hasil Tes Minat Bakat
+   224→   273→   762→   762→                  </CardTitle>
+   225→   274→   763→   763→                  <p className="text-sm text-muted-foreground mt-1">
+   226→   275→   764→   764→                    {viewResult.siswaNama} • {viewResult.rombel} • {formatWaktu(viewResult.waktuKerja)}
+   227→   276→   765→   765→                  </p>
+   228→   277→   766→   766→                </div>
+   229→   278→   767→   767→                <div className="flex gap-2 print:hidden">
+   230→   279→   768→   768→                  <Button variant="outline" size="sm" onClick={handlePrint}>
+   231→   280→   769→   769→                    <Printer className="h-4 w-4 mr-1" /> Cetak
+   232→   281→   770→   770→                  </Button>
+   233→   282→   771→   771→                  <Button size="sm" onClick={resetForNewTest}>
+   234→   283→   772→   772→                    <RotateCcw className="h-4 w-4 mr-1" /> Tes Siswa Lain
+   235→   284→   773→   773→                  </Button>
+   236→   285→   774→   774→                </div>
+   237→   286→   775→   775→              </div>
+   238→   287→   776→   776→            </CardHeader>
+   239→   288→   777→   777→            <CardContent className="space-y-6">
+   240→   289→   778→   778→              {/* RIASEC Code */}
+   241→   290→   779→   779→              <div className="text-center">
+   242→   291→   780→   780→                <p className="text-sm text-muted-foreground mb-2">Kode Minat Bakat</p>
+   243→   292→   781→   781→                <div className="flex items-center justify-center gap-2">
+   244→   293→   782→   782→                  {viewResult.kodeRIASEC.split("").map((d, i) => {
+   245→   294→   783→   783→                    const cfg = RIASEC_LABELS[d];
+   246→   295→   784→   784→                    if (!cfg) return null;
+   247→   296→   785→   785→                    return (
+   248→   297→   786→   786→                      <div key={i} className={cn("w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold", cfg.bgColor, cfg.color)}>
+   249→   298→   787→   787→                        {d}
+   250→   299→   788→   788→                      </div>
+   251→   300→   789→   789→                    );
+   252→   301→   790→   790→                  })}
+   253→   302→   791→   791→                </div>
+   254→   303→   792→   792→              </div>
+   255→   304→   793→   793→
+   256→   305→   794→   794→              {/* Bar Chart */}
+   257→   306→   795→   795→              <div>
+   258→   307→   796→   796→                <p className="text-sm font-medium mb-3">Skor Per Dimensi</p>
+   259→   308→   797→   797→                <RiasecBarChart scores={{
+   260→   309→   798→   798→                  R: viewResult.skorR,
+   261→   310→   799→   799→                  I: viewResult.skorI,
+   262→   311→   800→   800→                  A: viewResult.skorA,
+   263→   312→   801→   801→                  S: viewResult.skorS,
+   264→   313→   802→   802→                  E: viewResult.skorE,
+   265→   314→   803→   803→                  C: viewResult.skorC,
+   266→   315→   804→   804→                }} />
+   267→   316→   805→   805→              </div>
+   268→   317→   806→   806→
+   269→   318→   807→   807→              {/* Deskripsi */}
+   270→   319→   808→   808→              <div className={cn("rounded-lg p-4", RIASEC_LABELS[viewResult.dominan1]?.bgColor)}>
+   271→   320→   809→   809→                <p className={cn("font-bold text-sm mb-1", RIASEC_LABELS[viewResult.dominan1]?.color)}>
+   272→   321→   810→   810→                  {RIASEC_LABELS[viewResult.dominan1]?.label} — Tipe Dominan
+   273→   322→   811→   811→                </p>
+   274→   323→   812→   812→                <p className="text-sm text-muted-foreground">{viewResult.deskripsi}</p>
+   275→   324→   813→   813→              </div>
+   276→   325→   814→   814→
+   277→   326→   815→   815→              {/* Rekomendasi */}
+   278→   327→   816→   816→              <div>
+   279→   328→   817→   817→                <p className="font-bold text-sm mb-2">Rekomendasi Jurusan & Karir</p>
+   280→   329→   818→   818→                <p className="text-sm text-muted-foreground leading-relaxed">{viewResult.rekomendasiJurusan}</p>
+   281→   330→   819→   819→              </div>
+   282→   331→   820→   820→
+   283→   332→   821→   821→              {/* Footer */}
+   284→   333→   822→   822→              <Separator />
+   285→   334→   823→   823→              <div className="flex items-center justify-between text-xs text-muted-foreground print:text-black">
+   286→   335→   824→   824→                <span>Tahun Pelajaran: {viewResult.tahunPelajaran || tahunPelajaran}</span>
+   287→   336→   825→   825→                <span>Dites pada: {new Date(viewResult.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+   288→   337→   826→   826→              </div>
+   289→   338→   827→   827→            </CardContent>
+   290→   339→   828→   828→          </Card>
+   291→   340→   829→   829→        </div>
+   292→   341→   830→   830→      )}
+   293→   342→   831→   831→
+   294→   343→   832→   832→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   295→   344→   833→   833→      {/* TAB: HASIL TES */}
+   296→   345→   834→   834→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   297→   346→   835→   835→      {activeTab === "hasil" && (
+   298→   347→   836→   836→        <div className="space-y-4">
+   299→   348→   837→   837→          {/* Filter */}
+   300→   349→   838→   838→          <div className="flex flex-col sm:flex-row gap-3">
+   301→   350→   839→   839→            <Select value={filterRombel} onValueChange={setFilterRombel}>
+   302→   351→   840→   840→              <SelectTrigger className="w-full sm:w-64">
+   303→   352→   841→   841→                <SelectValue placeholder="Semua Kelas" />
+   304→   353→   842→   842→              </SelectTrigger>
+   305→   354→   843→   843→              <SelectContent>
+   306→   355→   844→   844→                <SelectItem value="all">Semua Kelas</SelectItem>
+   307→   356→   845→   845→                {rombelList.map((r: string) => (
+   308→   357→   846→   846→                  <SelectItem key={r} value={r}>{r}</SelectItem>
+   309→   358→   847→   847→                ))}
+   310→   359→   848→   848→              </SelectContent>
+   311→   360→   849→   849→            </Select>
+   312→   361→   850→   850→            <div className="text-sm text-muted-foreground self-center">
+   313→   362→   851→   851→              {hasilList.length} siswa dites
+   314→   363→   852→   852→            </div>
+   315→   364→   853→   853→          </div>
+   316→   365→   854→   854→
+   317→   366→   855→   855→          {/* Table */}
+   318→   367→   856→   856→          {hasilLoading ? (
+   319→   368→   857→   857→            <div className="space-y-2">
+   320→   369→   858→   858→              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+   321→   370→   859→   859→            </div>
+   322→   371→   860→   860→          ) : hasilList.length === 0 ? (
+   323→   372→   861→   861→            <Card>
+   324→   373→   862→   862→              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+   325→   374→   863→   863→                <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
+   326→   375→   864→   864→                <h3 className="text-lg font-medium text-muted-foreground">Belum ada hasil tes</h3>
+   327→   376→   865→   865→                <p className="text-sm text-muted-foreground mt-1">
+   328→   377→   866→   866→                  Hasil akan muncul setelah siswa mengerjakan tes
+   329→   378→   867→   867→                </p>
+   330→   379→   868→   868→              </CardContent>
+   331→   380→   869→   869→            </Card>
+   332→   381→   870→   870→          ) : (
+   333→   382→   871→   871→            <div className="border rounded-lg overflow-hidden">
+   334→   383→   872→   872→              <div className="overflow-x-auto">
+   335→   384→   873→   873→                <table className="w-full text-sm">
+   336→   385→   874→   874→                  <thead className="bg-gray-50 border-b">
+   337→   386→   875→   875→                    <tr>
+   338→   387→   876→   876→                      <th className="text-left px-4 py-3 font-medium">No</th>
+   339→   388→   877→   877→                      <th className="text-left px-4 py-3 font-medium">Nama Siswa</th>
+   340→   389→   878→   878→                      <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Kelas</th>
+   341→   390→   879→   879→                      <th className="text-left px-4 py-3 font-medium hidden md:table-cell">JK</th>
+   342→   391→   880→   880→                      <th className="text-center px-4 py-3 font-medium">Kode</th>
+   343→   392→   881→   881→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">R</th>
+   344→   393→   882→   882→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">I</th>
+   345→   394→   883→   883→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">A</th>
+   346→   395→   884→   884→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">S</th>
+   347→   396→   885→   885→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">E</th>
+   348→   397→   886→   886→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">C</th>
+   349→   398→   887→   887→                      <th className="text-center px-4 py-3 font-medium">Waktu</th>
+   350→   399→   888→   888→                      <th className="text-center px-4 py-3 font-medium">Aksi</th>
+   351→   400→   889→   889→                    </tr>
+   352→   401→   890→   890→                  </thead>
+   353→   402→   891→   891→                  <tbody>
+   354→   403→   892→   892→                    {hasilList.map((h, i) => (
+   355→   404→   893→   893→                      <tr key={h.id} className="border-b last:border-b-0 hover:bg-accent/50 transition-colors">
+   356→   405→   894→   894→                        <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
+   357→   406→   895→   895→                        <td className="px-4 py-3 font-medium">{h.siswaNama}</td>
+   358→   407→   896→   896→                        <td className="px-4 py-3 hidden sm:table-cell">{h.rombel}</td>
+   359→   408→   897→   897→                        <td className="px-4 py-3 hidden md:table-cell">{h.jenisKelamin}</td>
+   360→   409→   898→   898→                        <td className="px-4 py-3 text-center">
+   361→   410→   899→   899→                          <span className="inline-flex gap-0.5">
+   362→   411→   900→   900→                            {h.kodeRIASEC.split("").map((d, j) => (
+   363→   412→   901→   901→                              <span key={j} className={cn("w-6 h-6 rounded text-xs font-bold flex items-center justify-center", RIASEC_LABELS[d]?.bgColor, RIASEC_LABELS[d]?.color)}>
+   364→   413→   902→   902→                                {d}
+   365→   414→   903→   903→                              </span>
+   366→   415→   904→   904→                            ))}
+   367→   416→   905→   905→                          </span>
+   368→   417→   906→   906→                        </td>
+   369→   418→   907→   907→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorR}</td>
+   370→   419→   908→   908→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorI}</td>
+   371→   420→   909→   909→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorA}</td>
+   372→   421→   910→   910→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorS}</td>
+   373→   422→   911→   911→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorE}</td>
+   374→   423→   912→   912→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorC}</td>
+   375→   424→   913→   913→                        <td className="px-4 py-3 text-center text-xs text-muted-foreground">{formatWaktu(h.waktuKerja)}</td>
+   376→   425→   914→   914→                        <td className="px-4 py-3">
+   377→   426→   915→   915→                          <div className="flex items-center justify-center gap-1">
+   378→   427→   916→   916→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewResult(h)}>
+   379→   428→   917→   917→                              <Eye className="h-3.5 w-3.5" />
+   380→   429→   918→   918→                            </Button>
+   381→   430→   919→   919→                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(h)}>
+   382→   431→   920→   920→                              <Trash2 className="h-3.5 w-3.5" />
+   383→   432→   921→   921→                            </Button>
+   384→   433→   922→   922→                          </div>
+   385→   434→   923→   923→                        </td>
+   386→   435→   924→   924→                      </tr>
+   387→   436→   925→   925→                    ))}
+   388→   437→   926→   926→                  </tbody>
+   389→   438→   927→   927→                </table>
+   390→   439→   928→   928→              </div>
+   391→   440→   929→   929→            </div>
+   392→   441→   930→   930→          )}
+   393→   442→   931→   931→        </div>
+   394→   443→   932→   932→      )}
+   395→   444→   933→   933→
+   396→   445→   934→   934→      {/* ── View Result Dialog ──────────────────────────────────────────── */}
+   397→   446→   935→   935→      <Dialog open={!!viewResult && activeTab === "hasil"} onOpenChange={(open) => { if (!open) setViewResult(null); }}>
+   398→   447→   936→   936→        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+   399→   448→   937→   937→          <DialogHeader>
+   400→   449→   938→   938→            <DialogTitle className="flex items-center gap-2">
+   401→   450→   939→   939→              <Brain className="h-5 w-5" />
+   402→   451→   940→   940→              Hasil Tes: {viewResult?.siswaNama}
+   403→   452→   941→   941→            </DialogTitle>
+   404→   453→   942→   942→            <DialogDescription>
+   405→   454→   943→   943→              {viewResult?.rombel} • {viewResult && formatWaktu(viewResult.waktuKerja)}
+   406→   455→   944→   944→            </DialogDescription>
+   407→   456→   945→   945→          </DialogHeader>
+   408→   457→   946→   946→          {viewResult && (
+   409→   458→   947→   947→            <div className="space-y-5">
+   410→   459→   948→   948→              {/* Kode RIASEC */}
+   411→   460→   949→   949→              <div className="text-center">
+   412→   461→   950→   950→                <p className="text-xs text-muted-foreground mb-2">Kode Minat Bakat</p>
+   413→   462→   951→   951→                <div className="flex items-center justify-center gap-2">
+   414→   463→   952→   952→                  {viewResult.kodeRIASEC.split("").map((d, i) => {
+   415→   464→   953→   953→                    const cfg = RIASEC_LABELS[d];
+   416→   465→   954→   954→                    if (!cfg) return null;
+   417→   466→   955→   955→                    return (
+   418→   467→   956→   956→                      <div key={i} className={cn("w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold", cfg.bgColor, cfg.color)}>
+   419→   468→   957→   957→                        {d}
+   420→   469→   958→   958→                      </div>
+   421→   470→   959→   959→                    );
+   422→   471→   960→   960→                  })}
+   423→   472→   961→   961→                </div>
+   424→   473→   962→   962→              </div>
+   425→   474→   963→   963→
+   426→   475→   964→   964→              {/* Scores */}
+   427→   476→   965→   965→              <RiasecBarChart scores={{
+   428→   477→   966→   966→                R: viewResult.skorR, I: viewResult.skorI, A: viewResult.skorA,
+   429→   478→   967→   967→                S: viewResult.skorS, E: viewResult.skorE, C: viewResult.skorC,
+   430→   479→   968→   968→              }} />
+   431→   480→   969→   969→
+   432→   481→   970→   970→              {/* Deskripsi */}
+   433→   482→   971→   971→              <div className={cn("rounded-lg p-4", RIASEC_LABELS[viewResult.dominan1]?.bgColor)}>
+   434→   483→   972→   972→                <p className={cn("font-bold text-sm mb-1", RIASEC_LABELS[viewResult.dominan1]?.color)}>
+   435→   484→   973→   973→                  Tipe Dominan: {RIASEC_LABELS[viewResult.dominan1]?.label}
+   436→   485→   974→   974→                </p>
+   437→   486→   975→   975→                <p className="text-sm text-muted-foreground">{viewResult.deskripsi}</p>
+   438→   487→   976→   976→              </div>
+   439→   488→   977→   977→
+   440→   489→   978→   978→              {/* Rekomendasi */}
+   441→   490→   979→   979→              <div>
+   442→   491→   980→   980→                <p className="font-bold text-sm mb-1">Rekomendasi Jurusan & Karir</p>
+   443→   492→   981→   981→                <p className="text-sm text-muted-foreground leading-relaxed">{viewResult.rekomendasiJurusan}</p>
+   444→   493→   982→   982→              </div>
+   445→   494→   983→   983→            </div>
+   446→   495→   984→   984→          )}
+   447→   496→   985→   985→        </DialogContent>
+   448→   497→   986→   986→      </Dialog>
+   449→   498→   987→   987→
+   450→   499→   988→   988→      {/* ── Delete Dialog ────────────────────────────────────────────────── */}
+   451→   500→   989→   989→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+   452→   501→   990→   990→        <AlertDialogContent>
+   453→   502→   991→   991→          <AlertDialogHeader>
+   454→   503→   992→   992→            <AlertDialogTitle>Hapus Hasil Tes?</AlertDialogTitle>
+   455→   504→   993→   993→            <AlertDialogDescription>
+   456→   505→   994→   994→              Apakah Anda yakin ingin menghapus hasil tes <strong>{deleteTarget?.siswaNama}</strong>? Tindakan ini tidak dapat dibatalkan.
+   457→   506→   995→   995→            </AlertDialogDescription>
+   458→   507→   996→   996→          </AlertDialogHeader>
+   459→   508→   997→   997→          <AlertDialogFooter>
+   460→   509→   998→   998→            <AlertDialogCancel>Batal</AlertDialogCancel>
+   461→   510→   999→   999→            <AlertDialogAction
+   462→   511→  1000→  1000→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   463→   512→  1001→  1001→              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+   464→   513→  1002→  1002→              disabled={deleteMutation.isPending}
+   465→   514→  1003→  1003→            >
+   466→   515→  1004→  1004→              {deleteMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Menghapus...</> : "Hapus"}
+   467→   516→  1005→  1005→            </AlertDialogAction>
+   468→   517→  1006→  1006→          </AlertDialogFooter>
+   469→   518→  1007→  1007→        </AlertDialogContent>
+   470→   519→  1008→  1008→      </AlertDialog>
+   471→   520→  1009→  1009→    </div>
+   472→   521→  1010→  1010→  );
+   473→   522→  1011→  1011→}
