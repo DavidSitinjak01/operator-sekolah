@@ -168,12 +168,12 @@ function injectPrintStyles() {
         visibility: visible !important;
       }
       #laporan-print-content {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 15mm 15mm 20mm 20mm !important;
+        padding: 10mm !important;
         box-shadow: none !important;
         border: none !important;
         border-radius: 0 !important;
@@ -193,15 +193,27 @@ function injectPrintStyles() {
       /* Page setup */
       @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 15mm 15mm 20mm 20mm;
       }
-      /* Avoid breaking rows */
+      /* Avoid breaking inside rows */
       .print-avoid-break {
         break-inside: avoid;
       }
       /* Table borders in print */
       table {
         border-collapse: collapse;
+      }
+      /* Ensure no overlap for catatan sections */
+      .print-avoid-break + .print-avoid-break {
+        page-break-inside: avoid;
+      }
+      /* Force display:block on flex children inside print area */
+      #laporan-print-content .flex {
+        display: block !important;
+      }
+      #laporan-print-content .space-y-4 > * {
+        display: block !important;
+        page-break-inside: avoid;
       }
     }
   `;
@@ -514,7 +526,7 @@ export default function LaporanSiswaPrintPage({
                   style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}
                 >
                   <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{idx + 1}</td>
-                  <td style={{ border: "1px solid #000", padding: "3px 6px" }}>{siswa.siswaNama}</td>
+                  <td style={{ border: "1px solid #000", padding: "3px 6px", height: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}>{siswa.siswaNama}</td>
                   <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.jenisKelamin === "L" ? "\u2713" : ""}</td>
                   <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.jenisKelamin === "P" ? "\u2713" : ""}</td>
                   <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.H}</td>
@@ -587,9 +599,9 @@ export default function LaporanSiswaPrintPage({
               Tidak ada catatan untuk siswa di kelas ini.
             </div>
           ) : (
-            <div className="space-y-4">
-              {catatanData.summary.map((siswa) => (
-                <div key={siswa.siswaId} className="print-avoid-break">
+            <div style={{ display: "block" }}>
+              {catatanData.summary.map((siswa, sIdx) => (
+                <div key={siswa.siswaId || sIdx} className="print-avoid-break" style={{ marginBottom: "12px" }}>
                   {/* Student name sub-header */}
                   <div
                     style={{
@@ -650,7 +662,7 @@ export default function LaporanSiswaPrintPage({
 
       {/* ─── FOOTER / TANDA TANGAN ───────────────────────────────────── */}
       <div style={{ marginTop: "32px" }}>
-        <div className="flex justify-between">
+        <div className="flex justify-between" style={{ display: "flex" }}>
           {/* Kepala Sekolah */}
           <div style={{ textAlign: "center", width: "45%" }}>
             <p style={{ fontSize: "11px", margin: 0 }}>Mengetahui,</p>
