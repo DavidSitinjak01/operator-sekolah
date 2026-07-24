@@ -610,3 +610,25 @@ Stage Summary:
 - Per-student print: select class → see student list → click printer icon on any student → print dialog with combined attendance + notes report
 - Per-class print: unchanged, click "Cetak Per Kelas" button
 - Login: session expires after 15 minutes, user must re-login
+
+---
+Task ID: fix-overlap
+Agent: main
+Task: Fix overlapping student names on Laporan Siswa page
+
+Work Log:
+- Analyzed LaporanSiswaPage.tsx to identify root cause of overlapping student names
+- Found that Radix ScrollArea component with max-h-* doesn't properly constrain content height (viewport height:100% resolves to auto when parent has no explicit fixed height)
+- Replaced all 3 ScrollArea instances with plain div elements using max-h-* + overflow-y-auto:
+  1. DaftarSiswaCard: max-h-96 overflow-y-auto
+  2. KehadiranSummaryCard: max-h-72 overflow-y-auto
+  3. CatatanSummaryCard: max-h-72 overflow-y-auto
+- Removed unused ScrollArea import
+- Verified fix via browser automation + VLM image analysis — confirmed no overlapping names
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Root cause: Radix ScrollArea max-h-* doesn't work with viewport height:100%
+- Fix: Use plain div with overflow-y-auto instead of ScrollArea
+- All student names now render without overlap in all 3 cards
+- Pushed commit 4e1e06f to GitHub

@@ -1,0 +1,763 @@
+     1→"use client";
+     2→
+     3→import React, { useEffect, useState, useCallback } from "react";
+     4→import { Loader2, Printer, X } from "lucide-react";
+     5→import {
+     6→  Dialog,
+     7→  DialogContent,
+     8→  DialogHeader,
+     9→  DialogTitle,
+    10→  DialogDescription,
+    11→} from "@/components/ui/dialog";
+    12→import { Button } from "@/components/ui/button";
+    13→import { Skeleton } from "@/components/ui/skeleton";
+    14→import { cn } from "@/lib/utils";
+    15→
+    16→// ─── Types ─────────────────────────────────────────────────────────────────
+    17→
+    18→interface LaporanSiswaPrintPageProps {
+    19→  open: boolean;
+    20→  onClose: () => void;
+    21→  rombel: string;
+    22→  tahunPelajaran: string;
+    23→  semester: string;
+    24→  mode: "kehadiran" | "catatan" | "lengkap";
+    25→}
+    26→
+    27→interface KehadiranItem {
+    28→  siswaId: string;
+    29→  siswaNama: string;
+    30→  nisn: string;
+    31→  rombel: string;
+    32→  jenisKelamin: string;
+    33→  totalHariEfektif: number;
+    34→  H: number;
+    35→  S: number;
+    36→  I: number;
+    37→  A: number;
+    38→  persentase: number;
+    39→}
+    40→
+    41→interface KehadiranResponse {
+    42→  rombel: string;
+    43→  tahunPelajaran: string;
+    44→  semester: string;
+    45→  tanggalCetak: string;
+    46→  totalHariEfektif: number;
+    47→  totalSiswa: number;
+    48→  totalLaki: number;
+    49→  totalPerempuan: number;
+    50→  avgPersentase: number;
+    51→  summary: KehadiranItem[];
+    52→}
+    53→
+    54→interface CatatanDetail {
+    55→  id: string;
+    56→  tanggal: string;
+    57→  kategori: string;
+    58→  catatan: string;
+    59→  tindakan: string;
+    60→  dibuatOleh: string;
+    61→  createdAt: string;
+    62→}
+    63→
+    64→interface CatatanSiswaItem {
+    65→  siswaId: string;
+    66→  siswaNama: string;
+    67→  nisn: string;
+    68→  rombel: string;
+    69→  catatan: CatatanDetail[];
+    70→}
+    71→
+    72→interface CatatanResponse {
+    73→  rombel: string;
+    74→  tahunPelajaran: string;
+    75→  semester: string;
+    76→  tanggalCetak: string;
+    77→  totalCatatan: number;
+    78→  totalSiswaDenganCatatan: number;
+    79→  kategoriCount: Record<string, number>;
+    80→  summary: CatatanSiswaItem[];
+    81→}
+    82→
+    83→interface PengaturanData {
+    84→  namaSekolah: string;
+    85→  npsn: string;
+    86→  alamat: string;
+    87→  kabupaten: string;
+    88→  kecamatan: string;
+    89→  provinsi: string;
+    90→  kodePos: string;
+    91→  kepalaSekolah: string;
+    92→  nipKepsek: string;
+    93→}
+    94→
+    95→// ─── Helpers ───────────────────────────────────────────────────────────────
+    96→
+    97→const BULAN_NAMES = [
+    98→  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    99→  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+   100→];
+   101→
+   102→function formatTanggalIndo(dateStr: string): string {
+   103→  if (!dateStr) return "";
+   104→  const d = new Date(dateStr);
+   105→  if (isNaN(d.getTime())) return dateStr;
+   106→  const hari = d.getDate();
+   107→  const bulan = BULAN_NAMES[d.getMonth()];
+   108→  const tahun = d.getFullYear();
+   109→  return `${hari} ${bulan} ${tahun}`;
+   110→}
+   111→
+   112→function formatTanggalShort(dateStr: string): string {
+   113→  if (!dateStr) return "";
+   114→  const d = new Date(dateStr);
+   115→  if (isNaN(d.getTime())) return dateStr;
+   116→  const hari = d.getDate();
+   117→  const bulan = BULAN_NAMES[d.getMonth()];
+   118→  const tahun = d.getFullYear();
+   119→  return `${hari} ${bulan} ${tahun}`;
+   120→}
+   121→
+   122→function getReportTitle(mode: "kehadiran" | "catatan" | "lengkap"): string {
+   123→  switch (mode) {
+   124→    case "kehadiran":
+   125→      return "LAPORAN KEHADIRAN SISWA";
+   126→    case "catatan":
+   127→      return "LAPORAN CATATAN SISWA";
+   128→    case "lengkap":
+   129→      return "LAPORAN KENAIKAN KELAS";
+   130→  }
+   131→}
+   132→
+   133→// Kategori style for print — monochrome, using bold/italic
+   134→function getKategoriPrintStyle(kategori: string): React.CSSProperties {
+   135→  switch (kategori) {
+   136→    case "Perilaku Positif":
+   137→      return { fontWeight: 700 };
+   138→    case "Perilaku Negatif":
+   139→      return { fontWeight: 700, fontStyle: "italic" };
+   140→    case "Akademik":
+   141→      return { textDecoration: "underline" };
+   142→    case "Kedisiplinan":
+   143→      return { fontWeight: 700 };
+   144→    case "Prestasi":
+   145→      return { fontWeight: 700, fontStyle: "italic" };
+   146→    default:
+   147→      return {};
+   148→  }
+   149→}
+   150→
+   151→// ─── Print Styles (injected once) ──────────────────────────────────────────
+   152→
+   153→let printStylesInjected = false;
+   154→
+   155→function injectPrintStyles() {
+   156→  if (printStylesInjected || typeof document === "undefined") return;
+   157→  printStylesInjected = true;
+   158→  const style = document.createElement("style");
+   159→  style.id = "laporan-print-styles";
+   160→  style.textContent = `
+   161→    @media print {
+   162→      /* Hide everything except the print content */
+   163→      body * {
+   164→        visibility: hidden !important;
+   165→      }
+   166→      #laporan-print-content,
+   167→      #laporan-print-content * {
+   168→        visibility: visible !important;
+   169→      }
+   170→      #laporan-print-content {
+   171→        position: static !important;
+   172→        left: auto !important;
+   173→        top: auto !important;
+   174→        width: 100% !important;
+   175→        margin: 0 !important;
+   176→        padding: 10mm !important;
+   177→        box-shadow: none !important;
+   178→        border: none !important;
+   179→        border-radius: 0 !important;
+   180→        overflow: visible !important;
+   181→        max-height: none !important;
+   182→        background: white !important;
+   183→      }
+   184→      /* Remove dialog overlay */
+   185→      [data-slot="dialog-overlay"],
+   186→      [data-slot="dialog-close"] {
+   187→        display: none !important;
+   188→      }
+   189→      /* Remove non-print controls */
+   190→      .print\\:hidden {
+   191→        display: none !important;
+   192→      }
+   193→      /* Page setup */
+   194→      @page {
+   195→        size: A4 portrait;
+   196→        margin: 15mm 15mm 20mm 20mm;
+   197→      }
+   198→      /* Avoid breaking inside rows */
+   199→      .print-avoid-break {
+   200→        break-inside: avoid;
+   201→      }
+   202→      /* Table borders in print */
+   203→      table {
+   204→        border-collapse: collapse;
+   205→      }
+   206→      /* Ensure no overlap for catatan sections */
+   207→      .print-avoid-break + .print-avoid-break {
+   208→        page-break-inside: avoid;
+   209→      }
+   210→      /* Force display:block on flex children inside print area */
+   211→      #laporan-print-content .flex {
+   212→        display: block !important;
+   213→      }
+   214→      #laporan-print-content .space-y-4 > * {
+   215→        display: block !important;
+   216→        page-break-inside: avoid;
+   217→      }
+   218→    }
+   219→  `;
+   220→  document.head.appendChild(style);
+   221→}
+   222→
+   223→// ═══════════════════════════════════════════════════════════════════════════════
+   224→// MAIN COMPONENT
+   225→// ═══════════════════════════════════════════════════════════════════════════════
+   226→
+   227→export default function LaporanSiswaPrintPage({
+   228→  open,
+   229→  onClose,
+   230→  rombel,
+   231→  tahunPelajaran,
+   232→  semester,
+   233→  mode,
+   234→}: LaporanSiswaPrintPageProps) {
+   235→  // ─── State ──────────────────────────────────────────────────────────────
+   236→  const [kehadiranData, setKehadiranData] = useState<KehadiranResponse | null>(null);
+   237→  const [catatanData, setCatatanData] = useState<CatatanResponse | null>(null);
+   238→  const [pengaturan, setPengaturan] = useState<PengaturanData | null>(null);
+   239→  const [isLoading, setIsLoading] = useState(false);
+   240→  const [error, setError] = useState<string | null>(null);
+   241→
+   242→  const showKehadiran = mode === "kehadiran" || mode === "lengkap";
+   243→  const showCatatan = mode === "catatan" || mode === "lengkap";
+   244→
+   245→  // ─── Fetch data when dialog opens ──────────────────────────────────────
+   246→  const fetchData = useCallback(async () => {
+   247→    if (!rombel) return;
+   248→    setIsLoading(true);
+   249→    setError(null);
+   250→
+   251→    try {
+   252→      const params = new URLSearchParams({
+   253→        tahunPelajaran,
+   254→        semester,
+   255→        rombel,
+   256→      });
+   257→
+   258→      // Always fetch pengaturan
+   259→      const pengaturanRes = await fetch("/api/pengaturan");
+   260→      if (pengaturanRes.ok) {
+   261→        const p = await pengaturanRes.json();
+   262→        setPengaturan(p as PengaturanData);
+   263→      }
+   264→
+   265→      // Fetch kehadiran if needed
+   266→      if (showKehadiran) {
+   267→        const kehadiranRes = await fetch(`/api/catatan-siswa/laporan?${params}`);
+   268→        if (!kehadiranRes.ok) throw new Error("Gagal memuat data kehadiran");
+   269→        const kd = await kehadiranRes.json();
+   270→        setKehadiranData(kd as KehadiranResponse);
+   271→      }
+   272→
+   273→      // Fetch catatan if needed
+   274→      if (showCatatan) {
+   275→        const catatanRes = await fetch(`/api/laporan-catatan?${params}`);
+   276→        if (!catatanRes.ok) throw new Error("Gagal memuat data catatan");
+   277→        const cd = await catatanRes.json();
+   278→        setCatatanData(cd as CatatanResponse);
+   279→      }
+   280→    } catch (err) {
+   281→      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+   282→    } finally {
+   283→      setIsLoading(false);
+   284→    }
+   285→  }, [rombel, tahunPelajaran, semester, showKehadiran, showCatatan]);
+   286→
+   287→  useEffect(() => {
+   288→    if (open) {
+   289→      injectPrintStyles();
+   290→      fetchData();
+   291→    } else {
+   292→      // Reset data when closed
+   293→      setKehadiranData(null);
+   294→      setCatatanData(null);
+   295→      setError(null);
+   296→    }
+   297→  }, [open, fetchData]);
+   298→
+   299→  // ─── Print handler ──────────────────────────────────────────────────────
+   300→  const handlePrint = useCallback(() => {
+   301→    window.print();
+   302→  }, []);
+   303→
+   304→  // ─── Compute values ────────────────────────────────────────────────────
+   305→  const tanggalCetak =
+   306→    kehadiranData?.tanggalCetak ||
+   307→    catatanData?.tanggalCetak ||
+   308→    new Date().toISOString();
+   309→
+   310→  const totalSiswa = kehadiranData?.totalSiswa ?? 0;
+   311→  const totalLaki = kehadiranData?.totalLaki ?? 0;
+   312→  const totalPerempuan = kehadiranData?.totalPerempuan ?? 0;
+   313→  const avgPersentase = kehadiranData?.avgPersentase ?? 0;
+   314→
+   315→  const alamatLengkap = [
+   316→    pengaturan?.alamat,
+   317→    pengaturan?.kecamatan,
+   318→    pengaturan?.kabupaten,
+   319→    pengaturan?.provinsi,
+   320→    pengaturan?.kodePos,
+   321→  ]
+   322→    .filter(Boolean)
+   323→    .join(", ");
+   324→
+   325→  // ─── Loading Skeleton ──────────────────────────────────────────────────
+   326→  const LoadingSkeleton = (
+   327→    <div className="space-y-6 p-6" aria-busy="true" aria-label="Memuat laporan...">
+   328→      {/* Header skeleton */}
+   329→      <div className="space-y-2">
+   330→        <Skeleton className="h-6 w-64 mx-auto" />
+   331→        <Skeleton className="h-4 w-80 mx-auto" />
+   332→        <Skeleton className="h-3 w-48 mx-auto" />
+   333→        <Skeleton className="h-1 w-full mt-2" />
+   334→      </div>
+   335→      {/* Title skeleton */}
+   336→      <div className="space-y-2">
+   337→        <Skeleton className="h-5 w-56 mx-auto" />
+   338→        <Skeleton className="h-4 w-72 mx-auto" />
+   339→      </div>
+   340→      {/* Table skeleton */}
+   341→      <div className="space-y-2">
+   342→        <Skeleton className="h-8 w-full" />
+   343→        {Array.from({ length: 8 }).map((_, i) => (
+   344→          <Skeleton key={i} className="h-7 w-full" />
+   345→        ))}
+   346→        <Skeleton className="h-8 w-full" />
+   347→      </div>
+   348→      {/* Footer skeleton */}
+   349→      <div className="flex justify-between mt-8">
+   350→        <div className="space-y-2">
+   351→          <Skeleton className="h-3 w-24" />
+   352→          <Skeleton className="h-10 w-40 mt-4" />
+   353→          <Skeleton className="h-3 w-36" />
+   354→        </div>
+   355→        <div className="space-y-2">
+   356→          <Skeleton className="h-3 w-24" />
+   357→          <Skeleton className="h-10 w-40 mt-4" />
+   358→          <Skeleton className="h-3 w-36" />
+   359→        </div>
+   360→      </div>
+   361→    </div>
+   362→  );
+   363→
+   364→  // ─── Error State ───────────────────────────────────────────────────────
+   365→  const ErrorState = error ? (
+   366→    <div className="flex flex-col items-center justify-center py-16 text-center">
+   367→      <p className="text-sm text-red-600 mb-4">{error}</p>
+   368→      <Button variant="outline" size="sm" onClick={fetchData}>
+   369→        <Loader2 className="h-3.5 w-3.5 mr-1.5" /> Coba Lagi
+   370→      </Button>
+   371→    </div>
+   372→  ) : null;
+   373→
+   374→  // ═════════════════════════════════════════════════════════════════════════
+   375→  // PRINT CONTENT
+   376→  // ═════════════════════════════════════════════════════════════════════════
+   377→  const PrintContent = (
+   378→    <div
+   379→      id="laporan-print-content"
+   380→      className="bg-white text-black"
+   381→      style={{
+   382→        fontFamily: "'Times New Roman', Times, serif",
+   383→        fontSize: "11px",
+   384→        lineHeight: "1.5",
+   385→        color: "#000",
+   386→        padding: "20px 24px",
+   387→      }}
+   388→    >
+   389→      {/* ─── KOP SURAT ──────────────────────────────────────────────── */}
+   390→      <div className="text-center mb-1">
+   391→        <p
+   392→          style={{
+   393→            fontSize: "16px",
+   394→            fontWeight: 700,
+   395→            letterSpacing: "0.5px",
+   396→            margin: 0,
+   397→          }}
+   398→        >
+   399→          {pengaturan?.namaSekolah || "NAMA SEKOLAH"}
+   400→        </p>
+   401→        <p
+   402→          style={{
+   403→            fontSize: "11px",
+   404→            margin: "2px 0 0 0",
+   405→          }}
+   406→        >
+   407→          {alamatLengkap || "Alamat Sekolah"}
+   408→        </p>
+   409→        <p
+   410→          style={{
+   411→            fontSize: "11px",
+   412→            margin: "2px 0 0 0",
+   413→          }}
+   414→        >
+   415→          NPSN: {pengaturan?.npsn || "XXXX"}
+   416→        </p>
+   417→      </div>
+   418→      {/* Double line separator */}
+   419→      <div
+   420→        style={{
+   421→          borderTop: "3px solid #000",
+   422→          borderBottom: "1px solid #000",
+   423→          margin: "8px 0 12px 0",
+   424→          lineHeight: 0,
+   425→        }}
+   426→      />
+   427→
+   428→      {/* ─── JUDUL ──────────────────────────────────────────────────── */}
+   429→      <div className="text-center mb-4">
+   430→        <p
+   431→          style={{
+   432→            fontSize: "14px",
+   433→            fontWeight: 700,
+   434→            letterSpacing: "1px",
+   435→            margin: 0,
+   436→            textTransform: "uppercase",
+   437→          }}
+   438→        >
+   439→          {getReportTitle(mode)}
+   440→        </p>
+   441→        <p style={{ fontSize: "12px", margin: "6px 0 2px 0" }}>
+   442→          Kelas: <strong>{rombel}</strong>
+   443→        </p>
+   444→        <p style={{ fontSize: "12px", margin: 0 }}>
+   445→          Tahun Pelajaran: <strong>{tahunPelajaran}</strong>{"  —  "}
+   446→          Semester: <strong>{semester}</strong>
+   447→        </p>
+   448→      </div>
+   449→
+   450→      {/* ─── INFO SINGKAT (for lengkap mode) ─────────────────────────── */}
+   451→      {mode === "lengkap" && kehadiranData && (
+   452→        <div
+   453→          className="mb-3"
+   454→          style={{
+   455→            fontSize: "10px",
+   456→            border: "1px solid #000",
+   457→            padding: "6px 10px",
+   458→          }}
+   459→        >
+   460→          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+   461→            <tbody>
+   462→              <tr>
+   463→                <td style={{ width: "45%", padding: "1px 0" }}>
+   464→                  Total Siswa: <strong>{totalSiswa}</strong>{" "}
+   465→                  (L: {totalLaki}, P: {totalPerempuan})
+   466→                </td>
+   467→                <td style={{ width: "55%", padding: "1px 0" }}>
+   468→                  Total Hari Efektif: <strong>{kehadiranData.totalHariEfektif}</strong>{"  |  "}
+   469→                  Rata-rata Kehadiran: <strong>{avgPersentase}%</strong>
+   470→                </td>
+   471→              </tr>
+   472→              {catatanData && (
+   473→                <tr>
+   474→                  <td style={{ padding: "1px 0" }} colSpan={2}>
+   475→                    Total Catatan: <strong>{catatanData.totalCatatan}</strong>{" "}
+   476→                    (Siswa dengan catatan: <strong>{catatanData.totalSiswaDenganCatatan}</strong>)
+   477→                  </td>
+   478→                </tr>
+   479→              )}
+   480→            </tbody>
+   481→          </table>
+   482→        </div>
+   483→      )}
+   484→
+   485→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   486→      {/*  KEHADIRAN SECTION                                                */}
+   487→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   488→      {showKehadiran && kehadiranData && (
+   489→        <div className={cn(mode === "lengkap" && "mb-6")}>
+   490→          {/* Section title for non-lengkap mode */}
+   491→          {mode === "kehadiran" && (
+   492→            <div className="mb-2" style={{ fontSize: "10px" }}>
+   493→              Total Siswa: {totalSiswa} (L: {totalLaki}, P: {totalPerempuan}){"  |  "}
+   494→              Hari Efektif: {kehadiranData.totalHariEfektif}
+   495→            </div>
+   496→          )}
+   497→
+   498→          <table
+   499→            style={{
+   500→              width: "100%",
+   501→              borderCollapse: "collapse",
+   502→              fontSize: "10px",
+   503→            }}
+   504→          >
+   505→            {/* Header */}
+   506→            <thead>
+   507→              <tr style={{ backgroundColor: "#d4d4d4", fontWeight: 700 }}>
+   508→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "30px" }}>No</th>
+   509→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "left" }}>Nama Siswa</th>
+   510→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "24px" }}>L</th>
+   511→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "24px" }}>P</th>
+   512→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "30px" }}>H</th>
+   513→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "30px" }}>S</th>
+   514→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "30px" }}>I</th>
+   515→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "30px" }}>A</th>
+   516→                <th style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center", width: "40px" }}>%</th>
+   517→              </tr>
+   518→            </thead>
+   519→
+   520→            {/* Body */}
+   521→            <tbody>
+   522→              {kehadiranData.summary.map((siswa, idx) => (
+   523→                <tr
+   524→                  key={siswa.siswaId}
+   525→                  className="print-avoid-break"
+   526→                  style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}
+   527→                >
+   528→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{idx + 1}</td>
+   529→                  <td style={{ border: "1px solid #000", padding: "3px 6px", height: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}>{siswa.siswaNama}</td>
+   530→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.jenisKelamin === "L" ? "\u2713" : ""}</td>
+   531→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.jenisKelamin === "P" ? "\u2713" : ""}</td>
+   532→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.H}</td>
+   533→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.S}</td>
+   534→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.I}</td>
+   535→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{siswa.A}</td>
+   536→                  <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", fontWeight: 600 }}>{siswa.persentase}</td>
+   537→                </tr>
+   538→              ))}
+   539→            </tbody>
+   540→
+   541→            {/* Summary row */}
+   542→            <tfoot>
+   543→              <tr style={{ backgroundColor: "#e5e5e5", fontWeight: 700 }}>
+   544→                <td colSpan={4} style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "right" }}>Rata-rata</td>
+   545→                <td style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center" }}>
+   546→                  {kehadiranData.summary.length > 0
+   547→                    ? Math.round(kehadiranData.summary.reduce((a, b) => a + b.H, 0) / kehadiranData.summary.length)
+   548→                    : 0}
+   549→                </td>
+   550→                <td style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center" }}>
+   551→                  {kehadiranData.summary.length > 0
+   552→                    ? Math.round(kehadiranData.summary.reduce((a, b) => a + b.S, 0) / kehadiranData.summary.length)
+   553→                    : 0}
+   554→                </td>
+   555→                <td style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center" }}>
+   556→                  {kehadiranData.summary.length > 0
+   557→                    ? Math.round(kehadiranData.summary.reduce((a, b) => a + b.I, 0) / kehadiranData.summary.length)
+   558→                    : 0}
+   559→                </td>
+   560→                <td style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center" }}>
+   561→                  {kehadiranData.summary.length > 0
+   562→                    ? Math.round(kehadiranData.summary.reduce((a, b) => a + b.A, 0) / kehadiranData.summary.length)
+   563→                    : 0}
+   564→                </td>
+   565→                <td style={{ border: "1px solid #000", padding: "4px 6px", textAlign: "center" }}>{kehadiranData.avgPersentase}</td>
+   566→              </tr>
+   567→            </tfoot>
+   568→          </table>
+   569→        </div>
+   570→      )}
+   571→
+   572→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   573→      {/*  CATATAN SISWA SECTION                                            */}
+   574→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   575→      {showCatatan && catatanData && (
+   576→        <div>
+   577→          {/* Section title for non-lengkap mode */}
+   578→          {mode === "catatan" && (
+   579→            <div className="mb-2" style={{ fontSize: "10px" }}>
+   580→              Total Catatan: {catatanData.totalCatatan}{"  |  "}
+   581→              Siswa dengan Catatan: {catatanData.totalSiswaDenganCatatan}
+   582→            </div>
+   583→          )}
+   584→
+   585→          {/* Section divider for lengkap mode */}
+   586→          {mode === "lengkap" && (
+   587→            <div style={{ borderTop: "2px solid #000", margin: "12px 0 10px 0" }} />
+   588→          )}
+   589→
+   590→          {/* Section sub-heading for lengkap mode */}
+   591→          {mode === "lengkap" && (
+   592→            <p style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px", textAlign: "center", textTransform: "uppercase" }}>
+   593→              Catatan Siswa
+   594→            </p>
+   595→          )}
+   596→
+   597→          {catatanData.summary.length === 0 ? (
+   598→            <div style={{ border: "1px solid #000", padding: "12px", textAlign: "center", fontStyle: "italic", color: "#666" }}>
+   599→              Tidak ada catatan untuk siswa di kelas ini.
+   600→            </div>
+   601→          ) : (
+   602→            <div style={{ display: "block" }}>
+   603→              {catatanData.summary.map((siswa, sIdx) => (
+   604→                <div key={siswa.siswaId || sIdx} className="print-avoid-break" style={{ marginBottom: "12px" }}>
+   605→                  {/* Student name sub-header */}
+   606→                  <div
+   607→                    style={{
+   608→                      backgroundColor: "#f0f0f0",
+   609→                      border: "1px solid #000",
+   610→                      borderBottom: "none",
+   611→                      padding: "4px 8px",
+   612→                      fontWeight: 700,
+   613→                      fontSize: "11px",
+   614→                    }}
+   615→                  >
+   616→                    {siswa.siswaNama}
+   617→                    {siswa.nisn && (
+   618→                      <span style={{ fontWeight: 400, marginLeft: "8px", fontSize: "10px", color: "#555" }}>
+   619→                        NISN: {siswa.nisn}
+   620→                      </span>
+   621→                    )}
+   622→                  </div>
+   623→
+   624→                  {siswa.catatan.length === 0 ? (
+   625→                    <div style={{ border: "1px solid #000", borderTop: "none", padding: "8px", fontStyle: "italic", color: "#666", fontSize: "10px" }}>
+   626→                      Tidak ada catatan untuk siswa ini.
+   627→                    </div>
+   628→                  ) : (
+   629→                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+   630→                      <thead>
+   631→                        <tr style={{ backgroundColor: "#e8e8e8", fontWeight: 600 }}>
+   632→                          <th style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", width: "30px" }}>No</th>
+   633→                          <th style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", width: "70px" }}>Tanggal</th>
+   634→                          <th style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", width: "90px" }}>Kategori</th>
+   635→                          <th style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "left" }}>Catatan</th>
+   636→                          <th style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "left", width: "120px" }}>Tindak Lanjut</th>
+   637→                        </tr>
+   638→                      </thead>
+   639→                      <tbody>
+   640→                        {siswa.catatan.map((c, idx) => (
+   641→                          <tr
+   642→                            key={c.id}
+   643→                            className="print-avoid-break"
+   644→                            style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "fafafa" }}
+   645→                          >
+   646→                            <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center" }}>{idx + 1}</td>
+   647→                            <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", whiteSpace: "nowrap" }}>{formatTanggalShort(c.tanggal)}</td>
+   648→                            <td style={{ border: "1px solid #000", padding: "3px 6px", textAlign: "center", ...getKategoriPrintStyle(c.kategori) }}>{c.kategori}</td>
+   649→                            <td style={{ border: "1px solid #000", padding: "3px 6px" }}>{c.catatan}</td>
+   650→                            <td style={{ border: "1px solid #000", padding: "3px 6px" }}>{c.tindakan || "-"}</td>
+   651→                          </tr>
+   652→                        ))}
+   653→                      </tbody>
+   654→                    </table>
+   655→                  )}
+   656→                </div>
+   657→              ))}
+   658→            </div>
+   659→          )}
+   660→        </div>
+   661→      )}
+   662→
+   663→      {/* ─── FOOTER / TANDA TANGAN ───────────────────────────────────── */}
+   664→      <div style={{ marginTop: "32px" }}>
+   665→        <div className="flex justify-between" style={{ display: "flex" }}>
+   666→          {/* Kepala Sekolah */}
+   667→          <div style={{ textAlign: "center", width: "45%" }}>
+   668→            <p style={{ fontSize: "11px", margin: 0 }}>Mengetahui,</p>
+   669→            <p style={{ fontSize: "11px", fontWeight: 700, margin: 0 }}>Kepala Sekolah</p>
+   670→            <div style={{ height: "60px" }} />
+   671→            <p style={{ fontSize: "11px", fontWeight: 700, textDecoration: "underline", margin: 0 }}>
+   672→              {pengaturan?.kepalaSekolah || "____________________"}
+   673→            </p>
+   674→            <p style={{ fontSize: "10px", margin: "2px 0 0 0" }}>
+   675→              NIP. {pengaturan?.nipKepsek || "...................."}
+   676→            </p>
+   677→          </div>
+   678→
+   679→          {/* Guru Kelas */}
+   680→          <div style={{ textAlign: "center", width: "45%" }}>
+   681→            <p style={{ fontSize: "11px", margin: 0 }}>{"\u00A0"}</p>
+   682→            <p style={{ fontSize: "11px", fontWeight: 700, margin: 0 }}>Guru Kelas</p>
+   683→            <div style={{ height: "60px" }} />
+   684→            <p style={{ fontSize: "11px", fontWeight: 700, textDecoration: "underline", margin: 0 }}>
+   685→              ____________________
+   686→            </p>
+   687→            <p style={{ fontSize: "10px", margin: "2px 0 0 0" }}>
+   688→              NIP. ....................
+   689→            </p>
+   690→          </div>
+   691→        </div>
+   692→      </div>
+   693→
+   694→      {/* ─── TANGGAL CETAK ──────────────────────────────────────────── */}
+   695→      <div style={{ marginTop: "16px", fontSize: "9px", textAlign: "right", color: "#888" }}>
+   696→        Dicetak pada: {formatTanggalIndo(tanggalCetak)}
+   697→      </div>
+   698→    </div>
+   699→  );
+   700→
+   701→  // ═════════════════════════════════════════════════════════════════════════
+   702→  // RENDER
+   703→  // ═════════════════════════════════════════════════════════════════════════
+   704→  return (
+   705→    <Dialog
+   706→      open={open}
+   707→      onOpenChange={(val) => {
+   708→        if (!val) onClose();
+   709→      }}
+   710→    >
+   711→      <DialogContent
+   712→        className="max-w-[210mm] w-full h-[90vh] overflow-y-auto"
+   713→        showCloseButton={false}
+   714→        style={{
+   715→          maxWidth: "210mm",
+   716→          padding: "0",
+   717→        }}
+   718→      >
+   719→        {/* Screen-only toolbar */}
+   720→        <div className="print:hidden flex items-center justify-between gap-2 p-3 border-b bg-white sticky top-0 z-10 rounded-t-lg">
+   721→          <DialogHeader className="p-0 gap-1">
+   722→            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+   723→              <Printer className="h-4 w-4" />
+   724→              {getReportTitle(mode)} — {rombel}
+   725→            </DialogTitle>
+   726→            <DialogDescription className="text-xs text-muted-foreground">
+   727→              Pratinjau laporan sebelum mencetak
+   728→            </DialogDescription>
+   729→          </DialogHeader>
+   730→
+   731→          <div className="flex items-center gap-2 flex-shrink-0">
+   732→            <Button
+   733→              size="sm"
+   734→              onClick={handlePrint}
+   735→              disabled={isLoading || !!error}
+   736→              className="gap-1.5"
+   737→            >
+   738→              <Printer className="h-3.5 w-3.5" />
+   739→              Cetak
+   740→            </Button>
+   741→            <Button
+   742→              variant="outline"
+   743→              size="sm"
+   744→              onClick={onClose}
+   745→              className="gap-1.5"
+   746→            >
+   747→              <X className="h-3.5 w-3.5" />
+   748→              Tutup
+   749→            </Button>
+   750→          </div>
+   751→        </div>
+   752→
+   753→        {/* Content area */}
+   754→        <div className="p-0">
+   755→          {isLoading && LoadingSkeleton}
+   756→          {!isLoading && ErrorState}
+   757→          {!isLoading && !error && PrintContent}
+   758→        </div>
+   759→      </DialogContent>
+   760→    </Dialog>
+   761→  );
+   762→}
+   763→
