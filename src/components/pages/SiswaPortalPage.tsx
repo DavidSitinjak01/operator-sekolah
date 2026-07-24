@@ -144,7 +144,7 @@ const varkIcons: Record<string, React.ElementType> = {
 // ─── Main Component ────────────────────────────────────────────────────
 
 export default function SiswaPortalPage() {
-  const { tahunPelajaran, semester, setActivePage } = useAppStore();
+  const { tahunPelajaran, semester, setStudentPortalMode } = useAppStore();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -183,7 +183,7 @@ export default function SiswaPortalPage() {
     },
   });
 
-  // ─── Logout ──────────────────────────────────────────────────────
+  // ─── Logout (back to login page) ─────────────────────────────────
   const handleLogout = () => {
     setSiswa(null);
     setNisnInput("");
@@ -191,6 +191,17 @@ export default function SiswaPortalPage() {
     setSelectedTest(null);
     setConfirmLogout(false);
     qc.clear();
+    setStudentPortalMode(false);
+  };
+
+  // ─── Back to login page (without logout dialog) ────────────────────
+  const handleBackToLogin = () => {
+    setSiswa(null);
+    setNisnInput("");
+    setActiveTab("dashboard");
+    setSelectedTest(null);
+    qc.clear();
+    setStudentPortalMode(false);
   };
 
   // ─── Login screen ────────────────────────────────────────────────

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { School, Loader2, Eye, EyeOff, LogIn } from "lucide-react";
+import { School, Loader2, Eye, EyeOff, LogIn, GraduationCap } from "lucide-react";
+import { useAppStore } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -279,8 +280,22 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Footer hint */}
+            {/* Divider: Admin Login / Student Portal */}
             <div className="mt-6 pt-5 border-t border-gray-100">
+              {/* Student Portal Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  useAppStore.getState().setStudentPortalMode(true);
+                }}
+                className="w-full flex items-center justify-center gap-2.5 h-11 rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/60 text-emerald-700 font-medium text-sm hover:bg-emerald-100 hover:border-emerald-300 transition-all group"
+              >
+                <GraduationCap className="w-4.5 h-4.5 group-hover:scale-110 transition-transform" />
+                Portal Siswa
+              </button>
+              <p className="text-center text-muted-foreground/60 text-[11px] mt-2 mb-4">
+                Masukkan NISN untuk mengakses tes minat bakat & gaya belajar
+              </p>
               <p className="text-center text-muted-foreground text-xs">
                 Hubungi administrator jika Anda lupa akun
               </p>
