@@ -14,8 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import LogoReveal from "@/components/LogoReveal";
+
+// ─── Default school name (no API call needed) ────────────────────────
+const DEFAULT_SCHOOL = "Operator Sekolah";
 
 interface SchoolInfo {
   namaSekolah: string;
@@ -31,22 +33,21 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
-  const [loadingSchool, setLoadingSchool] = useState(true);
 
+  // Fetch school info in background — no loading state, form renders immediately
   useEffect(() => {
     fetch("/api/pengaturan")
       .then((r) => r.json())
       .then((data) => {
         if (data && !data.error) {
           setSchoolInfo({
-            namaSekolah: data.namaSekolah || "Operator Sekolah",
+            namaSekolah: data.namaSekolah || DEFAULT_SCHOOL,
             npsn: data.npsn || "",
             logoSekolah: data.logoSekolah || "",
           });
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadingSchool(false));
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,15 +75,14 @@ export default function LoginPage() {
     }
   };
 
-  // Resolve logo src: data URI → direct, file path → /icon route
-  const getLogoSrc = () => {
-    if (!schoolInfo?.logoSekolah) return null;
-    if (schoolInfo.logoSekolah.startsWith("data:")) return schoolInfo.logoSekolah;
-    return "/icon";
-  };
-
-  const hasLogo = !!getLogoSrc();
-  const schoolName = schoolInfo?.namaSekolah || "Operator Sekolah";
+  // Resolve values (instant, no skeleton)
+  const logoSrc = schoolInfo?.logoSekolah
+    ? schoolInfo.logoSekolah.startsWith("data:")
+      ? schoolInfo.logoSekolah
+      : "/icon"
+    : null;
+  const hasLogo = !!logoSrc;
+  const schoolName = schoolInfo?.namaSekolah || DEFAULT_SCHOOL;
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50">
@@ -90,30 +90,17 @@ export default function LoginPage() {
       {/* ─── Decorative blurred blobs ─── */}
       <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-emerald-200/40 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-teal-200/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] bg-emerald-100/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
 
       {/* ═══════════════════════════════════════════════════════════════════
-          LEFT SIDE — Robot → Logo Animation (hidden on mobile, visible lg+)
+          LEFT SIDE — Logo + School Info (hidden on mobile, visible lg+)
           ═══════════════════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative flex-col items-center justify-center p-8 xl:p-12">
-        {/* Subtle pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: `url('/images/pattern-edu.png')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-
         <div className="relative z-10 flex flex-col items-center w-full max-w-lg">
-          {!loadingSchool && (
-            <LogoReveal
-              logoSrc={getLogoSrc()}
-              schoolName={schoolName}
-              hasLogo={hasLogo}
-            />
-          )}
+          <LogoReveal
+            logoSrc={logoSrc}
+            schoolName={schoolName}
+            hasLogo={hasLogo}
+          />
         </div>
       </div>
 
@@ -124,17 +111,17 @@ export default function LoginPage() {
         <Card className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-emerald-900/5 rounded-2xl">
           <CardHeader className="text-center space-y-4 pb-2 pt-8 px-8">
             {/* Mobile: Logo circle — only visible on small screens */}
-            <div className="lg:hidden mx-auto w-32 h-32 relative">
+            <div className="lg:hidden mx-auto w-28 h-28 relative">
               {hasLogo ? (
                 <>
                   <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
                   <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg flex items-center justify-center bg-white">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={getLogoSrc()!}
+                      src={logoSrc!}
                       alt={`Logo ${schoolName}`}
-                      width={128}
-                      height={128}
+                      width={112}
+                      height={112}
                       className="w-full h-full object-contain p-2"
                       priority
                     />
@@ -144,22 +131,18 @@ export default function LoginPage() {
                 <>
                   <div className="absolute -inset-2 bg-gradient-to-br from-emerald-200/40 to-teal-200/30 rounded-full blur-xl" />
                   <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                    <School className="w-12 h-12 text-white" />
+                    <School className="w-10 h-10 text-white" />
                   </div>
                 </>
               )}
             </div>
 
             {/* Desktop: School logo or default icon */}
-            {loadingSchool ? (
-              <div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100">
-                <Skeleton className="w-7 h-7 rounded-md" />
-              </div>
-            ) : hasLogo ? (
+            {hasLogo ? (
               <div className="mx-auto w-16 h-16 rounded-2xl overflow-hidden shadow-lg border border-emerald-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getLogoSrc()!}
+                  src={logoSrc!}
                   alt={`Logo ${schoolName}`}
                   width={64}
                   height={64}
@@ -174,11 +157,7 @@ export default function LoginPage() {
 
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900 tracking-tight">
-                {loadingSchool ? (
-                  <Skeleton className="h-7 w-48 mx-auto" />
-                ) : (
-                  schoolName
-                )}
+                {schoolName}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1.5">
                 Masuk ke Sistem Informasi Sekolah
