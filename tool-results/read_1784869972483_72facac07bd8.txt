@@ -1,0 +1,1012 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useMemo, useCallback } from "react";
+     4→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     5→import {
+     6→  Brain, Plus, Search, Loader2, ChevronRight, ChevronLeft,
+     7→  CheckCircle2, AlertCircle, BarChart3, Users, FileText,
+     8→  RotateCcw, Trash2, Eye, Printer, Play, Download, Zap
+     9→} from "lucide-react";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Input } from "@/components/ui/input";
+    12→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    13→import { Badge } from "@/components/ui/badge";
+    14→import { Skeleton } from "@/components/ui/skeleton";
+    15→import { Label } from "@/components/ui/label";
+    16→import { Progress } from "@/components/ui/progress";
+    17→import { Separator } from "@/components/ui/separator";
+    18→import {
+    19→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    20→} from "@/components/ui/select";
+    21→import {
+    22→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    23→  DialogDescription, DialogFooter,
+    24→} from "@/components/ui/dialog";
+    25→import {
+    26→  AlertDialog, AlertDialogAction, AlertDialogCancel,
+    27→  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    28→  AlertDialogHeader, AlertDialogTitle,
+    29→} from "@/components/ui/alert-dialog";
+    30→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    31→import { useToast } from "@/hooks/use-toast";
+    32→import { useAppStore } from "@/store/app";
+    33→import { cn } from "@/lib/utils";
+    34→
+    35→// ─── Types ─────────────────────────────────────────────────────────────────
+    36→interface SoalItem {
+    37→  id: string;
+    38→  nomor: number;
+    39→  pertanyaan: string;
+    40→  dimensi: string;
+    41→  poinA: string;
+    42→  poinB: string;
+    43→  skorA: string;
+    44→  skorB: string;
+    45→}
+    46→
+    47→interface HasilItem {
+    48→  id: string;
+    49→  siswaId: string;
+    50→  siswaNama: string;
+    51→  nisn: string;
+    52→  rombel: string;
+    53→  jenisKelamin: string;
+    54→  skorR: number;
+    55→  skorI: number;
+    56→  skorA: number;
+    57→  skorS: number;
+    58→  skorE: number;
+    59→  skorC: number;
+    60→  dominan1: string;
+    61→  dominan2: string;
+    62→  dominan3: string;
+    63→  kodeRIASEC: string;
+    64→  rekomendasiJurusan: string;
+    65→  deskripsi: string;
+    66→  totalPoin: number;
+    67→  totalSoal: number;
+    68→  waktuKerja: number;
+    69→  createdAt: string;
+    70→}
+    71→
+    72→interface SiswaOption {
+    73→  id: string;
+    74→  nama: string;
+    75→  nisn: string;
+    76→  rombel: string;
+    77→  jenisKelamin: string;
+    78→}
+    79→
+    80→// ─── RIASEC Config ─────────────────────────────────────────────────────────
+    81→const RIASEC_LABELS: Record<string, { label: string; color: string; bgColor: string; short: string }> = {
+    82→  R: { label: "Realistic", color: "text-red-600", bgColor: "bg-red-50", short: "R — Realistik" },
+    83→  I: { label: "Investigative", color: "text-blue-600", bgColor: "bg-blue-50", short: "I — Investigatif" },
+    84→  A: { label: "Artistic", color: "text-purple-600", bgColor: "bg-purple-50", short: "A — Artistik" },
+    85→  S: { label: "Social", color: "text-emerald-600", bgColor: "bg-emerald-50", short: "S — Sosial" },
+    86→  E: { label: "Enterprising", color: "text-amber-600", bgColor: "bg-amber-50", short: "E — Enterprising" },
+    87→  C: { label: "Conventional", color: "text-gray-600", bgColor: "bg-gray-50", short: "C — Konvensional" },
+    88→};
+    89→
+    90→const RIASEC_DIMENSI = ["R", "I", "A", "S", "E", "C"];
+    91→
+    92→// ─── Format time helper ───────────────────────────────────────────────────
+    93→function formatWaktu(detik: number) {
+    94→  const m = Math.floor(detik / 60);
+    95→  const s = detik % 60;
+    96→  return `${m} menit ${s} detik`;
+    97→}
+    98→
+    99→// ─── Bar Chart Component ──────────────────────────────────────────────────
+   100→function RiasecBarChart({ scores }: { scores: Record<string, number> }) {
+   101→  const maxScore = Math.max(...Object.values(scores), 1);
+   102→  return (
+   103→    <div className="space-y-3">
+   104→      {RIASEC_DIMENSI.map(d => {
+   105→        const val = scores[d] || 0;
+   106→        const pct = Math.round((val / maxScore) * 100);
+   107→        const cfg = RIASEC_LABELS[d];
+   108→        return (
+   109→          <div key={d} className="flex items-center gap-3">
+   110→            <div className={cn("text-sm font-bold w-28 shrink-0", cfg.color)}>
+   111→              {cfg.short}
+   112→            </div>
+   113→            <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+   114→              <div
+   115→                className={cn("h-full rounded-full transition-all duration-700 ease-out", {
+   116→                  "bg-red-500": d === "R",
+   117→                  "bg-blue-500": d === "I",
+   118→                  "bg-purple-500": d === "A",
+   119→                  "bg-emerald-500": d === "S",
+   120→                  "bg-amber-500": d === "E",
+   121→                  "bg-gray-500": d === "C",
+   122→                })}
+   123→                style={{ width: `${pct}%` }}
+   124→              />
+   125→            </div>
+   126→            <span className="text-sm font-semibold w-8 text-right">{val}</span>
+   127→          </div>
+   128→        );
+   129→      })}
+   130→    </div>
+   131→  );
+   132→}
+   133→
+   134→// ─── MAIN COMPONENT ──────────────────────────────────────────────────────
+   135→export default function TesMinatBakatPage() {
+   136→  const { toast } = useToast();
+   137→  const qc = useQueryClient();
+   138→  const { tahunPelajaran, semester } = useAppStore();
+   139→
+   140→  // ── Active Tab ─────────────────────────────────────────────────────────
+   141→  const [activeTab, setActiveTab] = useState<"dashboard" | "kerjakan" | "hasil">("dashboard");
+   142→
+   143→  // ── Dashboard State ──────────────────────────────────────────────────────
+   144→  const [filterRombel, setFilterRombel] = useState("");
+   145→
+   146→  // ── Test State ──────────────────────────────────────────────────────────
+   147→  const [testRomel, setTestRombel] = useState("");
+   148→  const [testSiswaId, setTestSiswaId] = useState("");
+   149→  const [selectedSiswa, setSelectedSiswa] = useState<SiswaOption | null>(null);
+   150→  const [currentQ, setCurrentQ] = useState(0);
+   151→  const [jawaban, setJawaban] = useState<Record<number, "A" | "B">>({});
+   152→  const [testStartTime, setTestStartTime] = useState(0);
+   153→  const [testActive, setTestActive] = useState(false);
+   154→  const [showResult, setShowResult] = useState(false);
+   155→
+   156→  // ── Result Dialog ────────────────────────────────────────────────────────
+   157→  const [viewResult, setViewResult] = useState<HasilItem | null>(null);
+   158→
+   159→  // ── Delete Dialog ─────────────────────────────────────────────────────────
+   160→  const [deleteTarget, setDeleteTarget] = useState<HasilItem | null>(null);
+   161→
+   162→  // ── Siswa Search ──────────────────────────────────────────────────────────
+   163→  const [siswaSearch, setSiswaSearch] = useState("");
+   164→
+   165→  // ── Queries ─────────────────────────────────────────────────────────────
+   166→  const { data: soalData, isLoading: soalLoading } = useQuery({
+   167→    queryKey: ["tes-minat-bakat-soal", tahunPelajaran],
+   168→    queryFn: async () => {
+   169→      const res = await fetch(`/api/tes-minat-bakat?tahunPelajaran=${tahunPelajaran}&semester=${semester}`);
+   170→      if (!res.ok) throw new Error("Gagal memuat soal");
+   171→      return res.json();
+   172→    },
+   173→  });
+   174→
+   175→  const { data: hasilData, isLoading: hasilLoading } = useQuery({
+   176→    queryKey: ["tes-minat-bakat-hasil", tahunPelajaran, semester, filterRombel],
+   177→    queryFn: async () => {
+   178→      const params = new URLSearchParams({
+   179→        tahunPelajaran,
+   180→        semester,
+   181→        ...(filterRombel ? { rombel: filterRombel } : {}),
+   182→      });
+   183→      const res = await fetch(`/api/tes-minat-bakat/hasil?${params}`);
+   184→      if (!res.ok) throw new Error("Gagal memuat hasil");
+   185→      return res.json();
+   186→    },
+   187→  });
+   188→
+   189→  const { data: rombelList = [] } = useQuery({
+   190→    queryKey: ["siswa-rombel"],
+   191→    queryFn: async () => {
+   192→      const res = await fetch("/api/siswa/rombel");
+   193→      if (!res.ok) return [];
+   194→      return res.json();
+   195→    },
+   196→  });
+   197→
+   198→  const { data: siswaList = [], isLoading: siswaLoading } = useQuery<SiswaOption[]>({
+   199→    queryKey: ["siswa-list", testRomel],
+   200→    queryFn: async () => {
+   201→      if (!testRomel) return [];
+   202→      const params = new URLSearchParams({
+   203→        tahunPelajaran,
+   204→        semester,
+   205→        rombel: testRomel,
+   206→      });
+   207→      const res = await fetch(`/api/siswa/list?${params}`);
+   208→      if (!res.ok) return [];
+   209→      return res.json();
+   210→    },
+   211→    enabled: !!testRomel,
+   212→  });
+   213→
+   214→  // ── Mutations ─────────────────────────────────────────────────────────────
+   215→  const seedMutation = useMutation({
+   216→    mutationFn: async () => {
+   217→      const res = await fetch("/api/tes-minat-bakat/seed", {
+   218→        method: "POST",
+   219→        headers: { "Content-Type": "application/json" },
+   220→        body: JSON.stringify({ tahunPelajaran }),
+   221→      });
+   222→      const data = await res.json();
+   223→      if (!res.ok) throw new Error(data.error || "Gagal menyimpan soal");
+   224→      return data;
+   225→    },
+   226→    onSuccess: () => {
+   227→      qc.invalidateQueries({ queryKey: ["tes-minat-bakat-soal"] });
+   228→      toast({ title: "Berhasil", description: "40 soal tes berhasil disiapkan" });
+   229→    },
+   230→    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+   231→  });
+   232→
+   233→  const submitMutation = useMutation({
+   234→    mutationFn: async () => {
+   235→      if (!selectedSiswa) throw new Error("Pilih siswa terlebih dahulu");
+   236→      const waktuKerja = Math.round((Date.now() - testStartTime) / 1000);
+   237→      const res = await fetch("/api/tes-minat-bakat/submit", {
+   238→        method: "POST",
+   239→        headers: { "Content-Type": "application/json" },
+   240→        body: JSON.stringify({
+   241→          siswaId: selectedSiswa.id,
+   242→          siswaNama: selectedSiswa.nama,
+   243→          nisn: selectedSiswa.nisn,
+   244→          rombel: selectedSiswa.rombel,
+   245→          jenisKelamin: selectedSiswa.jenisKelamin,
+   246→          tahunPelajaran,
+   247→          semester,
+   248→          jawaban,
+   249→          waktuKerja,
+   250→        }),
+   251→      });
+   252→      const data = await res.json();
+   253→      if (!res.ok) throw new Error(data.error || "Gagal menyimpan hasil");
+   254→      return data;
+   255→    },
+   256→    onSuccess: (data) => {
+   257→      qc.invalidateQueries({ queryKey: ["tes-minat-bakat-hasil"] });
+   258→      qc.invalidateQueries({ queryKey: ["tes-minat-bakat-soal"] });
+   259→      setViewResult(data);
+   260→      setShowResult(true);
+   261→      toast({ title: "Berhasil", description: "Tes berhasil disimpan" });
+   262→    },
+   263→    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+   264→  });
+   265→
+   266→  const deleteMutation = useMutation({
+   267→    mutationFn: async (id: string) => {
+   268→      const res = await fetch("/api/tes-minat-bakat/hasil", {
+   269→        method: "DELETE",
+   270→        headers: { "Content-Type": "application/json" },
+   271→        body: JSON.stringify({ id }),
+   272→      });
+   273→      const data = await res.json();
+   274→      if (!res.ok) throw new Error(data.error || "Gagal menghapus");
+   275→      return data;
+   276→    },
+   277→    onSuccess: () => {
+   278→      qc.invalidateQueries({ queryKey: ["tes-minat-bakat-hasil"] });
+   279→      qc.invalidateQueries({ queryKey: ["tes-minat-bakat-soal"] });
+   280→      toast({ title: "Berhasil", description: "Hasil tes berhasil dihapus" });
+   281→      setDeleteTarget(null);
+   282→    },
+   283→    onError: (err) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+   284→  });
+   285→
+   286→  // ── Derived data ─────────────────────────────────────────────────────────
+   287→  const soalList: SoalItem[] = soalData?.questions || [];
+   288→  const hasilList: HasilItem[] = hasilData?.data || [];
+   289→  const summary = hasilData?.summary || null;
+   290→  const totalSoal = soalList.length;
+   291→  const jawabanCount = Object.keys(jawaban).length;
+   292→
+   293→  // Filter siswa list by search
+   294→  const filteredSiswa = useMemo(() => {
+   295→    if (!siswaSearch.trim()) return siswaList;
+   296→    const q = siswaSearch.toLowerCase();
+   297→    return siswaList.filter(s =>
+   298→      s.nama.toLowerCase().includes(q) || s.nisn.toLowerCase().includes(q)
+   299→    );
+   300→  }, [siswaList, siswaSearch]);
+   301→
+   302→  // Check if siswa sudah tes
+   303→  const sudahTesSet = useMemo(() => {
+   304→    return new Set(hasilList.map(h => h.siswaId));
+   305→  }, [hasilList]);
+   306→
+   307→  // ── Handlers ─────────────────────────────────────────────────────────────
+   308→  const startTest = useCallback(() => {
+   309→    if (!selectedSiswa) return;
+   310→    setTestStartTime(Date.now());
+   311→    setTestActive(true);
+   312→    setCurrentQ(0);
+   313→    setJawaban({});
+   314→  }, [selectedSiswa]);
+   315→
+   316→  const handleJawab = (nomor: number, jawab: "A" | "B") => {
+   317→    setJawaban(prev => ({ ...prev, [nomor]: jawab }));
+   318→  };
+   319→
+   320→  const finishTest = () => {
+   321→    if (jawabanCount < totalSoal) {
+   322→      toast({ title: "Perhatian", description: "Jawab semua soal terlebih dahulu", variant: "destructive" });
+   323→      return;
+   324→    }
+   325→    submitMutation.mutate();
+   326→  };
+   327→
+   328→  const cancelTest = () => {
+   329→    setTestActive(false);
+   330→    setJawaban({});
+   331→    setCurrentQ(0);
+   332→  };
+   333→
+   334→  const resetForNewTest = () => {
+   335→    setShowResult(false);
+   336→    setViewResult(null);
+   337→    setTestActive(false);
+   338→    setJawaban({});
+   339→    setCurrentQ(0);
+   340→    setTestSiswaId("");
+   341→    setSelectedSiswa(null);
+   342→    setTestRombel("");
+   343→    setSiswaSearch("");
+   344→  };
+   345→
+   346→  // ── Print result ─────────────────────────────────────────────────────────
+   347→  const handlePrint = () => {
+   348→    window.print();
+   349→  };
+   350→
+   351→  // ── RENDER ───────────────────────────────────────────────────────────────
+   352→  return (
+   353→    <div className="p-4 md:p-6 space-y-6">
+   354→      {/* Header */}
+   355→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   356→        <div>
+   357→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   358→            <Brain className="h-6 w-6" />
+   359→            Tes Minat Bakat (RIASEC)
+   360→          </h1>
+   361→          <p className="text-sm text-muted-foreground mt-1">
+   362→            Identifikasi minat dan bakat siswa berdasarkan model Holland RIASEC
+   363→          </p>
+   364→        </div>
+   365→        <div className="flex gap-2">
+   366→          {soalList.length === 0 && (
+   367→            <Button onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
+   368→              {seedMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+   369→              Siapkan 40 Soal
+   370→            </Button>
+   371→          )}
+   372→        </div>
+   373→      </div>
+   374→
+   375→      {/* Tabs */}
+   376→      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+   377→        <TabsList className="grid w-full max-w-md grid-cols-3">
+   378→          <TabsTrigger value="dashboard" className="gap-1.5">
+   379→            <BarChart3 className="h-4 w-4" /> Dashboard
+   380→          </TabsTrigger>
+   381→          <TabsTrigger value="kerjakan" className="gap-1.5">
+   382→            <Play className="h-4 w-4" /> Kerjakan Tes
+   383→          </TabsTrigger>
+   384→          <TabsTrigger value="hasil" className="gap-1.5">
+   385→            <FileText className="h-4 w-4" /> Hasil Tes
+   386→          </TabsTrigger>
+   387→        </TabsList>
+   388→      </Tabs>
+   389→
+   390→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   391→      {/* TAB: DASHBOARD */}
+   392→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   393→      {activeTab === "dashboard" && (
+   394→        <div className="space-y-6">
+   395→          {/* Stats Cards */}
+   396→          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   397→            <Card>
+   398→              <CardContent className="p-4">
+   399→                <p className="text-sm text-muted-foreground">Total Soal</p>
+   400→                <p className="text-2xl font-bold">{totalSoal}</p>
+   401→                {totalSoal === 0 && (
+   402→                  <p className="text-xs text-amber-600 mt-1">Belum disiapkan</p>
+   403→                )}
+   404→              </CardContent>
+   405→            </Card>
+   406→            <Card>
+   407→              <CardContent className="p-4">
+   408→                <p className="text-sm text-muted-foreground">Siswa Dites</p>
+   409→                <p className="text-2xl font-bold">{summary?.totalSiswaDites || 0}</p>
+   410→              </CardContent>
+   411→            </Card>
+   412→            <Card>
+   413→              <CardContent className="p-4">
+   414→                <p className="text-sm text-muted-foreground">Total Siswa</p>
+   415→                <p className="text-2xl font-bold">{summary?.totalSiswa || 0}</p>
+   416→              </CardContent>
+   417→            </Card>
+   418→            <Card>
+   419→              <CardContent className="p-4">
+   420→                <p className="text-sm text-muted-foreground">Belum Tes</p>
+   421→                <p className="text-2xl font-bold text-amber-600">
+   422→                  {(summary?.totalSiswa || 0) - (summary?.totalSiswaDites || 0)}
+   423→                </p>
+   424→              </CardContent>
+   425→            </Card>
+   426→          </div>
+   427→
+   428→          {/* Distribusi RIASEC */}
+   429→          {summary?.distribusi && (
+   430→            <Card>
+   431→              <CardHeader className="pb-3">
+   432→                <CardTitle className="text-base">Distribusi Minat Bakat Siswa</CardTitle>
+   433→              </CardHeader>
+   434→              <CardContent>
+   435→                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+   436→                  {RIASEC_DIMENSI.map(d => {
+   437→                    const count = summary.distribusi[d] || 0;
+   438→                    const cfg = RIASEC_LABELS[d];
+   439→                    return (
+   440→                      <div key={d} className={cn("rounded-lg p-3 text-center border", cfg.bgColor, cfg.color.replace("text-", "border-"))}>
+   441→                        <p className="text-2xl font-bold">{count}</p>
+   442→                        <p className="text-xs font-medium mt-1">{cfg.label}</p>
+   443→                      </div>
+   444→                    );
+   445→                  })}
+   446→                </div>
+   447→              </CardContent>
+   448→            </Card>
+   449→          )}
+   450→
+   451→          {/* RIASEC Legend */}
+   452→          <Card>
+   453→            <CardHeader className="pb-3">
+   454→              <CardTitle className="text-base">Keterangan Dimensi RIASEC</CardTitle>
+   455→            </CardHeader>
+   456→            <CardContent>
+   457→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   458→                {RIASEC_DIMENSI.map(d => {
+   459→                  const cfg = RIASEC_LABELS[d];
+   460→                  const descriptions: Record<string, string> = {
+   461→                    R: "Praktis, suka kerja teknis, mekanik, dan outdoor",
+   462→                    I: "Analitis, ilmiah, suka riset dan observasi",
+   463→                    A: "Kreatif, imajinatif, seni, desain, dan ekspresif",
+   464→                    S: "Suka membantu, mengajar, sosial, empati",
+   465→                    E: "Memimpin, persuasif, ambisius, bisnis",
+   466→                    C: "Teratur, detail, sistematis, administratif",
+   467→                  };
+   468→                  return (
+   469→                    <div key={d} className={cn("rounded-lg p-3 border", cfg.bgColor)}>
+   470→                      <p className={cn("font-bold text-sm", cfg.color)}>{cfg.short}</p>
+   471→                      <p className="text-xs text-muted-foreground mt-1">{descriptions[d]}</p>
+   472→                    </div>
+   473→                  );
+   474→                })}
+   475→              </div>
+   476→            </CardContent>
+   477→          </Card>
+   478→
+   479→          {/* Belum siap */}
+   480→          {totalSoal === 0 && (
+   481→            <Card className="border-amber-200 bg-amber-50">
+   482→              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+   483→                <Zap className="h-10 w-10 text-amber-500 mb-3" />
+   484→                <h3 className="text-lg font-semibold">Soal Belum Disiapkan</h3>
+   485→                <p className="text-sm text-muted-foreground mt-1">
+   486→                  Klik tombol "Siapkan 40 Soal" untuk mengisi bank soal tes minat bakat
+   487→                </p>
+   488→                <Button onClick={() => seedMutation.mutate()} className="mt-4" disabled={seedMutation.isPending}>
+   489→                  {seedMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+   490→                  Siapkan 40 Soal Sekarang
+   491→                </Button>
+   492→              </CardContent>
+   493→            </Card>
+   494→          )}
+   495→        </div>
+   496→      )}
+   497→
+   498→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   499→      {/* TAB: KERJAKAN TES */}
+   500→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   501→      {activeTab === "kerjakan" && !testActive && !showResult && (
+   502→        <div className="space-y-6">
+   503→          {totalSoal === 0 ? (
+   504→            <Card>
+   505→              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+   506→                <AlertCircle className="h-10 w-10 text-amber-500 mb-3" />
+   507→                <h3 className="text-lg font-semibold">Soal Belum Tersedia</h3>
+   508→                <p className="text-sm text-muted-foreground mt-1">
+   509→                  Siapkan 40 soal terlebih dahulu di tab Dashboard
+   510→                </p>
+   511→              </CardContent>
+   512→            </Card>
+   513→          ) : (
+   514→            <Card>
+   515→              <CardHeader>
+   516→                <CardTitle className="flex items-center gap-2">
+   517→                  <Play className="h-5 w-5" />
+   518→                  Mulai Tes Minat Bakat
+   519→                </CardTitle>
+   520→                <p className="text-sm text-muted-foreground">
+   521→                  Pilih siswa yang akan mengerjakan tes. Operator akan membimbing siswa dalam menjawab soal.
+   522→                </p>
+   523→              </CardHeader>
+   524→              <CardContent className="space-y-4">
+   525→                {/* Rombel */}
+   526→                <div>
+   527→                  <Label className="text-sm font-medium">Pilih Kelas (Rombel)</Label>
+   528→                  <Select value={testRomel} onValueChange={(v) => { setTestRombel(v); setTestSiswaId(""); setSelectedSiswa(null); }}>
+   529→                    <SelectTrigger className="mt-1.5">
+   530→                      <SelectValue placeholder="Pilih kelas..." />
+   531→                    </SelectTrigger>
+   532→                    <SelectContent>
+   533→                      {rombelList.map((r: string) => (
+   534→                        <SelectItem key={r} value={r}>{r}</SelectItem>
+   535→                      ))}
+   536→                    </SelectContent>
+   537→                  </Select>
+   538→                </div>
+   539→
+   540→                {/* Siswa Search */}
+   541→                {testRomel && (
+   542→                  <div>
+   543→                    <Label className="text-sm font-medium">Pilih Siswa</Label>
+   544→                    <div className="relative mt-1.5">
+   545→                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   546→                      <Input
+   547→                        placeholder="Cari nama atau NISN..."
+   548→                        value={siswaSearch}
+   549→                        onChange={(e) => setSiswaSearch(e.target.value)}
+   550→                        className="pl-9"
+   551→                      />
+   552→                    </div>
+   553→                    <div className="mt-2 max-h-64 overflow-y-auto border rounded-lg">
+   554→                      {siswaLoading ? (
+   555→                        <div className="p-4 space-y-2">
+   556→                          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+   557→                        </div>
+   558→                      ) : filteredSiswa.length === 0 ? (
+   559→                        <div className="p-4 text-center text-sm text-muted-foreground">
+   560→                          {siswaSearch ? "Tidak ditemukan" : "Tidak ada siswa"}
+   561→                        </div>
+   562→                      ) : (
+   563→                        filteredSiswa.map(s => {
+   564→                          const sudah = sudahTesSet.has(s.id);
+   565→                          return (
+   566→                            <button
+   567→                              key={s.id}
+   568→                              onClick={() => {
+   569→                                setTestSiswaId(s.id);
+   570→                                setSelectedSiswa(s);
+   571→                              }}
+   572→                              className={cn(
+   573→                                "w-full px-4 py-2.5 text-left flex items-center justify-between gap-2 transition-colors border-b last:border-b-0",
+   574→                                testSiswaId === s.id ? "bg-primary/10" : "hover:bg-accent"
+   575→                              )}
+   576→                            >
+   577→                              <div>
+   578→                                <p className="text-sm font-medium">{s.nama}</p>
+   579→                                <p className="text-xs text-muted-foreground">{s.nisn || s.jenisKelamin}</p>
+   580→                              </div>
+   581→                              {sudah && (
+   582→                                <Badge variant="outline" className="text-xs shrink-0 bg-amber-50 text-amber-700 border-amber-200">
+   583→                                  Sudah Tes
+   584→                                </Badge>
+   585→                              )}
+   586→                            </button>
+   587→                          );
+   588→                        })
+   589→                      )}
+   590→                    </div>
+   591→                  </div>
+   592→                )}
+   593→
+   594→                {/* Selected & Start */}
+   595→                {selectedSiswa && (
+   596→                  <div className="space-y-3">
+   597→                    <Separator />
+   598→                    <div className="flex items-center justify-between">
+   599→                      <div>
+   600→                        <p className="text-sm font-medium">{selectedSiswa.nama}</p>
+   601→                        <p className="text-xs text-muted-foreground">
+   602→                          {selectedSiswa.rombel} • {selectedSiswa.jenisKelamin}
+   603→                        </p>
+   604→                      </div>
+   605→                      <Button onClick={startTest} size="lg">
+   606→                        <Play className="h-4 w-4 mr-2" />
+   607→                        Mulai Tes ({totalSoal} Soal)
+   608→                      </Button>
+   609→                    </div>
+   610→                    {sudahTesSet.has(selectedSiswa.id) && (
+   611→                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-700">
+   612→                        <strong>Perhatian:</strong> Siswa ini sudah pernah mengerjakan tes. Jika dilanjutkan, hasil sebelumnya akan ditimpa.
+   613→                      </div>
+   614→                    )}
+   615→                  </div>
+   616→                )}
+   617→              </CardContent>
+   618→            </Card>
+   619→          )}
+   620→        </div>
+   621→      )}
+   622→
+   623→      {/* ── Active Test (soal per soal) ──────────────────────────────────── */}
+   624→      {testActive && soalList.length > 0 && (
+   625→        <div className="space-y-4">
+   626→          {/* Progress */}
+   627→          <div className="space-y-2">
+   628→            <div className="flex items-center justify-between text-sm">
+   629→              <span className="font-medium">Soal {currentQ + 1} dari {totalSoal}</span>
+   630→              <span className="text-muted-foreground">{jawabanCount} / {totalSoal} dijawab</span>
+   631→            </div>
+   632→            <Progress value={(jawabanCount / totalSoal) * 100} className="h-2" />
+   633→          </div>
+   634→
+   635→          {/* Question Card */}
+   636→          <Card className="max-w-2xl mx-auto">
+   637→            <CardContent className="p-6 space-y-6">
+   638→              {/* Soal nomor + dimensi badge */}
+   639→              <div className="flex items-center gap-2">
+   640→                <span className="text-xs font-medium text-muted-foreground bg-gray-100 rounded-full px-2.5 py-1">
+   641→                  Soal #{currentQ + 1}
+   642→                </span>
+   643→                <Badge variant="outline" className={cn("text-xs", RIASEC_LABELS[soalList[currentQ].dimensi]?.color)}>
+   644→                  {RIASEC_LABELS[soalList[currentQ].dimensi]?.short}
+   645→                </Badge>
+   646→              </div>
+   647→
+   648→              {/* Pertanyaan */}
+   649→              <p className="text-lg font-semibold leading-relaxed">
+   650→                {soalList[currentQ].pertanyaan}
+   651→              </p>
+   652→
+   653→              {/* Pilihan */}
+   654→              <div className="space-y-3">
+   655→                {(["A", "B"] as const).map(pilihan => {
+   656→                  const label = pilihan === "A" ? soalList[currentQ].poinA : soalList[currentQ].poinB;
+   657→                  const selected = jawaban[soalList[currentQ].nomor] === pilihan;
+   658→                  return (
+   659→                    <button
+   660→                      key={pilihan}
+   661→                      onClick={() => handleJawab(soalList[currentQ].nomor, pilihan)}
+   662→                      className={cn(
+   663→                        "w-full text-left rounded-xl border-2 p-4 transition-all",
+   664→                        selected
+   665→                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+   666→                          : "border-border hover:border-primary/30 hover:bg-accent"
+   667→                      )}
+   668→                    >
+   669→                      <div className="flex items-start gap-3">
+   670→                        <div className={cn(
+   671→                          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
+   672→                          selected
+   673→                            ? "bg-primary text-primary-foreground"
+   674→                            : "bg-gray-100 text-gray-500"
+   675→                        )}>
+   676→                          {pilihan}
+   677→                        </div>
+   678→                        <p className={cn("text-sm leading-relaxed pt-1", selected && "font-medium")}>
+   679→                          {label}
+   680→                        </p>
+   681→                      </div>
+   682→                    </button>
+   683→                  );
+   684→                })}
+   685→              </div>
+   686→            </CardContent>
+   687→          </Card>
+   688→
+   689→          {/* Navigation */}
+   690→          <div className="flex items-center justify-between max-w-2xl mx-auto">
+   691→            <Button
+   692→              variant="outline"
+   693→              onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
+   694→              disabled={currentQ === 0}
+   695→            >
+   696→              <ChevronLeft className="h-4 w-4 mr-1" /> Sebelumnya
+   697→            </Button>
+   698→
+   699→            {currentQ < totalSoal - 1 ? (
+   700→              <Button onClick={() => setCurrentQ(currentQ + 1)}>
+   701→                Selanjutnya <ChevronRight className="h-4 w-4 ml-1" />
+   702→              </Button>
+   703→            ) : (
+   704→              <Button
+   705→                onClick={finishTest}
+   706→                disabled={jawabanCount < totalSoal || submitMutation.isPending}
+   707→                className="bg-emerald-600 hover:bg-emerald-700"
+   708→              >
+   709→                {submitMutation.isPending ? (
+   710→                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Menyimpan...</>
+   711→                ) : (
+   712→                  <><CheckCircle2 className="h-4 w-4 mr-2" /> Selesai & Simpan</>
+   713→                )}
+   714→              </Button>
+   715→            )}
+   716→          </div>
+   717→
+   718→          {/* Quick jump soal */}
+   719→          <div className="max-w-2xl mx-auto">
+   720→            <p className="text-xs text-muted-foreground mb-2">Navigasi cepat:</p>
+   721→            <div className="flex flex-wrap gap-1.5">
+   722→              {soalList.map((s, i) => {
+   723→                const answered = jawaban[s.nomor] !== undefined;
+   724→                const isCurrent = i === currentQ;
+   725→                return (
+   726→                  <button
+   727→                    key={s.nomor}
+   728→                    onClick={() => setCurrentQ(i)}
+   729→                    className={cn(
+   730→                      "w-8 h-8 rounded-md text-xs font-medium transition-colors",
+   731→                      isCurrent && "bg-primary text-primary-foreground",
+   732→                      !isCurrent && answered && "bg-primary/10 text-primary",
+   733→                      !isCurrent && !answered && "bg-gray-100 text-muted-foreground hover:bg-gray-200"
+   734→                    )}
+   735→                  >
+   736→                    {i + 1}
+   737→                  </button>
+   738→                );
+   739→              })}
+   740→            </div>
+   741→          </div>
+   742→
+   743→          {/* Cancel */}
+   744→          <div className="text-center">
+   745→            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={cancelTest}>
+   746→              Batal Mengerjakan
+   747→            </Button>
+   748→          </div>
+   749→        </div>
+   750→      )}
+   751→
+   752→      {/* ── Result after test ───────────────────────────────────────────── */}
+   753→      {showResult && viewResult && (
+   754→        <div className="space-y-6 print:space-y-4">
+   755→          <Card className="print:shadow-none print:border-none">
+   756→            <CardHeader>
+   757→              <div className="flex items-center justify-between">
+   758→                <div>
+   759→                  <CardTitle className="flex items-center gap-2">
+   760→                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+   761→                    Hasil Tes Minat Bakat
+   762→                  </CardTitle>
+   763→                  <p className="text-sm text-muted-foreground mt-1">
+   764→                    {viewResult.siswaNama} • {viewResult.rombel} • {formatWaktu(viewResult.waktuKerja)}
+   765→                  </p>
+   766→                </div>
+   767→                <div className="flex gap-2 print:hidden">
+   768→                  <Button variant="outline" size="sm" onClick={handlePrint}>
+   769→                    <Printer className="h-4 w-4 mr-1" /> Cetak
+   770→                  </Button>
+   771→                  <Button size="sm" onClick={resetForNewTest}>
+   772→                    <RotateCcw className="h-4 w-4 mr-1" /> Tes Siswa Lain
+   773→                  </Button>
+   774→                </div>
+   775→              </div>
+   776→            </CardHeader>
+   777→            <CardContent className="space-y-6">
+   778→              {/* RIASEC Code */}
+   779→              <div className="text-center">
+   780→                <p className="text-sm text-muted-foreground mb-2">Kode Minat Bakat</p>
+   781→                <div className="flex items-center justify-center gap-2">
+   782→                  {viewResult.kodeRIASEC.split("").map((d, i) => {
+   783→                    const cfg = RIASEC_LABELS[d];
+   784→                    if (!cfg) return null;
+   785→                    return (
+   786→                      <div key={i} className={cn("w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold", cfg.bgColor, cfg.color)}>
+   787→                        {d}
+   788→                      </div>
+   789→                    );
+   790→                  })}
+   791→                </div>
+   792→              </div>
+   793→
+   794→              {/* Bar Chart */}
+   795→              <div>
+   796→                <p className="text-sm font-medium mb-3">Skor Per Dimensi</p>
+   797→                <RiasecBarChart scores={{
+   798→                  R: viewResult.skorR,
+   799→                  I: viewResult.skorI,
+   800→                  A: viewResult.skorA,
+   801→                  S: viewResult.skorS,
+   802→                  E: viewResult.skorE,
+   803→                  C: viewResult.skorC,
+   804→                }} />
+   805→              </div>
+   806→
+   807→              {/* Deskripsi */}
+   808→              <div className={cn("rounded-lg p-4", RIASEC_LABELS[viewResult.dominan1]?.bgColor)}>
+   809→                <p className={cn("font-bold text-sm mb-1", RIASEC_LABELS[viewResult.dominan1]?.color)}>
+   810→                  {RIASEC_LABELS[viewResult.dominan1]?.label} — Tipe Dominan
+   811→                </p>
+   812→                <p className="text-sm text-muted-foreground">{viewResult.deskripsi}</p>
+   813→              </div>
+   814→
+   815→              {/* Rekomendasi */}
+   816→              <div>
+   817→                <p className="font-bold text-sm mb-2">Rekomendasi Jurusan & Karir</p>
+   818→                <p className="text-sm text-muted-foreground leading-relaxed">{viewResult.rekomendasiJurusan}</p>
+   819→              </div>
+   820→
+   821→              {/* Footer */}
+   822→              <Separator />
+   823→              <div className="flex items-center justify-between text-xs text-muted-foreground print:text-black">
+   824→                <span>Tahun Pelajaran: {viewResult.tahunPelajaran || tahunPelajaran}</span>
+   825→                <span>Dites pada: {new Date(viewResult.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+   826→              </div>
+   827→            </CardContent>
+   828→          </Card>
+   829→        </div>
+   830→      )}
+   831→
+   832→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   833→      {/* TAB: HASIL TES */}
+   834→      {/* ═══════════════════════════════════════════════════════════════════ */}
+   835→      {activeTab === "hasil" && (
+   836→        <div className="space-y-4">
+   837→          {/* Filter */}
+   838→          <div className="flex flex-col sm:flex-row gap-3">
+   839→            <Select value={filterRombel} onValueChange={setFilterRombel}>
+   840→              <SelectTrigger className="w-full sm:w-64">
+   841→                <SelectValue placeholder="Semua Kelas" />
+   842→              </SelectTrigger>
+   843→              <SelectContent>
+   844→                <SelectItem value="all">Semua Kelas</SelectItem>
+   845→                {rombelList.map((r: string) => (
+   846→                  <SelectItem key={r} value={r}>{r}</SelectItem>
+   847→                ))}
+   848→              </SelectContent>
+   849→            </Select>
+   850→            <div className="text-sm text-muted-foreground self-center">
+   851→              {hasilList.length} siswa dites
+   852→            </div>
+   853→          </div>
+   854→
+   855→          {/* Table */}
+   856→          {hasilLoading ? (
+   857→            <div className="space-y-2">
+   858→              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+   859→            </div>
+   860→          ) : hasilList.length === 0 ? (
+   861→            <Card>
+   862→              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+   863→                <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
+   864→                <h3 className="text-lg font-medium text-muted-foreground">Belum ada hasil tes</h3>
+   865→                <p className="text-sm text-muted-foreground mt-1">
+   866→                  Hasil akan muncul setelah siswa mengerjakan tes
+   867→                </p>
+   868→              </CardContent>
+   869→            </Card>
+   870→          ) : (
+   871→            <div className="border rounded-lg overflow-hidden">
+   872→              <div className="overflow-x-auto">
+   873→                <table className="w-full text-sm">
+   874→                  <thead className="bg-gray-50 border-b">
+   875→                    <tr>
+   876→                      <th className="text-left px-4 py-3 font-medium">No</th>
+   877→                      <th className="text-left px-4 py-3 font-medium">Nama Siswa</th>
+   878→                      <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Kelas</th>
+   879→                      <th className="text-left px-4 py-3 font-medium hidden md:table-cell">JK</th>
+   880→                      <th className="text-center px-4 py-3 font-medium">Kode</th>
+   881→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">R</th>
+   882→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">I</th>
+   883→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">A</th>
+   884→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">S</th>
+   885→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">E</th>
+   886→                      <th className="text-center px-4 py-3 font-medium hidden lg:table-cell">C</th>
+   887→                      <th className="text-center px-4 py-3 font-medium">Waktu</th>
+   888→                      <th className="text-center px-4 py-3 font-medium">Aksi</th>
+   889→                    </tr>
+   890→                  </thead>
+   891→                  <tbody>
+   892→                    {hasilList.map((h, i) => (
+   893→                      <tr key={h.id} className="border-b last:border-b-0 hover:bg-accent/50 transition-colors">
+   894→                        <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
+   895→                        <td className="px-4 py-3 font-medium">{h.siswaNama}</td>
+   896→                        <td className="px-4 py-3 hidden sm:table-cell">{h.rombel}</td>
+   897→                        <td className="px-4 py-3 hidden md:table-cell">{h.jenisKelamin}</td>
+   898→                        <td className="px-4 py-3 text-center">
+   899→                          <span className="inline-flex gap-0.5">
+   900→                            {h.kodeRIASEC.split("").map((d, j) => (
+   901→                              <span key={j} className={cn("w-6 h-6 rounded text-xs font-bold flex items-center justify-center", RIASEC_LABELS[d]?.bgColor, RIASEC_LABELS[d]?.color)}>
+   902→                                {d}
+   903→                              </span>
+   904→                            ))}
+   905→                          </span>
+   906→                        </td>
+   907→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorR}</td>
+   908→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorI}</td>
+   909→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorA}</td>
+   910→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorS}</td>
+   911→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorE}</td>
+   912→                        <td className="px-4 py-3 text-center hidden lg:table-cell">{h.skorC}</td>
+   913→                        <td className="px-4 py-3 text-center text-xs text-muted-foreground">{formatWaktu(h.waktuKerja)}</td>
+   914→                        <td className="px-4 py-3">
+   915→                          <div className="flex items-center justify-center gap-1">
+   916→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewResult(h)}>
+   917→                              <Eye className="h-3.5 w-3.5" />
+   918→                            </Button>
+   919→                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(h)}>
+   920→                              <Trash2 className="h-3.5 w-3.5" />
+   921→                            </Button>
+   922→                          </div>
+   923→                        </td>
+   924→                      </tr>
+   925→                    ))}
+   926→                  </tbody>
+   927→                </table>
+   928→              </div>
+   929→            </div>
+   930→          )}
+   931→        </div>
+   932→      )}
+   933→
+   934→      {/* ── View Result Dialog ──────────────────────────────────────────── */}
+   935→      <Dialog open={!!viewResult && activeTab === "hasil"} onOpenChange={(open) => { if (!open) setViewResult(null); }}>
+   936→        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+   937→          <DialogHeader>
+   938→            <DialogTitle className="flex items-center gap-2">
+   939→              <Brain className="h-5 w-5" />
+   940→              Hasil Tes: {viewResult?.siswaNama}
+   941→            </DialogTitle>
+   942→            <DialogDescription>
+   943→              {viewResult?.rombel} • {viewResult && formatWaktu(viewResult.waktuKerja)}
+   944→            </DialogDescription>
+   945→          </DialogHeader>
+   946→          {viewResult && (
+   947→            <div className="space-y-5">
+   948→              {/* Kode RIASEC */}
+   949→              <div className="text-center">
+   950→                <p className="text-xs text-muted-foreground mb-2">Kode Minat Bakat</p>
+   951→                <div className="flex items-center justify-center gap-2">
+   952→                  {viewResult.kodeRIASEC.split("").map((d, i) => {
+   953→                    const cfg = RIASEC_LABELS[d];
+   954→                    if (!cfg) return null;
+   955→                    return (
+   956→                      <div key={i} className={cn("w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold", cfg.bgColor, cfg.color)}>
+   957→                        {d}
+   958→                      </div>
+   959→                    );
+   960→                  })}
+   961→                </div>
+   962→              </div>
+   963→
+   964→              {/* Scores */}
+   965→              <RiasecBarChart scores={{
+   966→                R: viewResult.skorR, I: viewResult.skorI, A: viewResult.skorA,
+   967→                S: viewResult.skorS, E: viewResult.skorE, C: viewResult.skorC,
+   968→              }} />
+   969→
+   970→              {/* Deskripsi */}
+   971→              <div className={cn("rounded-lg p-4", RIASEC_LABELS[viewResult.dominan1]?.bgColor)}>
+   972→                <p className={cn("font-bold text-sm mb-1", RIASEC_LABELS[viewResult.dominan1]?.color)}>
+   973→                  Tipe Dominan: {RIASEC_LABELS[viewResult.dominan1]?.label}
+   974→                </p>
+   975→                <p className="text-sm text-muted-foreground">{viewResult.deskripsi}</p>
+   976→              </div>
+   977→
+   978→              {/* Rekomendasi */}
+   979→              <div>
+   980→                <p className="font-bold text-sm mb-1">Rekomendasi Jurusan & Karir</p>
+   981→                <p className="text-sm text-muted-foreground leading-relaxed">{viewResult.rekomendasiJurusan}</p>
+   982→              </div>
+   983→            </div>
+   984→          )}
+   985→        </DialogContent>
+   986→      </Dialog>
+   987→
+   988→      {/* ── Delete Dialog ────────────────────────────────────────────────── */}
+   989→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+   990→        <AlertDialogContent>
+   991→          <AlertDialogHeader>
+   992→            <AlertDialogTitle>Hapus Hasil Tes?</AlertDialogTitle>
+   993→            <AlertDialogDescription>
+   994→              Apakah Anda yakin ingin menghapus hasil tes <strong>{deleteTarget?.siswaNama}</strong>? Tindakan ini tidak dapat dibatalkan.
+   995→            </AlertDialogDescription>
+   996→          </AlertDialogHeader>
+   997→          <AlertDialogFooter>
+   998→            <AlertDialogCancel>Batal</AlertDialogCancel>
+   999→            <AlertDialogAction
+  1000→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+  1001→              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+  1002→              disabled={deleteMutation.isPending}
+  1003→            >
+  1004→              {deleteMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Menghapus...</> : "Hapus"}
+  1005→            </AlertDialogAction>
+  1006→          </AlertDialogFooter>
+  1007→        </AlertDialogContent>
+  1008→      </AlertDialog>
+  1009→    </div>
+  1010→  );
+  1011→}
+  1012→
